@@ -1,14 +1,74 @@
 import json
 import importlib.resources
 import os.path
+import re
 from pprint import pprint
-from typing import List, OrderedDict, Union
+from sys import _is_interned
+from typing import List, OrderedDict, Tuple, Union, Sequence
 from collections import OrderedDict
 
-from setuptools.discovery import construct_package_dir
 from pudb import set_trace
 
+# Access local templates and write output relative to module path
 SRCDIR = importlib.resources.files("customtemplates")
+
+# Process strings containing ternary statements into groups to eval into floats
+# Only support basic ternary operators, no nesting, no OR/AND etc
+ternary = re.compile(r"^(\d+\s|\w+\s)([<>]|==)\s(\d|\w+)\s\?\s(\d+|\w+)\s:\s(\d+|\w+)$")
+ternary_alt = re.compile(r"^(\S+?)\s?(<|>|==|>=|<=|!=)\s?(\S+)\s?\?\s(\S+)\s?:\s(\S+)$")
+# G0: var1
+# G1: Comparison Operator
+# G2: var2
+# G3: val if True
+# G4: val if False
+
+
+class RemarkableStringExp:
+    exp: Union[str, float, int] = ""
+    is_ternary: bool = False
+    groups: Union[tuple, None] = None
+    tern_regexp = ternary_alt
+    tern_switch = {
+        ">": lambda a, b: float(a) > float(b),
+        "<": lambda a, b: float(a) < float(b),
+        "==": lambda a, b: float(a) == float(b),
+        "!=": lambda a, b: float(a) != float(b),
+        ">=": lambda a, b: float(a) >= float(b),
+        "<=": lambda a, b: float(a) <= float(b),
+    }
+
+    def __init__(self, exp: str):
+        """Evaluable string containing ternary operator or basic math expression."""
+        self.exp = exp
+        if match := self.tern_regexp.match(exp):
+            self.is_ternary = True
+            self.groups = match.groups()
+
+    def _parse_exp(self, constants):
+        """Apply expression string to constants and return float result."""
+
+    def eval(self, constants: dict):
+        """Apply contants and return result of evaluated ternary operator or exp."""
+        if self.is_ternary and self.groups:
+            var1, comparison_op, var2, res_true, res_false = self.groups
+            comparison_res = self.tern_switch[comparison_op](
+                constants[var1], constants[var2]
+            )
+            return constants[res_true] if comparison_res else constants[res_false]
+        if isinstance(self.exp, str):
+            # WARN:: Not secure, using eval for initial development simplicity
+            return eval(self.exp, locals=constants)
+        # Else its a number or invalid :shrug:
+        return self.exp
+
+    def __iter__(self):
+        return str(f'"{self.exp}"')
+
+    def __str__(self) -> str:
+        return str(f'"{self.exp}"')
+
+    def __repr__(self) -> str:
+        return str(f'"{self.exp}"')
 
 
 class RemarkableTemplate:
@@ -74,10 +134,69 @@ class RemarkableTemplate:
 
     def write_json_template(self):
         """Combine all children JSON and self json into output file."""
+        # Ignore lenter
         abs_output_file_path = os.path.join(SRCDIR, "output", self.output_file)
         self.construct_output_dict()
         with open(f"{abs_output_file_path}", "w+") as output_stream:
             json.dump(self.res, output_stream)
+
+
+class RemarkableGroup:
+    _id = ""
+    _type = "group"
+    boundingBox = {"x": 0, "y": 0, "width": 0, "height": 0}
+    repeat = {"rows": 0, "columns": 0}
+    src_children = []
+    children: List[Union["RemarkableGroup", "RemarkablePath", "RemarkableText"]] = []
+    res: OrderedDict = OrderedDict()
+
+    def __init__(self, *args, **kwargs):
+        kwargs = kwargs["kwargs"]
+        if not "id" in kwargs.keys():
+            self._id = f"GROUP--{self.__hash__()}"
+        else:
+            self._id = kwargs["id"]
+        if not "repeat" in kwargs.keys():
+            self.repeat = {"rows": 0, "columns": 0}
+        else:
+            self.repeat = kwargs["repeat"]
+        print(f"ID::\t {self._id}")
+        self.boundingBox = kwargs["boundingBox"]
+        self.src_children = kwargs["children"]
+        # pprint(self.src_children)
+        self.populate_children()
+        self.construct_output_dict()
+        # self.construct_output_dict()
+
+    def construct_output_dict(self):
+        """Return ordered dict of class attrs to values."""
+        self.res = OrderedDict()
+        self.res["id"] = self._id
+        self.res["type"] = self._type
+        self.res["boundingBox"] = self.boundingBox
+        self.res["repeat"] = self.repeat
+        _children = []
+        for child in self.children:
+            _children.append(child.res)
+        self.res["children"] = _children
+        # self.res["children"] = self.children
+
+    def populate_children(self):
+        for item in self.src_children:
+            print(f"ITEM-TYPE::\t{item['type']}")
+            if item["type"] == "text":
+                self.children.append(RemarkableText(kwargs=item))
+            elif item["type"] == "group":
+                self.children.append(RemarkableGroup(kwargs=item))
+            elif item["type"] == "path":
+                self.children.append(RemarkablePath(kwargs=item))
+            else:
+                raise ValueError(f"ERROR: Invalid Item type in children:\t{type(item)}")
+
+    def json(self):
+        """Return json object representing local remarkable template component."""
+        self.construct_output_dict()
+        return json.dumps(self.res)
 
 
 class RemarkableText:
@@ -173,62 +292,121 @@ class RemarkablePath:
         return json.dumps(self.res)
 
 
-class RemarkableGroup:
-    _id = ""
-    _type = "group"
-    boundingBox = {"x": 0, "y": 0, "width": 0, "height": 0}
-    repeat = {"rows": 0, "columns": 0}
-    src_children = []
-    children: List[Union["RemarkableGroup", RemarkablePath, RemarkableText]] = []
-    res: OrderedDict = OrderedDict()
+class RemarkablePathData:
+    """Represents path data as a list for a RemarkablePath."""
 
-    def __init__(self, *args, **kwargs):
-        kwargs = kwargs["kwargs"]
-        if not "id" in kwargs.keys():
-            self._id = f"GROUP--{self.__hash__()}"
-        else:
-            self._id = kwargs["id"]
-        if not "repeat" in kwargs.keys():
-            self.repeat = {"rows": 0, "columns": 0}
-        else:
-            self.repeat = kwargs["repeat"]
-        print(f"ID::\t {self._id}")
-        self.boundingBox = kwargs["boundingBox"]
-        self.src_children = kwargs["children"]
-        # pprint(self.src_children)
-        self.populate_children()
-        self.construct_output_dict()
-        # self.construct_output_dict()
+    data: List[Union["RemarkablePoint", "RemarkableLine", "RemarkablePolygon"]] = []
 
-    def construct_output_dict(self):
-        """Return ordered dict of class attrs to values."""
-        self.res = OrderedDict()
-        self.res["id"] = self._id
-        self.res["type"] = self._type
-        self.res["boundingBox"] = self.boundingBox
-        self.res["repeat"] = self.repeat
-        _children = []
-        for child in self.children:
-            _children.append(child.res)
-        self.res["children"] = _children
-        # self.res["children"] = self.children
+    def __init__(self, pathdata: List = []):
+        """Parse pathdata for points, lines, polygons, initialize them as objects."""
+        # identifier is every third index, starting from index 0
+        # if identifier is "M" or "L" next two indices represent point pair
+        #   if next identifier is "M" new line segment, else its a polygon
+        # if identifier is "C" next 6 indicies represent point pairs
+        # if idenfifier is "Z" end of polygon reached
+        pass
 
-    def populate_children(self):
-        for item in self.src_children:
-            print(f"ITEM-TYPE::\t{item['type']}")
-            if item["type"] == "text":
-                self.children.append(RemarkableText(kwargs=item))
-            elif item["type"] == "group":
-                self.children.append(RemarkableGroup(kwargs=item))
-            elif item["type"] == "path":
-                self.children.append(RemarkablePath(kwargs=item))
-            else:
-                raise ValueError(f"ERROR: Invalid Item type in children:\t{type(item)}")
+    def __repr__(self) -> str:
+        return ",".join(map(str, self.data))
 
-    def json(self):
-        """Return json object representing local remarkable template component."""
-        self.construct_output_dict()
-        return json.dumps(self.res)
+
+class RemarkablePoint:
+    """Single Point drawn in Remarkable representing marker down and up again."""
+
+    identifier = '"M"'
+    x: Union[float, RemarkableStringExp] = 0
+    y: Union[float, RemarkableStringExp] = 0
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __repr__(self) -> str:
+        return ",".join(map(str, [self.identifier, self.x, self.y]))
+
+
+class RemarkableSegment(RemarkablePoint):
+    """Destination point in remarkable lines, only difference from *point is identifier."""
+
+    identifier = "L"
+
+
+class RemarkableCurve:
+    """BUG doesn't work yet, represents bezier curve item fount in piano sheets."""
+
+    identifier = "C"
+    x: Tuple[Union[float, RemarkableStringExp], Union[float, RemarkableStringExp]] = (
+        0,
+        0,
+    )
+    y: Tuple[Union[float, RemarkableStringExp], Union[float, RemarkableStringExp]] = (
+        0,
+        0,
+    )
+    z: Tuple[Union[float, RemarkableStringExp], Union[float, RemarkableStringExp]] = (
+        0,
+        0,
+    )  # TODO no clue if this one is control point
+
+    def __init__(self):
+        pass
+
+    def __repr__(self) -> str:
+        pass
+
+
+class RemarkableLine:
+    """Single line segment with a start and end point. Markder down, up after x2,y2."""
+
+    identifier = "L"
+    start: Union[RemarkablePoint, "RemarkableLine"] = None
+    end_x: Union[float, RemarkableStringExp] = 0
+    end_y: Union[float, RemarkableStringExp] = 0
+
+    def __init__(self, x1, y1, x2, y2):
+        self.start = RemarkablePoint(x1, y1)
+        self.end_x = x2
+        self.end_y = y2
+
+    def __repr__(self) -> str:
+        return ",".join(map(str, [self.start, self.identifier, self.end_x, self.end_y]))
+
+
+class RemarkablePolygon:
+    """Closed Polygon consisting of a RemarkablePoint and series of RemarkableLines."""
+
+    origin: RemarkablePoint
+    segments: List[RemarkableSegment] = []
+    segment_identifier = "L"
+
+    def __init__(
+        self,
+        points: List[
+            tuple[Union[float, RemarkableStringExp], Union[float, RemarkableStringExp]]
+        ],
+    ):
+        """Create initial point and series of lines."""
+        self.origin = RemarkablePoint(*points[0])
+        for p in points[1:]:
+            self.add_segment(*p)
+
+    def add_segment(self, x, y):
+        self.segments.append(RemarkableSegment(x, y))
+
+    def pop_segment(self):
+        if len(self.segments) < 1:
+            raise ValueError("Too few segments to pop.")
+        self.segments = self.segments[:-1]
+
+    def move_lastpoint(self, new_x, new_y):
+        self.pop_segment()
+        self.add_segment(new_x, new_y)
+
+    def move_origin(self, new_x, new_y):
+        self.origin = RemarkablePoint(new_x, new_y)
+
+    def __repr__(self) -> str:
+        return ",".join(map(str, [self.origin, *self.segments, '"Z"']))
 
 
 def main():
