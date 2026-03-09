@@ -1,42 +1,210 @@
+/* ── Reset / globals ──────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  height: 100%;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  background: #f4f4f4;
+  color: #1a1a1a;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* ── App shell ────────────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #1c1c1e;
+  color: #ebebf5;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #000;
 }
 
-.card {
-  padding: 2em;
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #2c2c2e;
+  flex-shrink: 0;
 }
 
-.read-the-docs {
-  color: #888;
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8e8e93;
+}
+
+.sidebar-count {
+  font-size: 11px;
+  color: #636366;
+  background: #2c2c2e;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.sidebar-hint {
+  padding: 16px;
+  color: #636366;
+  font-size: 13px;
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.sidebar-list::-webkit-scrollbar { width: 4px; }
+.sidebar-list::-webkit-scrollbar-track { background: transparent; }
+.sidebar-list::-webkit-scrollbar-thumb { background: #3a3a3c; border-radius: 2px; }
+
+/* ── Template list button ─────────────────────────────────────────────────── */
+
+.template-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 16px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  color: #adadb8;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  gap: 8px;
+  transition: background 0.1s, color 0.1s;
+}
+
+.template-btn:hover {
+  background: #2c2c2e;
+  color: #ebebf5;
+}
+
+.template-btn.selected {
+  background: #2c2c2e;
+  border-left-color: #0a84ff;
+  color: #fff;
+}
+
+.template-btn-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Orientation badge ────────────────────────────────────────────────────── */
+
+.orient-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+
+.orient-badge.p  { background: #0a3466; color: #4da3ff; }
+.orient-badge.ls { background: #3d1a6e; color: #bf8fff; }
+
+/* ── Preview panel ───────────────────────────────────────────────────────── */
+
+.preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+.preview-meta {
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.preview-meta-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.preview-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Tags ─────────────────────────────────────────────────────────────────── */
+
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+.tag-p    { background: #ddeeff; color: #0055bb; }
+.tag-ls   { background: #eeddff; color: #6600bb; }
+.tag-cat  { background: #eee;    color: #555; font-weight: 400; }
+.tag-file { background: #f0f0f0; color: #888; font-weight: 400;
+            font-family: monospace; font-size: 10px; }
+
+/* ── Stage ───────────────────────────────────────────────────────────────── */
+
+.preview-stage {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px;
+}
+
+.stage-hint {
+  color: #999;
+  font-size: 14px;
+  margin-top: 60px;
+}
+
+.stage-error { color: #cc3333; }
+
+/* ── SVG preview ─────────────────────────────────────────────────────────── */
+
+.preview-svg {
+  max-width: 560px;
+  width: 100%;
+  height: auto;
+  display: block;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid #d0d0d0;
+  border-radius: 2px;
 }
