@@ -103,7 +103,7 @@ describe('parseTemplate', () => {
     expect(item.type).toBe('path')
     expect(item.data).toEqual(['M', 0, 100, 'L', 1404, 100])
     expect(item.strokeColor).toBe('#000000')
-    expect(item.fillColor).toBe('#ffffff')
+    expect(item.fillColor).toBeUndefined() // no fillColor in source → undefined (renders as fill="none")
     expect(item.strokeWidth).toBe(1)
   })
 

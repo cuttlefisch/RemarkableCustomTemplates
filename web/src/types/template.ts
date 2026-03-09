@@ -21,15 +21,31 @@ export interface BoundingBox {
   height: ScalarValue
 }
 
+// ─── Repeat ──────────────────────────────────────────────────────────────────
+
+/**
+ * How many times a group tile is repeated along an axis:
+ *   0          — no repeat (render once)
+ *   N > 0      — exact count
+ *   "down"     — fill downward/rightward from the tile's start position
+ *   "infinite" — fill the full viewport (may start at negative tile index)
+ */
+export type RepeatValue = number | 'infinite' | 'down' | string
+
+export interface RepeatConfig {
+  rows?: RepeatValue
+  columns?: RepeatValue
+}
+
 // ─── Path data atoms ─────────────────────────────────────────────────────────
 
 /**
  * Path data is a flat array alternating between command strings and coordinate
  * values, matching the SVG-like format used by reMarkable:
- *   "M", x, y          — move to (start new sub-path)
- *   "L", x, y          — line to
- *   "C", x1,y1, x2,y2, x,y  — cubic bezier
- *   "Z"                — close path
+ *   "M", x, y                   — move to (start new sub-path)
+ *   "L", x, y                   — line to
+ *   "C", x1, y1, x2, y2, x, y  — cubic bezier (2 control pts + endpoint)
+ *   "Z"                         — close path
  */
 export type PathCommand = 'M' | 'L' | 'C' | 'Z'
 export type PathDataToken = PathCommand | ScalarValue
@@ -52,14 +68,14 @@ export interface PathItem {
   fillColor?: string
   strokeColor?: string
   strokeWidth?: ScalarValue
-  antialiasing?: string
+  antialiasing?: string | boolean
 }
 
 export interface GroupItem {
   type: 'group'
   id?: string
   boundingBox: BoundingBox
-  repeat?: { rows: number; columns: number }
+  repeat?: RepeatConfig
   children: TemplateItem[]
 }
 
