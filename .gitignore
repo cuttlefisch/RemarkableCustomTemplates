@@ -1,3 +1,6 @@
+# Reference templates (device originals — not tracked, used for rendering verification)
+templates_orig/
+
 # Node / web
 web/node_modules/
 web/dist/
