@@ -1,3 +1,9 @@
+# Node / web
+web/node_modules/
+web/dist/
+web/.vite/
+web/coverage/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
