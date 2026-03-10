@@ -3,6 +3,7 @@ import './App.css'
 import { TemplateCanvas } from './components/TemplateCanvas'
 import { parseTemplate } from './lib/parser'
 import { parseRegistry } from './lib/registry'
+import { DEVICES, type DeviceId } from './lib/renderer'
 import type { TemplateRegistry, TemplateRegistryEntry } from './types/registry'
 import type { RemarkableTemplate } from './types/template'
 
@@ -13,6 +14,7 @@ export default function App() {
   const [loadingRegistry, setLoadingRegistry] = useState(true)
   const [loadingTemplate, setLoadingTemplate] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deviceId, setDeviceId] = useState<DeviceId>('rm2')
 
   // Load the template registry once on mount
   useEffect(() => {
@@ -65,6 +67,19 @@ export default function App() {
           </span>
         </div>
 
+        <div className="device-selector">
+          {Object.values(DEVICES).map(spec => (
+            <button
+              key={spec.id}
+              className={`device-btn${deviceId === spec.id ? ' active' : ''}`}
+              onClick={() => setDeviceId(spec.id as DeviceId)}
+              title={spec.name}
+            >
+              {spec.shortName}
+            </button>
+          ))}
+        </div>
+
         <div className="sidebar-list">
           {loadingRegistry && <p className="sidebar-hint">Loading…</p>}
 
@@ -104,7 +119,7 @@ export default function App() {
               {loadingTemplate && <p className="stage-hint">Loading…</p>}
               {error && <p className="stage-hint stage-error">{error}</p>}
               {template && (
-                <TemplateCanvas template={template} className="preview-svg" />
+                <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
               )}
             </div>
           </>

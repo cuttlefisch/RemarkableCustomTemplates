@@ -12,6 +12,7 @@ import type {
   GroupItem,
   PathItem,
   TextItem,
+  RepeatValue,
 } from '../types/template'
 import {
   deviceBuiltins,
@@ -20,6 +21,7 @@ import {
   resolveScalar,
   computeTileRange,
   formatNum,
+  type DeviceId,
   type ResolvedConstants,
 } from '../lib/renderer'
 import { resolveConstants, evaluateExpression } from '../lib/expression'
@@ -30,12 +32,14 @@ interface TemplateCanvasProps {
   template: RemarkableTemplate
   /** Optional CSS class applied to the root <svg> element. */
   className?: string
+  /** Device to render for. Defaults to 'rm2'. */
+  deviceId?: DeviceId
 }
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export function TemplateCanvas({ template, className }: TemplateCanvasProps): ReactElement {
-  const builtins = deviceBuiltins(template.orientation)
+export function TemplateCanvas({ template, className, deviceId = 'rm2' }: TemplateCanvasProps): ReactElement {
+  const builtins = deviceBuiltins(template.orientation, deviceId)
   const constants = resolveConstants(template.constants, builtins)
   const { templateWidth, templateHeight } = builtins
 
@@ -102,6 +106,21 @@ function TextView({ item, constants }: { item: TextItem; constants: ResolvedCons
   )
 }
 
+// ─── Repeat resolution ────────────────────────────────────────────────────────
+
+const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
+
+/**
+ * Resolve a repeat value to either a keyword string or a number.
+ * Named constant expressions like "columns" are evaluated against the current
+ * constants map; keyword strings ('down', 'infinite', 'up') pass through as-is.
+ */
+function resolveRepeat(value: RepeatValue, constants: ResolvedConstants): RepeatValue {
+  if (typeof value === 'number') return value
+  if (REPEAT_KEYWORDS.has(value)) return value
+  return evaluateExpression(value, constants)
+}
+
 // ─── Group ────────────────────────────────────────────────────────────────────
 
 function GroupView({ item, constants }: { item: GroupItem; constants: ResolvedConstants }) {
@@ -110,8 +129,8 @@ function GroupView({ item, constants }: { item: GroupItem; constants: ResolvedCo
   const w = resolveScalar(item.boundingBox.width, constants)
   const h = resolveScalar(item.boundingBox.height, constants)
 
-  const rows    = item.repeat?.rows    ?? 0
-  const columns = item.repeat?.columns ?? 0
+  const rows    = resolveRepeat(item.repeat?.rows    ?? 0, constants)
+  const columns = resolveRepeat(item.repeat?.columns ?? 0, constants)
 
   const { templateWidth, templateHeight } = constants
   const rowRange = computeTileRange(y, h, templateHeight, rows)

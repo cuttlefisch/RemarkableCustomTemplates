@@ -72,6 +72,41 @@ body {
   font-size: 13px;
 }
 
+/* ── Device selector ──────────────────────────────────────────────────────── */
+
+.device-selector {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2c2c2e;
+  flex-shrink: 0;
+}
+
+.device-btn {
+  flex: 1;
+  padding: 4px 6px;
+  background: #2c2c2e;
+  border: 1px solid #3a3a3c;
+  border-radius: 4px;
+  color: #8e8e93;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.device-btn:hover {
+  background: #3a3a3c;
+  color: #ebebf5;
+}
+
+.device-btn.active {
+  background: #0a3466;
+  border-color: #0a84ff;
+  color: #4da3ff;
+}
+
 .sidebar-list {
   flex: 1;
   overflow-y: auto;

@@ -44,6 +44,36 @@ describe('evaluateExpression', () => {
     expect(evaluateExpression('x <= 10 ? 1 : 0', { x: 10 })).toBe(1)
     expect(evaluateExpression('x >= 10 ? 1 : 0', { x: 9 })).toBe(0)
   })
+
+  it('handles || in ternary condition — both sides false', () => {
+    // templateWidth=1404, templateHeight=1872, mobileMaxWidth=1000
+    // 1404 < 1000 = false, 1872 < 1000 = false → false → 939
+    const ctx = { templateWidth: 1404, templateHeight: 1872, mobileMaxWidth: 1000 }
+    expect(
+      evaluateExpression(
+        'templateWidth < mobileMaxWidth || templateHeight < mobileMaxWidth ? templateHeight / 2 : 939',
+        ctx,
+      ),
+    ).toBe(939)
+  })
+
+  it('handles || in ternary condition — first side true', () => {
+    const ctx = { templateWidth: 800, templateHeight: 1872, mobileMaxWidth: 1000 }
+    expect(
+      evaluateExpression(
+        'templateWidth < mobileMaxWidth || templateHeight < mobileMaxWidth ? templateHeight / 2 : 939',
+        ctx,
+      ),
+    ).toBe(936)
+  })
+
+  it('handles && in ternary condition — both true', () => {
+    expect(evaluateExpression('x > 0 && y > 0 ? 1 : 0', { x: 5, y: 3 })).toBe(1)
+  })
+
+  it('handles && in ternary condition — one false', () => {
+    expect(evaluateExpression('x > 0 && y > 0 ? 1 : 0', { x: 5, y: 0 })).toBe(0)
+  })
 })
 
 describe('resolveConstants', () => {

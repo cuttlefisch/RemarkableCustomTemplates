@@ -1,23 +1,11 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 // https://vite.dev/config/
+// Template files are served from public/templates/ (copied from templates_orig/).
 export default defineConfig({
-  plugins: [
-    react(),
-    // Serve the Python template data directory at /templates/ so the browser
-    // can fetch individual .template files by name without bundling them all.
-    viteStaticCopy({
-      targets: [
-        {
-          src: '../python/src/customtemplates/data/*',
-          dest: 'templates',
-        },
-      ],
-    }),
-  ],
+  plugins: [react()],
   test: {
     globals: true,
     environment: 'jsdom',

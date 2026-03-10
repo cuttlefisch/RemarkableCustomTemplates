@@ -1,0 +1,216 @@
+{
+  "name": "Debug Landscape",
+  "author": "test",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Creative"],
+  "orientation": "landscape",
+  "constants": [
+    { "margin": 50 },
+    { "crossSize": 30 },
+    { "lineSpacing": 100 },
+    { "mobileMaxWidth": 1000 },
+    { "headerY": "templateWidth < mobileMaxWidth || templateHeight < mobileMaxWidth ? 50 : 100" },
+    { "swatchSize": 80 },
+    { "swatchStep": 90 },
+    { "swatchY": "headerY + 360" }
+  ],
+  "items": [
+    {
+      "id": "border",
+      "type": "path",
+      "data": ["M", "margin", "margin",
+               "L", "templateWidth - margin", "margin",
+               "L", "templateWidth - margin", "templateHeight - margin",
+               "L", "margin", "templateHeight - margin", "Z"],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diagonal-tl-br",
+      "type": "path",
+      "data": ["M", "margin", "margin", "L", "templateWidth - margin", "templateHeight - margin"],
+      "strokeColor": "#888888",
+      "strokeWidth": 1
+    },
+    {
+      "id": "diagonal-tr-bl",
+      "type": "path",
+      "data": ["M", "templateWidth - margin", "margin", "L", "margin", "templateHeight - margin"],
+      "strokeColor": "#888888",
+      "strokeWidth": 1
+    },
+    {
+      "id": "crosshair-h",
+      "type": "path",
+      "data": ["M", "templateWidth / 2 - crossSize", "templateHeight / 2",
+               "L", "templateWidth / 2 + crossSize", "templateHeight / 2"],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 2
+    },
+    {
+      "id": "crosshair-v",
+      "type": "path",
+      "data": ["M", "templateWidth / 2", "templateHeight / 2 - crossSize",
+               "L", "templateWidth / 2", "templateHeight / 2 + crossSize"],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 2
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "text": "Debug",
+      "fontSize": 48,
+      "position": { "x": "templateWidth / 2 - textWidth / 2", "y": "headerY" }
+    },
+    {
+      "id": "font-sm",
+      "type": "text",
+      "text": "size 24",
+      "fontSize": 24,
+      "position": { "x": "margin + 10", "y": "headerY + 60" }
+    },
+    {
+      "id": "font-md",
+      "type": "text",
+      "text": "size 48",
+      "fontSize": 48,
+      "position": { "x": "margin + 10", "y": "headerY + 140" }
+    },
+    {
+      "id": "font-lg",
+      "type": "text",
+      "text": "size 72",
+      "fontSize": 72,
+      "position": { "x": "margin + 10", "y": "headerY + 260" }
+    },
+    {
+      "id": "color-black",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 0", "swatchY",
+               "L", "margin + swatchStep * 0 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 0 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 0", "swatchY + swatchSize", "Z"],
+      "fillColor": "#000000",
+      "strokeColor": "#000000"
+    },
+    {
+      "id": "color-dkgray",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 1", "swatchY",
+               "L", "margin + swatchStep * 1 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 1 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 1", "swatchY + swatchSize", "Z"],
+      "fillColor": "#555555",
+      "strokeColor": "#555555"
+    },
+    {
+      "id": "color-ltgray",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 2", "swatchY",
+               "L", "margin + swatchStep * 2 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 2 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 2", "swatchY + swatchSize", "Z"],
+      "fillColor": "#aaaaaa",
+      "strokeColor": "#aaaaaa"
+    },
+    {
+      "id": "color-white",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 3", "swatchY",
+               "L", "margin + swatchStep * 3 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 3 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 3", "swatchY + swatchSize", "Z"],
+      "fillColor": "#ffffff",
+      "strokeColor": "#888888"
+    },
+    {
+      "id": "color-red",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 4", "swatchY",
+               "L", "margin + swatchStep * 4 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 4 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 4", "swatchY + swatchSize", "Z"],
+      "fillColor": "#ff0000",
+      "strokeColor": "#ff0000"
+    },
+    {
+      "id": "color-orange",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 5", "swatchY",
+               "L", "margin + swatchStep * 5 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 5 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 5", "swatchY + swatchSize", "Z"],
+      "fillColor": "#ff8800",
+      "strokeColor": "#ff8800"
+    },
+    {
+      "id": "color-yellow",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 6", "swatchY",
+               "L", "margin + swatchStep * 6 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 6 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 6", "swatchY + swatchSize", "Z"],
+      "fillColor": "#ffff00",
+      "strokeColor": "#888888"
+    },
+    {
+      "id": "color-green",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 7", "swatchY",
+               "L", "margin + swatchStep * 7 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 7 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 7", "swatchY + swatchSize", "Z"],
+      "fillColor": "#00aa00",
+      "strokeColor": "#00aa00"
+    },
+    {
+      "id": "color-blue",
+      "type": "path",
+      "data": ["M", "margin + swatchStep * 8", "swatchY",
+               "L", "margin + swatchStep * 8 + swatchSize", "swatchY",
+               "L", "margin + swatchStep * 8 + swatchSize", "swatchY + swatchSize",
+               "L", "margin + swatchStep * 8", "swatchY + swatchSize", "Z"],
+      "fillColor": "#0000ff",
+      "strokeColor": "#0000ff"
+    },
+    {
+      "id": "hlines",
+      "type": "group",
+      "boundingBox": {
+        "x": "margin",
+        "y": "margin + lineSpacing",
+        "width": "templateWidth - margin * 2",
+        "height": "lineSpacing"
+      },
+      "repeat": { "rows": "down" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 0, 0, "L", "parentWidth", 0],
+          "strokeColor": "#cccccc",
+          "strokeWidth": 1
+        }
+      ]
+    },
+    {
+      "id": "vlines",
+      "type": "group",
+      "boundingBox": {
+        "x": "paperOriginX",
+        "y": 0,
+        "width": "lineSpacing",
+        "height": "templateHeight"
+      },
+      "repeat": { "columns": "infinite" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 0, 0, "L", 0, "parentHeight"],
+          "strokeColor": "#cccccc",
+          "strokeWidth": 1
+        }
+      ]
+    }
+  ]
+}
