@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { evaluateExpression, resolveConstants } from '../lib/expression'
+import type { ConstantEntry } from '../types/template'
 
 describe('evaluateExpression', () => {
   it('returns a number literal unchanged', () => {
@@ -91,7 +92,7 @@ describe('resolveConstants', () => {
   })
 
   it('resolves constants that reference earlier constants', () => {
-    const entries = [
+    const entries: ConstantEntry[] = [
       { yHeader: 146 },
       { weekNumberHeight: 77 },
       { yDays: 'yHeader + weekNumberHeight' },
@@ -101,7 +102,7 @@ describe('resolveConstants', () => {
   })
 
   it('resolves the full P Week 2 constant chain', () => {
-    const entries = [
+    const entries: ConstantEntry[] = [
       { mobileMaxWidth: 1000 },
       { mobileOffsetY: '120 - 96 + 51' },
       { offsetY: 'templateWidth > mobileMaxWidth ? 0 : mobileOffsetY' },
