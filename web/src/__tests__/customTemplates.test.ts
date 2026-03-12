@@ -5,6 +5,9 @@ import {
   buildCustomEntry,
   buildDefaultTemplate,
   mergeRegistries,
+  buildBackgroundItem,
+  toggleDark,
+  DARK_BG_COLOR,
 } from '../lib/customTemplates'
 import { parseTemplate } from '../lib/parser'
 import type { TemplateRegistry } from '../types/registry'
@@ -113,6 +116,88 @@ describe('buildCustomEntry', () => {
 
   it('has a non-empty categories array', () => {
     expect(buildCustomEntry('Grid', false).categories.length).toBeGreaterThan(0)
+  })
+
+  it('defaults categories to ["Custom"]', () => {
+    expect(buildCustomEntry('Grid', false).categories).toEqual(['Custom'])
+  })
+
+  it('uses provided categories', () => {
+    expect(buildCustomEntry('Grid', false, ['Custom', 'Dark']).categories).toEqual(['Custom', 'Dark'])
+  })
+})
+
+// ─── buildBackgroundItem ──────────────────────────────────────────────────────
+
+describe('buildBackgroundItem', () => {
+  it('returns a group item with id "bg"', () => {
+    const item = buildBackgroundItem()
+    expect(item.id).toBe('bg')
+    expect(item.type).toBe('group')
+  })
+
+  it('has a full-page bounding box using template dimensions', () => {
+    const item = buildBackgroundItem()
+    expect(item.boundingBox.width).toBe('templateWidth')
+    expect(item.boundingBox.height).toBe('templateHeight')
+  })
+
+  it('has one child path with dark fill', () => {
+    const item = buildBackgroundItem()
+    expect(item.children).toHaveLength(1)
+    const child = item.children[0]
+    expect(child.type).toBe('path')
+    if (child.type === 'path') {
+      expect(child.fillColor).toBe(DARK_BG_COLOR)
+    }
+  })
+})
+
+// ─── toggleDark ───────────────────────────────────────────────────────────────
+
+const TOGGLEABLE_JSON = JSON.stringify({
+  name: 'Test', author: 'test', templateVersion: '1.0.0', formatVersion: 1,
+  categories: ['Lines'], orientation: 'portrait', constants: [], items: [],
+})
+
+describe('toggleDark', () => {
+  it('adds "Dark" to categories when dark=true', () => {
+    const result = JSON.parse(toggleDark(TOGGLEABLE_JSON, true))
+    expect(result.categories).toContain('Dark')
+  })
+
+  it('removes "Dark" from categories when dark=false', () => {
+    const darkJson = JSON.stringify({ ...JSON.parse(TOGGLEABLE_JSON), categories: ['Dark', 'Lines'] })
+    const result = JSON.parse(toggleDark(darkJson, false))
+    expect(result.categories).not.toContain('Dark')
+  })
+
+  it('preserves other categories when toggling dark on', () => {
+    const result = JSON.parse(toggleDark(TOGGLEABLE_JSON, true))
+    expect(result.categories).toContain('Lines')
+  })
+
+  it('prepends bg item when dark=true', () => {
+    const result = JSON.parse(toggleDark(TOGGLEABLE_JSON, true))
+    expect(result.items[0]?.id).toBe('bg')
+  })
+
+  it('removes bg item when dark=false', () => {
+    const darkJson = toggleDark(TOGGLEABLE_JSON, true)
+    const result = JSON.parse(toggleDark(darkJson, false))
+    expect(result.items.find((i: { id?: string }) => i.id === 'bg')).toBeUndefined()
+  })
+
+  it('does not duplicate bg item when called twice with dark=true', () => {
+    const once = toggleDark(TOGGLEABLE_JSON, true)
+    const twice = JSON.parse(toggleDark(once, true))
+    const bgCount = twice.items.filter((i: { id?: string }) => i.id === 'bg').length
+    expect(bgCount).toBe(1)
+  })
+
+  it('returns valid JSON', () => {
+    expect(() => JSON.parse(toggleDark(TOGGLEABLE_JSON, true))).not.toThrow()
+    expect(() => JSON.parse(toggleDark(TOGGLEABLE_JSON, false))).not.toThrow()
   })
 })
 

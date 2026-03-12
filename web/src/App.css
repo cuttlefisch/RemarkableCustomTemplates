@@ -430,27 +430,15 @@ body {
   flex-shrink: 0;
 }
 
-.editor-name-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #8e8e93;
-  flex-shrink: 0;
-}
-
-.editor-name-input {
+.editor-name-display {
   flex: 1;
   padding: 4px 8px;
-  background: #1e1e1e;
-  border: 1px solid #3a3a3c;
-  border-radius: 4px;
   color: #ebebf5;
   font-size: 12px;
   min-width: 0;
-}
-
-.editor-name-input:focus {
-  outline: none;
-  border-color: #0a84ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .editor-apply-btn {
@@ -528,6 +516,104 @@ body {
 }
 
 .stage-error { color: #cc3333; }
+
+/* ── Sidebar filters ────────────────────────────────────────────────────── */
+
+.sidebar-filters {
+  padding: 8px 12px;
+  border-bottom: 1px solid #2c2c2e;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-search {
+  width: 100%;
+  padding: 5px 8px;
+  background: #1c1c1e;
+  border: 1px solid #3a3a3c;
+  border-radius: 4px;
+  color: #ebebf5;
+  font-size: 12px;
+}
+
+.sidebar-search:focus {
+  outline: none;
+  border-color: #0a84ff;
+}
+
+.sidebar-search::placeholder { color: #636366; }
+
+.sidebar-filter-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar-filter-row .orient-toggle { flex: 1; }
+
+.cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cat-chip {
+  padding: 2px 7px;
+  background: #2c2c2e;
+  border: 1px solid #3a3a3c;
+  border-radius: 10px;
+  color: #8e8e93;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.cat-chip:hover {
+  background: #3a3a3c;
+  color: #ebebf5;
+}
+
+.cat-chip.active {
+  background: #0a3466;
+  border-color: #0a84ff;
+  color: #4da3ff;
+}
+
+.filter-clear {
+  background: none;
+  border: none;
+  color: #636366;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.filter-clear:hover { color: #ff6b6b; }
+
+/* ── Clickable tags (in preview) ─────────────────────────────────────────── */
+
+button.tag {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.tag-cat:hover { background: #ddd; }
+
+.tag-active.tag-cat {
+  background: #ddeeff;
+  color: #0055bb;
+}
+
+button.tag-p:hover  { background: #cce0ff; }
+button.tag-ls:hover { background: #ddccff; }
+
+.tag-active.tag-p  { background: #aaccff; }
+.tag-active.tag-ls { background: #ccaaff; }
 
 /* ── SVG preview ─────────────────────────────────────────────────────────── */
 

@@ -47,6 +47,13 @@ class CanvasErrorBoundary extends Component<CanvasErrorBoundaryProps, CanvasErro
   }
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Always includes 'Custom' as the first category. */
+function mergeCategories(cats: string[]): string[] {
+  return ['Custom', ...cats.filter(c => c !== 'Custom')]
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -70,6 +77,11 @@ export default function App() {
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateLandscape, setNewTemplateLandscape] = useState(false)
   const [sidebarError, setSidebarError] = useState<string | null>(null)
+
+  // Sidebar filter/sort state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
+  const [filterOrientation, setFilterOrientation] = useState<'all' | 'portrait' | 'landscape'>('all')
 
   // Import
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -133,6 +145,25 @@ export default function App() {
 
   const existingCustomNames = customRegistry.templates.map(t => t.name)
 
+  // Derived: all unique categories from merged registry
+  const allCategories = mergedRegistry
+    ? [...new Set(mergedRegistry.templates.flatMap(t => t.categories))].sort()
+    : []
+
+  // Derived: filtered + sorted template list
+  const filteredTemplates = (mergedRegistry?.templates ?? [])
+    .filter(t => {
+      if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      if (filterCategory && !t.categories.includes(filterCategory)) return false
+      if (filterOrientation === 'portrait' && t.landscape === true) return false
+      if (filterOrientation === 'landscape' && t.landscape !== true) return false
+      return true
+    })
+    .sort((a, b) => {
+      if (a.landscape !== b.landscape) return a.landscape ? 1 : -1
+      return a.name.localeCompare(b.name)
+    })
+
   async function handleApply(json: string, name: string) {
     setEditorError(null)
     if (!selected) return
@@ -140,21 +171,26 @@ export default function App() {
     try {
       const parsed = JSON.parse(json) as Record<string, unknown>
       const tpl = parseTemplate(parsed)
+      const newLandscape = tpl.orientation === 'landscape'
 
       if (selected.filename.startsWith('custom/')) {
         const oldSlug = selected.filename.replace('custom/', '')
         const isRename = name !== selected.name
+        const orientationChanged = newLandscape !== (selected.landscape ?? false)
 
-        if (isRename) {
-          // Validate new name (exclude current name from duplicate check)
-          const otherNames = existingCustomNames.filter(n => n !== selected.name)
-          const nameErr = validateCustomName(name, otherNames)
-          if (nameErr) { setEditorError(nameErr); return }
+        if (isRename || orientationChanged) {
+          // Validate new name only if actually renaming
+          if (isRename) {
+            const otherNames = existingCustomNames.filter(n => n !== selected.name)
+            const nameErr = validateCustomName(name, otherNames)
+            if (nameErr) { setEditorError(nameErr); return }
+          }
 
-          const renamedEntry = buildCustomEntry(name, selected.landscape ?? false)
+          const renamedEntry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories))
           const newSlug = renamedEntry.filename.replace('custom/', '')
-          // Inject new name into JSON content
-          const updatedContent = JSON.stringify({ ...parsed, name }, null, 2)
+          const updatedContent = JSON.stringify(
+            { ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2,
+          )
           const res = await fetch(`/api/custom-templates/${encodeURIComponent(oldSlug)}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -170,22 +206,32 @@ export default function App() {
           setEditorJson(updatedContent)
           setTemplate(tpl)
         } else {
-          // Content-only update — inject toolbar name into JSON
-          const updatedContent = JSON.stringify({ ...parsed, name }, null, 2)
+          // Content-only update — sync categories to registry entry too
+          const updatedEntry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories))
+          const updatedContent = JSON.stringify(
+            { ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2,
+          )
           const res = await fetch(`/api/custom-templates/${encodeURIComponent(oldSlug)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: updatedContent }),
           })
           if (!res.ok) throw new Error(`Server error: ${res.status}`)
+          setCustomRegistry(prev => ({
+            templates: prev.templates.map(e =>
+              e.filename === selected.filename ? updatedEntry : e,
+            ),
+          }))
           setEditorJson(updatedContent)
           setTemplate(tpl)
         }
       } else {
-        // Save original as new custom template — inject toolbar name into JSON
-        const entry = buildCustomEntry(name, selected.landscape ?? false)
+        // Save original as new custom template
+        const entry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories))
         const slug = entry.filename.replace('custom/', '')
-        const updatedContent = JSON.stringify({ ...parsed, name }, null, 2)
+        const updatedContent = JSON.stringify(
+          { ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2,
+        )
         const res = await fetch('/api/custom-templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -195,7 +241,7 @@ export default function App() {
 
         setCustomRegistry(prev => ({ templates: [entry, ...prev.templates] }))
         setSelected(entry)
-        // Let the useEffect re-fetch from disk (URL encoding now correct)
+        // Let the useEffect re-fetch from disk
       }
     } catch (e) {
       setEditorError(`Failed to save: ${e instanceof Error ? e.message : String(e)}`)
@@ -256,13 +302,16 @@ export default function App() {
     if (nameErr) { setSidebarError(nameErr); return }
 
     try {
-      const entry = buildCustomEntry(name, landscape)
+      const entry = buildCustomEntry(name, landscape, mergeCategories(tpl.categories))
       const slug = entry.filename.replace('custom/', '')
-      const content = JSON.stringify(raw, null, 2)
+      const rawObj = raw as Record<string, unknown>
+      const updatedContent = JSON.stringify(
+        { ...rawObj, categories: mergeCategories(tpl.categories) }, null, 2,
+      )
       const res = await fetch('/api/custom-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: slug, content, entry }),
+        body: JSON.stringify({ filename: slug, content: updatedContent, entry }),
       })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       setCustomRegistry(prev => ({ templates: [entry, ...prev.templates] }))
@@ -272,7 +321,7 @@ export default function App() {
     }
   }
 
-  const hasCustom = customRegistry.templates.length > 0
+  const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all')
 
   return (
     <div className={`app${editorOpen ? ' editing' : ''}`}>
@@ -282,7 +331,7 @@ export default function App() {
         <div className="sidebar-header">
           <span className="sidebar-title">Templates</span>
           <span className="sidebar-count">
-            {mergedRegistry ? mergedRegistry.templates.length : '…'}
+            {mergedRegistry ? filteredTemplates.length : '…'}
           </span>
         </div>
 
@@ -349,36 +398,62 @@ export default function App() {
           <div className="sidebar-error">{sidebarError}</div>
         )}
 
+        {/* ── Sidebar filters ── */}
+        <div className="sidebar-filters">
+          <input
+            className="sidebar-search"
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Filter by name…"
+          />
+          <div className="sidebar-filter-row">
+            <div className="orient-toggle">
+              <button
+                className={`orient-btn${filterOrientation === 'all' ? ' active' : ''}`}
+                onClick={() => setFilterOrientation('all')}
+              >All</button>
+              <button
+                className={`orient-btn${filterOrientation === 'portrait' ? ' active' : ''}`}
+                onClick={() => setFilterOrientation('portrait')}
+              >P</button>
+              <button
+                className={`orient-btn${filterOrientation === 'landscape' ? ' active' : ''}`}
+                onClick={() => setFilterOrientation('landscape')}
+              >LS</button>
+            </div>
+          </div>
+          {allCategories.length > 0 && (
+            <div className="cat-chips">
+              {allCategories.map(cat => (
+                <button
+                  key={cat}
+                  className={`cat-chip${filterCategory === cat ? ' active' : ''}`}
+                  onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+          {anyFilterActive && (
+            <button
+              className="filter-clear"
+              onClick={() => { setSearchQuery(''); setFilterCategory(null); setFilterOrientation('all') }}
+            >× Clear filters</button>
+          )}
+        </div>
+
         <div className="sidebar-list">
           {loadingRegistry && <p className="sidebar-hint">Loading…</p>}
-
-          {hasCustom && (
-            <div className="sidebar-section-header">Custom</div>
-          )}
-          {customRegistry.templates.map(entry => (
+          {filteredTemplates.map(entry => (
             <button
-              key={entry.filename}
-              className={`template-btn${selected?.filename === entry.filename ? ' selected' : ''}`}
+              key={`${entry.filename}::${entry.landscape ?? false}`}
+              className={`template-btn${selected?.filename === entry.filename && selected?.landscape === entry.landscape ? ' selected' : ''}`}
               onClick={() => setSelected(entry)}
             >
               <span className="template-btn-name">{entry.name}</span>
-              <span className="orient-badge custom">
-                {entry.landscape ? 'LS' : 'P'}
-              </span>
-            </button>
-          ))}
-
-          {hasCustom && registry && registry.templates.length > 0 && (
-            <div className="sidebar-section-header">Built-in</div>
-          )}
-          {registry?.templates.map(entry => (
-            <button
-              key={entry.filename}
-              className={`template-btn${selected?.filename === entry.filename ? ' selected' : ''}`}
-              onClick={() => setSelected(entry)}
-            >
-              <span className="template-btn-name">{entry.name}</span>
-              <span className={`orient-badge ${entry.landscape ? 'ls' : 'p'}`}>
+              <span className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}>
                 {entry.landscape ? 'LS' : 'P'}
               </span>
             </button>
@@ -421,12 +496,24 @@ export default function App() {
                 </button>
               </div>
               <div className="preview-meta-tags">
-                <span className={`tag ${selected.landscape ? 'tag-ls' : 'tag-p'}`}>
+                <button
+                  className={`tag ${selected.landscape ? 'tag-ls' : 'tag-p'}${filterOrientation === (selected.landscape ? 'landscape' : 'portrait') ? ' tag-active' : ''}`}
+                  onClick={() => {
+                    const thisOrient = selected.landscape ? 'landscape' : 'portrait'
+                    setFilterOrientation(filterOrientation === thisOrient ? 'all' : thisOrient)
+                  }}
+                >
                   {selected.landscape ? 'Landscape' : 'Portrait'}
-                </span>
+                </button>
                 {selected.isCustom && <span className="tag tag-custom">Custom</span>}
                 {selected.categories.map(cat => (
-                  <span key={cat} className="tag tag-cat">{cat}</span>
+                  <button
+                    key={cat}
+                    className={`tag tag-cat${filterCategory === cat ? ' tag-active' : ''}`}
+                    onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
+                  >
+                    {cat}
+                  </button>
                 ))}
                 {selected.isCustom ? (() => {
                   const slug = selected.filename.replace('custom/', '')

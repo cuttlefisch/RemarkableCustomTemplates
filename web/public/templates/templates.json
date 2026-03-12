@@ -3,15 +3,19 @@
     {
       "name": "Debug",
       "filename": "Debug",
-      "iconCode": "\ue9fe",
-      "categories": ["Creative"]
+      "iconCode": "",
+      "categories": [
+        "Creative"
+      ]
     },
     {
       "name": "Debug Landscape",
       "filename": "Debug Landscape",
-      "iconCode": "\ue9fe",
+      "iconCode": "",
       "landscape": true,
-      "categories": ["Creative"]
+      "categories": [
+        "Creative"
+      ]
     },
     {
       "name": "Checklist double",
@@ -306,6 +310,16 @@
       "categories": [
         "Creative",
         "Grids"
+      ]
+    },
+    {
+      "name": "Dots micro dark",
+      "filename": "P Dots Micro Dark",
+      "iconCode": "",
+      "categories": [
+        "Creative",
+        "Grids",
+        "Dark"
       ]
     },
     {

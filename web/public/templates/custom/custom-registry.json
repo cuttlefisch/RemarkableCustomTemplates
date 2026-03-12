@@ -1,0 +1,56 @@
+{
+  "templates": [
+    {
+      "name": "custom Grid bottom",
+      "filename": "custom/P custom Grid bottom",
+      "iconCode": "e9d1",
+      "landscape": false,
+      "categories": [
+        "Custom"
+      ],
+      "isCustom": true
+    },
+    {
+      "name": "custom Checklist double",
+      "filename": "custom/LS custom Checklist double",
+      "iconCode": "e9d1",
+      "landscape": true,
+      "categories": [
+        "Custom"
+      ],
+      "isCustom": true
+    },
+    {
+      "name": "total garbage",
+      "filename": "custom/LS total garbage",
+      "iconCode": "e9d1",
+      "landscape": true,
+      "categories": [
+        "Custom"
+      ],
+      "isCustom": true
+    },
+    {
+      "name": "Dots dark",
+      "filename": "custom/P Dots dark",
+      "iconCode": "e9d1",
+      "landscape": false,
+      "categories": [
+        "Custom"
+      ],
+      "isCustom": true
+    },
+    {
+      "name": "Dots large dark",
+      "filename": "custom/P Dots large dark",
+      "iconCode": "e9d1",
+      "landscape": false,
+      "categories": [
+        "Custom",
+        "Creative",
+        "Grids"
+      ],
+      "isCustom": true
+    }
+  ]
+}

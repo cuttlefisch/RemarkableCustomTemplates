@@ -1,0 +1,16 @@
+{
+  "name": "total garbage",
+  "author": "Custom",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": [
+    "Custom"
+  ],
+  "orientation": "landscape",
+  "constants": [
+    {
+      "mobileMaxWidth": 1000
+    }
+  ],
+  "items": []
+}
