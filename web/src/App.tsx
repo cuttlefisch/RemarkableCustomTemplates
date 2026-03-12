@@ -101,8 +101,26 @@ export default function App() {
     Promise.all([mainFetch, customFetch])
       .then(([main, custom]) => {
         setRegistry(main)
-        setCustomRegistry(custom)
-        setLoadingRegistry(false)
+        // Sync categories from each custom template's JSON so the registry is
+        // always in agreement with the file, even if custom-registry.json is stale.
+        return Promise.all(
+          custom.templates.map(async entry => {
+            try {
+              const slug = entry.filename.split('/').map(s => encodeURIComponent(s)).join('/')
+              const r = await fetch(`/templates/${slug}.template`)
+              if (!r.ok) return entry
+              const data = await r.json()
+              const tpl = parseTemplate(data)
+              const synced = mergeCategories(tpl.categories)
+              return { ...entry, categories: synced }
+            } catch {
+              return entry
+            }
+          }),
+        ).then(syncedTemplates => {
+          setCustomRegistry({ templates: syncedTemplates })
+          setLoadingRegistry(false)
+        })
       })
       .catch(e => {
         setError(`Failed to load registry: ${String(e)}`)
@@ -214,7 +232,7 @@ export default function App() {
           const res = await fetch(`/api/custom-templates/${encodeURIComponent(oldSlug)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: updatedContent }),
+            body: JSON.stringify({ content: updatedContent, entry: updatedEntry }),
           })
           if (!res.ok) throw new Error(`Server error: ${res.status}`)
           setCustomRegistry(prev => ({
@@ -222,6 +240,7 @@ export default function App() {
               e.filename === selected.filename ? updatedEntry : e,
             ),
           }))
+          setSelected(updatedEntry)
           setEditorJson(updatedContent)
           setTemplate(tpl)
         }
@@ -506,7 +525,9 @@ export default function App() {
                   {selected.landscape ? 'Landscape' : 'Portrait'}
                 </button>
                 {selected.isCustom && <span className="tag tag-custom">Custom</span>}
-                {selected.categories.map(cat => (
+                {(template?.categories ?? selected.categories)
+                  .filter(cat => !(selected.isCustom && cat === 'Custom'))
+                  .map(cat => (
                   <button
                     key={cat}
                     className={`tag tag-cat${filterCategory === cat ? ' tag-active' : ''}`}
