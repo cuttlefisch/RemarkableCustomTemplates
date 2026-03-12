@@ -13,11 +13,6 @@ export type ResolvedConstants = Record<string, number>
 
 // ─── Device constants ─────────────────────────────────────────────────────────
 
-export const PORTRAIT_WIDTH = 1404
-export const PORTRAIT_HEIGHT = 1872
-export const LANDSCAPE_WIDTH = 1872
-export const LANDSCAPE_HEIGHT = 1404
-
 export interface DeviceSpec {
   id: string
   name: string
@@ -110,15 +105,18 @@ export function pathDataToSvgD(data: PathData, constants: ResolvedConstants): st
 
 // ─── Text width estimation ────────────────────────────────────────────────────
 
+/** Approximate ratio of em-width to font-size for a proportional font. */
+const TEXT_WIDTH_FACTOR = 0.6
+
 /**
  * Estimate the rendered width of text.
  *
- * This is a rough approximation (0.6 × fontSize × charCount) used to resolve
+ * This is a rough approximation (TEXT_WIDTH_FACTOR × fontSize × charCount) used to resolve
  * centering expressions like "templateWidth / 2 - textWidth / 2". A proper
  * implementation would use the Canvas API or an SVG text measurement element.
  */
 export function estimateTextWidth(text: string, fontSize: number): number {
-  return fontSize * 0.6 * text.length
+  return fontSize * TEXT_WIDTH_FACTOR * text.length
 }
 
 // ─── Tile repeat computation ──────────────────────────────────────────────────
@@ -188,7 +186,7 @@ export function computeTileRange(
 // ─── Missing constants validation ─────────────────────────────────────────────
 
 const PATH_COMMANDS = new Set(['M', 'L', 'C', 'Z'])
-const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
+export const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
 
 /**
  * Walk all expression strings in a template and return the deduplicated list

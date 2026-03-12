@@ -21,6 +21,7 @@ import {
   resolveScalar,
   computeTileRange,
   formatNum,
+  REPEAT_KEYWORDS,
   type DeviceId,
   type ResolvedConstants,
 } from '../lib/renderer'
@@ -42,6 +43,7 @@ export function TemplateCanvas({ template, className, deviceId = 'rm2' }: Templa
   const builtins = deviceBuiltins(template.orientation, deviceId)
   const constants = resolveConstants(template.constants, builtins)
   const { templateWidth, templateHeight } = builtins
+  const isDark = template.categories.includes('Dark')
 
   return (
     <svg
@@ -49,7 +51,7 @@ export function TemplateCanvas({ template, className, deviceId = 'rm2' }: Templa
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <rect width={templateWidth} height={templateHeight} fill="white" />
+      <rect width={templateWidth} height={templateHeight} fill={isDark ? '#000000' : '#ffffff'} />
       {template.items.map((item, i) => (
         <ItemView key={item.id ?? i} item={item} constants={constants} />
       ))}
@@ -107,8 +109,6 @@ function TextView({ item, constants }: { item: TextItem; constants: ResolvedCons
 }
 
 // ─── Repeat resolution ────────────────────────────────────────────────────────
-
-const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
 
 /**
  * Resolve a repeat value to either a keyword string or a number.

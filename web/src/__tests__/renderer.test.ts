@@ -7,11 +7,8 @@ import {
   deviceBuiltins,
   collectMissingConstants,
   DEVICES,
-  PORTRAIT_WIDTH,
-  PORTRAIT_HEIGHT,
-  LANDSCAPE_WIDTH,
-  LANDSCAPE_HEIGHT,
 } from '../lib/renderer'
+import type { DeviceId } from '../lib/renderer'
 import type { RemarkableTemplate, TemplateItem, ConstantEntry } from '../types/template'
 
 // ─── formatNum ────────────────────────────────────────────────────────────────
@@ -90,6 +87,10 @@ describe('pathDataToSvgD', () => {
   it('formats fractional coordinates to 4 decimal places max', () => {
     const data = ['M', 0, 'h / 3']
     expect(pathDataToSvgD(data, { h: 100 })).toBe('M 0 33.3333')
+  })
+
+  it('returns empty string for empty data array', () => {
+    expect(pathDataToSvgD([], {})).toBe('')
   })
 })
 
@@ -244,16 +245,12 @@ describe('deviceBuiltins', () => {
 
   it('rm2 portrait has correct dimensions (default device)', () => {
     const b = deviceBuiltins('portrait')
-    expect(b.templateWidth).toBe(PORTRAIT_WIDTH)
-    expect(b.templateHeight).toBe(PORTRAIT_HEIGHT)
     expect(b.templateWidth).toBe(1404)
     expect(b.templateHeight).toBe(1872)
   })
 
   it('rm2 landscape swaps width and height', () => {
     const b = deviceBuiltins('landscape')
-    expect(b.templateWidth).toBe(LANDSCAPE_WIDTH)
-    expect(b.templateHeight).toBe(LANDSCAPE_HEIGHT)
     expect(b.templateWidth).toBe(1872)
     expect(b.templateHeight).toBe(1404)
   })
@@ -308,6 +305,10 @@ describe('deviceBuiltins', () => {
   it('rmPP landscape paperOriginX = 1696/2 - 954/2 = 371', () => {
     const b = deviceBuiltins('landscape', 'rmPP')
     expect(b.paperOriginX).toBe(371)
+  })
+
+  it('throws for unknown deviceId', () => {
+    expect(() => deviceBuiltins('portrait', 'rm99' as DeviceId)).toThrow()
   })
 })
 

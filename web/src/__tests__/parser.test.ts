@@ -144,6 +144,24 @@ describe('parseTemplate', () => {
     expect(result.constants[0]).toEqual({ yHeader: 146 })
   })
 
+  it('parses a group with an empty children array', () => {
+    const raw = {
+      ...MINIMAL_TEMPLATE,
+      items: [{ type: 'group',
+                boundingBox: { x: 0, y: 0, width: 100, height: 100 },
+                children: [] }],
+    }
+    const result = parseTemplate(raw)
+    expect((result.items[0] as GroupItem).children).toEqual([])
+  })
+
+  it('throws when group is missing boundingBox', () => {
+    expect(() => parseTemplate({
+      ...MINIMAL_TEMPLATE,
+      items: [{ type: 'group', children: [] }],
+    })).toThrow(/boundingBox/)
+  })
+
   it('round-trips through serialize without data loss', () => {
     const parsed = parseTemplate(MINIMAL_TEMPLATE)
     const serialized = serializeTemplate(parsed)

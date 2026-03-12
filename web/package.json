@@ -1,5 +1,9 @@
 {
-  "name": "web",
+  "name": "remarkable-templates",
+  "description": "Browser-based SVG viewer and editor for reMarkable tablet template files",
+  "license": "GPL-3.0",
+  "repository": { "type": "git", "url": "https://github.com/YOUR_ORG/remarkable_templates" },
+  "homepage": "https://github.com/YOUR_ORG/remarkable_templates#readme",
   "private": true,
   "version": "0.0.0",
   "type": "module",

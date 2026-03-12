@@ -62,6 +62,24 @@ describe('parseRegistry', () => {
     const result = parseRegistry(raw)
     expect(result.templates[0]?.landscape).toBe(false)
   })
+
+  it('throws when entry is missing name', () => {
+    expect(() => parseRegistry({
+      templates: [{ filename: 'X', iconCode: '\ue9fe', categories: ['Lines'] }],
+    })).toThrow()
+  })
+
+  it('throws when entry is missing filename', () => {
+    expect(() => parseRegistry({
+      templates: [{ name: 'X', iconCode: '\ue9fe', categories: ['Lines'] }],
+    })).toThrow()
+  })
+
+  it('throws when entry is missing iconCode', () => {
+    expect(() => parseRegistry({
+      templates: [{ name: 'X', filename: 'X', categories: ['Lines'] }],
+    })).toThrow()
+  })
 })
 
 describe('addEntry', () => {

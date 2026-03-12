@@ -135,7 +135,10 @@ function evaluateArithmetic(expr: string, constants: ResolvedConstants): number 
     throw new Error(`Cannot evaluate expression: "${expr}" → "${substituted}"`)
   }
 
-  // Use Function constructor to safely evaluate pure arithmetic (no identifiers remain)
+  // Security: by this point all identifiers have been substituted with numeric literals.
+  // The regex above guarantees `substituted` contains only digits, whitespace, and
+  // arithmetic operators (+, -, *, /, ., parentheses). Any surviving identifier would
+  // have triggered the throw above. Do NOT relax the regex without auditing for injection.
   return Function(`"use strict"; return (${substituted})`)() as number
 }
 

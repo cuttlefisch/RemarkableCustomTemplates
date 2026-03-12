@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import MonacoEditor from '@monaco-editor/react'
 import { parseTemplate } from '../lib/parser'
-import { validateCustomName } from '../lib/customTemplates'
+import { validateCustomName, toggleDark } from '../lib/customTemplates'
 import { collectMissingConstants } from '../lib/renderer'
 
 export interface TemplateEditorProps {
@@ -14,6 +14,12 @@ export interface TemplateEditorProps {
   existingNames: string[]
 }
 
+/**
+ * Monaco-backed JSON editor for reMarkable template files.
+ * Toolbar provides orientation toggle, dark-mode toggle, Apply, and Close.
+ * Validates name, JSON structure, and missing constants before calling onApply().
+ * Controlled: caller provides json and handles onApply to persist changes.
+ */
 export function TemplateEditor({
   json,
   isCustom,
@@ -25,6 +31,15 @@ export function TemplateEditor({
 }: TemplateEditorProps) {
   const [localJson, setLocalJson] = useState(json)
   const [error, setError] = useState<string | null>(null)
+
+  // Derive orientation and dark state from current JSON (best-effort)
+  let isLandscape = false
+  let isDark = false
+  try {
+    const parsed = JSON.parse(localJson) as { orientation?: string; categories?: string[] }
+    isLandscape = parsed.orientation === 'landscape'
+    isDark = Array.isArray(parsed.categories) && parsed.categories.includes('Dark')
+  } catch { /* invalid JSON — ignore */ }
 
   // Sync editor content when the prop updates (async fetch completes after selection change)
   useEffect(() => {
@@ -87,22 +102,47 @@ export function TemplateEditor({
     onApply(localJson, pendingName)
   }
 
+  function handleOrientToggle(landscape: boolean) {
+    try {
+      const parsed = JSON.parse(localJson) as Record<string, unknown>
+      setLocalJson(JSON.stringify({ ...parsed, orientation: landscape ? 'landscape' : 'portrait' }, null, 2))
+    } catch { /* invalid JSON — ignore */ }
+  }
+
+  function handleDarkToggle(dark: boolean) {
+    try {
+      setLocalJson(toggleDark(localJson, dark))
+    } catch { /* invalid JSON — ignore */ }
+  }
+
   const buttonLabel = isCustom ? 'Apply Changes' : 'Save as New Template'
 
   return (
     <div className="template-editor">
       <div className="editor-toolbar">
-        <label className="editor-name-label" htmlFor="editor-name-input">
-          Name
-        </label>
-        <input
-          id="editor-name-input"
-          className="editor-name-input"
-          type="text"
-          value={pendingName}
-          onChange={e => onPendingNameChange(e.target.value)}
-          placeholder="Template name…"
-        />
+        <span className="editor-name-display">{pendingName}</span>
+        <div className="orient-toggle">
+          <button
+            className={`orient-btn${!isLandscape ? ' active' : ''}`}
+            onClick={() => handleOrientToggle(false)}
+            title="Portrait"
+          >P</button>
+          <button
+            className={`orient-btn${isLandscape ? ' active' : ''}`}
+            onClick={() => handleOrientToggle(true)}
+            title="Landscape"
+          >LS</button>
+        </div>
+        <div className="orient-toggle">
+          <button
+            className={`orient-btn${!isDark ? ' active' : ''}`}
+            onClick={() => handleDarkToggle(false)}
+          >Light</button>
+          <button
+            className={`orient-btn${isDark ? ' active' : ''}`}
+            onClick={() => handleDarkToggle(true)}
+          >Dark</button>
+        </div>
         <button className="editor-apply-btn" onClick={handleApply}>
           {buttonLabel}
         </button>

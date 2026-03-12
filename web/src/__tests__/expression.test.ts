@@ -74,6 +74,14 @@ describe('evaluateExpression', () => {
   it('handles && in ternary condition — one false', () => {
     expect(evaluateExpression('x > 0 && y > 0 ? 1 : 0', { x: 5, y: 0 })).toBe(0)
   })
+
+  it('throws when expression references an undefined variable', () => {
+    expect(() => evaluateExpression('undefinedVar + 1', {})).toThrow()
+  })
+
+  it('evaluates compact ternary without spaces', () => {
+    expect(evaluateExpression('x>0?1:0', { x: 5 })).toBe(1)
+  })
 })
 
 describe('resolveConstants', () => {

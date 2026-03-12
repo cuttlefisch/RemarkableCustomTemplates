@@ -45,15 +45,14 @@ function renderEditor(overrides: Partial<React.ComponentProps<typeof TemplateEdi
 // ─── Toolbar rendering ────────────────────────────────────────────────────────
 
 describe('TemplateEditor toolbar', () => {
-  it('renders a name input', () => {
-    renderEditor()
-    expect(screen.getByRole('textbox', { name: /name/i })).toBeInTheDocument()
+  it('renders a name display', () => {
+    renderEditor({ pendingName: 'Test Template' })
+    expect(screen.getByText('Test Template')).toBeInTheDocument()
   })
 
-  it('pre-populates name input with pendingName', () => {
+  it('displays pendingName in name display', () => {
     renderEditor({ pendingName: 'My Custom Template' })
-    const input = screen.getByRole('textbox', { name: /name/i }) as HTMLInputElement
-    expect(input.value).toBe('My Custom Template')
+    expect(screen.getByText('My Custom Template')).toBeInTheDocument()
   })
 
   it('shows "Save as New Template" for original (non-custom) templates', () => {
@@ -113,6 +112,101 @@ describe('TemplateEditor apply validation', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(onApply).not.toHaveBeenCalled()
   })
+
+  it('shows error when template references an undefined constant', () => {
+    const brokenJson = JSON.stringify({
+      name: 'Broken', author: 'test', templateVersion: '1.0.0', formatVersion: 1,
+      categories: ['Lines'], orientation: 'portrait', constants: [],
+      items: [{ type: 'group',
+                boundingBox: { x: 'missingVar', y: 0, width: 100, height: 100 },
+                children: [] }],
+    })
+    renderEditor({ isCustom: true, pendingName: 'Broken', json: brokenJson })
+    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
+    expect(screen.getByRole('alert').textContent).toMatch(/missingVar/)
+  })
+
+  it('does not crash when orientation toggle is clicked with invalid JSON', () => {
+    renderEditor({ json: '{bad json' })
+    expect(() => fireEvent.click(screen.getByRole('button', { name: 'LS' }))).not.toThrow()
+  })
+})
+
+// ─── Orientation toggle ───────────────────────────────────────────────────────
+
+describe('TemplateEditor orientation toggle', () => {
+  it('renders P and LS buttons', () => {
+    renderEditor()
+    expect(screen.getByRole('button', { name: 'P' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'LS' })).toBeInTheDocument()
+  })
+
+  it('P button is active for portrait template', () => {
+    renderEditor()  // VALID_JSON has portrait orientation
+    expect(screen.getByRole('button', { name: 'P' }).className).toContain('active')
+  })
+
+  it('LS button becomes active after clicking it', () => {
+    renderEditor()
+    fireEvent.click(screen.getByRole('button', { name: 'LS' }))
+    expect(screen.getByRole('button', { name: 'LS' }).className).toContain('active')
+  })
+
+  it('clicking LS updates orientation in applied JSON', () => {
+    const onApply = vi.fn()
+    renderEditor({ isCustom: true, pendingName: 'My Grid', onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'LS' }))
+    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
+    const appliedJson = JSON.parse(onApply.mock.calls[0][0])
+    expect(appliedJson.orientation).toBe('landscape')
+  })
+
+  it('clicking P restores portrait orientation', () => {
+    const onApply = vi.fn()
+    renderEditor({ isCustom: true, pendingName: 'My Grid', onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'LS' }))
+    fireEvent.click(screen.getByRole('button', { name: 'P' }))
+    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
+    const appliedJson = JSON.parse(onApply.mock.calls[0][0])
+    expect(appliedJson.orientation).toBe('portrait')
+  })
+})
+
+// ─── Dark/light toggle ────────────────────────────────────────────────────────
+
+describe('TemplateEditor dark/light toggle', () => {
+  it('renders Light and Dark buttons', () => {
+    renderEditor()
+    expect(screen.getByRole('button', { name: 'Light' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dark' })).toBeInTheDocument()
+  })
+
+  it('Light button is active for non-dark template', () => {
+    renderEditor()
+    expect(screen.getByRole('button', { name: 'Light' }).className).toContain('active')
+  })
+
+  it('clicking Dark adds "Dark" to categories in applied JSON', () => {
+    const onApply = vi.fn()
+    renderEditor({ isCustom: true, pendingName: 'My Grid', onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }))
+    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
+    const appliedJson = JSON.parse(onApply.mock.calls[0][0])
+    expect(appliedJson.categories).toContain('Dark')
+  })
+
+  it('clicking Light removes "Dark" from categories', () => {
+    const darkJson = JSON.stringify({
+      name: 'Test', author: 'test', templateVersion: '1.0.0', formatVersion: 1,
+      categories: ['Dark', 'Lines'], orientation: 'portrait', constants: [], items: [],
+    })
+    const onApply = vi.fn()
+    renderEditor({ json: darkJson, isCustom: true, pendingName: 'My Grid', onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'Light' }))
+    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
+    const appliedJson = JSON.parse(onApply.mock.calls[0][0])
+    expect(appliedJson.categories).not.toContain('Dark')
+  })
 })
 
 // ─── Successful apply ─────────────────────────────────────────────────────────
@@ -148,11 +242,4 @@ describe('TemplateEditor successful apply', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('calls onPendingNameChange when name input changes', () => {
-    const onPendingNameChange = vi.fn()
-    renderEditor({ onPendingNameChange })
-    const input = screen.getByRole('textbox', { name: /name/i })
-    fireEvent.change(input, { target: { value: 'Updated Name' } })
-    expect(onPendingNameChange).toHaveBeenCalledWith('Updated Name')
-  })
 })

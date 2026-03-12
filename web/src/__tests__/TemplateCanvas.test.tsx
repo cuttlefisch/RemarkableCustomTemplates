@@ -39,11 +39,27 @@ describe('TemplateCanvas SVG root', () => {
     expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 1872 1404')
   })
 
-  it('renders a white background rect', () => {
+  it('renders a white background rect for non-dark template', () => {
     const { container } = render(<TemplateCanvas template={makeTemplate()} />)
     const rect = container.querySelector('rect')
     expect(rect).not.toBeNull()
-    expect(rect?.getAttribute('fill')).toBe('white')
+    expect(rect?.getAttribute('fill')).toBe('#ffffff')
+  })
+
+  it('renders a black background rect for Dark category', () => {
+    const { container } = render(
+      <TemplateCanvas template={makeTemplate({ categories: ['Dark'] })} />,
+    )
+    const rect = container.querySelector('rect')
+    expect(rect).not.toBeNull()
+    expect(rect?.getAttribute('fill')).toBe('#000000')
+  })
+
+  it('forwards className prop to the root svg element', () => {
+    const { container } = render(
+      <TemplateCanvas template={makeTemplate()} className="my-canvas" />
+    )
+    expect(container.querySelector('svg')?.getAttribute('class')).toBe('my-canvas')
   })
 })
 
@@ -285,6 +301,43 @@ describe('TemplateCanvas group items', () => {
     })
     const { container } = render(<TemplateCanvas template={template} />)
     expect(container.querySelectorAll('path')).toHaveLength(3)
+  })
+
+  it('"infinite" repeat renders tiles on both sides of origin', () => {
+    // boundingBox x=200, width=100, columns='infinite', viewWidth=1404
+    // firstTile = floor((0-200)/100) = -2
+    // lastTile  = ceil((1404-200)/100) - 1 = ceil(12.04) - 1 = 12
+    // count = 12 - (-2) + 1 = 15
+    const template = makeTemplate({
+      items: [
+        {
+          type: 'group',
+          boundingBox: { x: 200, y: 0, width: 100, height: 100 },
+          repeat: { columns: 'infinite' },
+          children: [{ type: 'path', data: ['M', 0, 0, 'L', 100, 0] }],
+        },
+      ],
+    })
+    const { container } = render(<TemplateCanvas template={template} />)
+    expect(container.querySelectorAll('path')).toHaveLength(15)
+  })
+
+  it('"up" repeat fills only upward from anchor', () => {
+    // boundingBox y=936, height=78, rows='up', viewHeight=1872
+    // firstTile = floor((0-936)/78) = floor(-12) = -12
+    // count = max(1, 0 - (-12) + 1) = 13
+    const template = makeTemplate({
+      items: [
+        {
+          type: 'group',
+          boundingBox: { x: 0, y: 936, width: 1404, height: 78 },
+          repeat: { rows: 'up' },
+          children: [{ type: 'path', data: ['M', 0, 0, 'L', 100, 0] }],
+        },
+      ],
+    })
+    const { container } = render(<TemplateCanvas template={template} />)
+    expect(container.querySelectorAll('path')).toHaveLength(13)
   })
 
   it('nested groups work correctly', () => {
