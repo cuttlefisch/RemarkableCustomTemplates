@@ -6,7 +6,7 @@
  * component assembles into JSX.
  */
 
-import type { PathData, ScalarValue, RepeatValue } from '../types/template'
+import type { PathData, ScalarValue, RepeatValue, RemarkableTemplate, TemplateItem } from '../types/template'
 import { evaluateExpression } from './expression'
 
 export type ResolvedConstants = Record<string, number>
@@ -183,4 +183,67 @@ export function computeTileRange(
 
   // Unknown string — treat as no repeat
   return { start: 0, count: 1 }
+}
+
+// ─── Missing constants validation ─────────────────────────────────────────────
+
+const PATH_COMMANDS = new Set(['M', 'L', 'C', 'Z'])
+const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
+
+/**
+ * Walk all expression strings in a template and return the deduplicated list
+ * of identifier names that are referenced but not defined (neither as device
+ * builtins nor as user constants).
+ */
+export function collectMissingConstants(
+  template: RemarkableTemplate,
+  deviceId: DeviceId = 'rm2',
+): string[] {
+  const builtins = deviceBuiltins(template.orientation, deviceId)
+  const knownKeys = new Set(Object.keys(builtins))
+  const missing = new Set<string>()
+
+  function checkExpr(value: ScalarValue) {
+    if (typeof value !== 'string') return
+    const identifiers = value.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) ?? []
+    for (const id of identifiers) {
+      if (!knownKeys.has(id)) missing.add(id)
+    }
+  }
+
+  // Walk constants in declaration order — each entry adds to known keys
+  for (const entry of template.constants) {
+    for (const [key, value] of Object.entries(entry)) {
+      checkExpr(value) // forward refs in the constants block itself
+      knownKeys.add(key)
+    }
+  }
+
+  function walkItem(item: TemplateItem) {
+    if (item.type === 'group') {
+      checkExpr(item.boundingBox.x)
+      checkExpr(item.boundingBox.y)
+      checkExpr(item.boundingBox.width)
+      checkExpr(item.boundingBox.height)
+      if (item.repeat?.rows !== undefined && !REPEAT_KEYWORDS.has(String(item.repeat.rows))) {
+        checkExpr(item.repeat.rows as ScalarValue)
+      }
+      if (item.repeat?.columns !== undefined && !REPEAT_KEYWORDS.has(String(item.repeat.columns))) {
+        checkExpr(item.repeat.columns as ScalarValue)
+      }
+      for (const child of item.children) walkItem(child)
+    } else if (item.type === 'path') {
+      for (const token of item.data) {
+        if (typeof token === 'string' && !PATH_COMMANDS.has(token)) checkExpr(token)
+      }
+      if (item.strokeWidth !== undefined) checkExpr(item.strokeWidth)
+    } else if (item.type === 'text') {
+      checkExpr(item.position.x)
+      checkExpr(item.position.y)
+      checkExpr(item.fontSize)
+    }
+  }
+
+  for (const item of template.items) walkItem(item)
+  return [...missing]
 }

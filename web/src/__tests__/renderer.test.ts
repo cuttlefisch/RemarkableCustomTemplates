@@ -5,12 +5,14 @@ import {
   estimateTextWidth,
   computeTileRange,
   deviceBuiltins,
+  collectMissingConstants,
   DEVICES,
   PORTRAIT_WIDTH,
   PORTRAIT_HEIGHT,
   LANDSCAPE_WIDTH,
   LANDSCAPE_HEIGHT,
 } from '../lib/renderer'
+import type { RemarkableTemplate, TemplateItem, ConstantEntry } from '../types/template'
 
 // ─── formatNum ────────────────────────────────────────────────────────────────
 
@@ -306,5 +308,139 @@ describe('deviceBuiltins', () => {
   it('rmPP landscape paperOriginX = 1696/2 - 954/2 = 371', () => {
     const b = deviceBuiltins('landscape', 'rmPP')
     expect(b.paperOriginX).toBe(371)
+  })
+})
+
+// ─── collectMissingConstants ──────────────────────────────────────────────────
+
+describe('collectMissingConstants', () => {
+  function makeTemplate(
+    constants: ConstantEntry[],
+    items: TemplateItem[],
+  ): RemarkableTemplate {
+    return {
+      name: 'Test',
+      author: 'Test',
+      templateVersion: '1.0.0',
+      formatVersion: 1,
+      categories: [],
+      orientation: 'portrait',
+      constants,
+      items,
+    }
+  }
+
+  it('returns empty array when template has no items and no constants', () => {
+    expect(collectMissingConstants(makeTemplate([], []))).toEqual([])
+  })
+
+  it('returns empty array when all referenced constants are defined', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 'offsetX', y: 'offsetY', width: 100, height: 100 },
+        children: [],
+      },
+    ]
+    const result = collectMissingConstants(makeTemplate([{ offsetX: 0 }, { offsetY: 0 }], items))
+    expect(result).toEqual([])
+  })
+
+  it('returns missing constant name when item expression references undefined key', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 0, y: 'offsetY', width: 100, height: 100 },
+        children: [],
+      },
+    ]
+    const result = collectMissingConstants(makeTemplate([], items))
+    expect(result).toContain('offsetY')
+  })
+
+  it('does not flag device builtins (templateWidth, templateHeight, paperOriginX, paperOriginY)', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: {
+          x: 'paperOriginX',
+          y: 'paperOriginY',
+          width: 'templateWidth',
+          height: 'templateHeight',
+        },
+        children: [],
+      },
+    ]
+    expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
+  })
+
+  it('does not flag numeric literal ScalarValues', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'path',
+        data: ['M', 0, 100, 'L', 1404, 100],
+      },
+    ]
+    expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
+  })
+
+  it('recognises constants defined earlier in the constants array', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 'derivedX', y: 0, width: 100, height: 100 },
+        children: [],
+      },
+    ]
+    // derivedX references baseX which is defined before it
+    const constants: ConstantEntry[] = [{ baseX: 50 }, { derivedX: 'baseX + 10' }]
+    expect(collectMissingConstants(makeTemplate(constants, items))).toEqual([])
+  })
+
+  it('flags forward references in the constants block itself', () => {
+    // derivedX references notYetDefined which comes later in the array
+    const constants: ConstantEntry[] = [{ derivedX: 'notYetDefined + 10' }, { notYetDefined: 50 }]
+    const result = collectMissingConstants(makeTemplate(constants, []))
+    expect(result).toContain('notYetDefined')
+  })
+
+  it('does not flag repeat keywords (down, infinite, up, right)', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 0, y: 0, width: 100, height: 100 },
+        repeat: { rows: 'down', columns: 'infinite' },
+        children: [],
+      },
+    ]
+    expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
+  })
+
+  it('deduplicates repeated missing identifiers', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 'missing', y: 'missing', width: 100, height: 100 },
+        children: [],
+      },
+    ]
+    const result = collectMissingConstants(makeTemplate([], items))
+    expect(result.filter(id => id === 'missing')).toHaveLength(1)
+  })
+
+  it('walks nested group children', () => {
+    const child: TemplateItem = {
+      type: 'path',
+      data: ['M', 0, 'nestedConst', 'L', 100, 'nestedConst'],
+    }
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 0, y: 0, width: 100, height: 100 },
+        children: [child],
+      },
+    ]
+    const result = collectMissingConstants(makeTemplate([], items))
+    expect(result).toContain('nestedConst')
   })
 })

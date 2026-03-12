@@ -295,22 +295,85 @@ class RemarkablePath:
 class RemarkablePathData:
     """Represents path data as a list for a RemarkablePath."""
 
-    data: List[Union["RemarkablePoint", "RemarkableLine", "RemarkablePolygon"]] = []
+    src_data: List[
+        Union[
+            "RemarkablePoint",
+            "RemarkableLine",
+            "RemarkablePolygon",
+            "RemarkableCurve",
+            float,
+            str,
+        ]
+    ]
+    data: List[
+        Union[
+            "RemarkablePoint", "RemarkableLine", "RemarkablePolygon", "RemarkableCurve"
+        ]
+    ] = []
 
-    def __init__(self, pathdata: List = []):
+    def __init__(self, src_data: List = []):
         """Parse pathdata for points, lines, polygons, initialize them as objects."""
+        # Index based searching with simultaneousobject construction
+        # -------------------------------------------------
         # identifier is every third index, starting from index 0
         # if identifier is "M" or "L" next two indices represent point pair
         #   if next identifier is "M" new line segment, else its a polygon
         # if identifier is "C" next 6 indicies represent point pairs
         # if idenfifier is "Z" end of polygon reached
-        pass
+        # use list.pop until list consumed
+        #
+        # Index based searching building objects delayed
+        # --------------------------------------------------------------
+        # Select first point or invalid if not point: ID "M"
+        # scan forward until index matches either:
+        #   end of list found
+        #   new point found: ID "M"
+        #   end of polygon found: ID "Z"
+        # As scanning
+        #
+        #
+        # Once end index found:
+        #   determine
+        #
+        #
+        # Scan into ordered dicto
+        # -------------------
+        # crawl index across src data
+        # when
+        index = 0
+        if src_data and src_data[index] != "M":
+            raise ValueError('ERROR: Polygons, Lines must begin with Point "M", x, y.')
+        # each list entry is OrderedDict where first key is "M", first val is Mx My
+        # if length OderedDict.keys() is 1: Point
+        # if length OrderedDict.keys() is 2: Line
+        # if length OrderedDict.keys() is > 2: Closed Polygon
+        pathdata = []
+        while index < len(src_data):
+            cur_id = src_data[index]
+            final_component_index = index  + 2# simplest case is point
+            if cur_id == "Z":
+                # End 
+                break
+            if final_component_index > len()
+            raise IndexError(
+                f"ERROR: Pathdata terminated unexpectedly at index:\t{index}!"
+            )
+            if cur_id == "L":
+                final_component_index = index + 2
+
+            raise IndexError(
+                f"ERROR: Pathdata terminated unexpectedly at index:\t{index}!"
+            )
 
     def __repr__(self) -> str:
         return ",".join(map(str, self.data))
 
 
-class RemarkablePoint:
+class RemarkablePathAtom:
+    identifier = '"Z"'
+
+
+class RemarkablePoint(RemarkablePathAtom):
     """Single Point drawn in Remarkable representing marker down and up again."""
 
     identifier = '"M"'

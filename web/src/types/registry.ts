@@ -7,6 +7,7 @@ export interface TemplateRegistryEntry {
   iconCode: string
   landscape?: boolean
   categories: TemplateCategory[]
+  isCustom?: boolean
 }
 
 export interface TemplateRegistry {
