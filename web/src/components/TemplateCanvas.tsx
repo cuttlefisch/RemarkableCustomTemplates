@@ -50,6 +50,7 @@ export function TemplateCanvas({ template, className, deviceId = 'rm2' }: Templa
       viewBox={`0 0 ${templateWidth} ${templateHeight}`}
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      style={{ aspectRatio: `${templateWidth} / ${templateHeight}` }}
     >
       <rect width={templateWidth} height={templateHeight} fill={isDark ? '#000000' : '#ffffff'} />
       {template.items.map((item, i) => (
