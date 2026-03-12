@@ -41,9 +41,9 @@ export function TemplateEditor({
     isDark = Array.isArray(parsed.categories) && parsed.categories.includes('Dark')
   } catch { /* invalid JSON — ignore */ }
 
-  // Sync editor content when the prop updates (async fetch completes after selection change)
+  // Sync editor content when the prop updates (async fetch completes after selection change).
   useEffect(() => {
-    setLocalJson(json)
+    setLocalJson(json)  // eslint-disable-line react-hooks/set-state-in-effect
     setError(null)
   }, [json])
 
