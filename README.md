@@ -2,6 +2,8 @@
 
 A browser-based editor and viewer for reMarkable tablet `.template` files.
 
+**New here?** See the [Quickstart guide](docs/quickstart.md) to get up and running.
+
 ## Overview
 
 reMarkable templates are JSON files that describe page layouts using a tree of groups, paths, and text items. Values throughout the tree can be numeric literals or arithmetic expression strings that reference named constants (e.g. `"templateWidth / 2 - offsetX"`). The device evaluates these at render time, injecting built-in constants like `templateWidth` and `templateHeight`.
