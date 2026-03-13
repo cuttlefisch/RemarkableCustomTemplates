@@ -11,6 +11,7 @@ export interface TemplateEditorProps {
   onPendingNameChange: (name: string) => void
   onApply: (json: string, name: string) => void
   onClose: () => void
+  onDelete?: () => void
   existingNames: string[]
 }
 
@@ -27,6 +28,7 @@ export function TemplateEditor({
   onPendingNameChange,
   onApply,
   onClose,
+  onDelete,
   existingNames,
 }: TemplateEditorProps) {
   const [localJson, setLocalJson] = useState(json)
@@ -146,6 +148,11 @@ export function TemplateEditor({
         <button className="editor-apply-btn" onClick={handleApply}>
           {buttonLabel}
         </button>
+        {isCustom && onDelete && (
+          <button className="editor-delete-btn" onClick={onDelete}>
+            Delete
+          </button>
+        )}
         <button className="editor-close-btn" onClick={onClose}>
           Close
         </button>

@@ -209,6 +209,27 @@ describe('TemplateEditor dark/light toggle', () => {
   })
 })
 
+// ─── Delete button ────────────────────────────────────────────────────────────
+
+describe('TemplateEditor delete button', () => {
+  it('renders when isCustom=true', () => {
+    renderEditor({ isCustom: true, onDelete: vi.fn() })
+    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
+  })
+
+  it('does not render when isCustom=false', () => {
+    renderEditor({ isCustom: false })
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+  })
+
+  it('calls onDelete when clicked', () => {
+    const onDelete = vi.fn()
+    renderEditor({ isCustom: true, onDelete })
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }))
+    expect(onDelete).toHaveBeenCalledOnce()
+  })
+})
+
 // ─── Successful apply ─────────────────────────────────────────────────────────
 
 describe('TemplateEditor successful apply', () => {

@@ -8,7 +8,7 @@
     "Creative",
     "Grids"
   ],
-  "orientation": "landscape",
+  "orientation": "portrait",
   "constants": [
     {
       "mobileMaxWidth": 1000

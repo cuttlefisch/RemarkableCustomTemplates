@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All web commands run from `web/`:
+All commands run from project root:
 
 ```bash
 pnpm test              # run all tests once (Vitest)
@@ -17,21 +17,17 @@ pnpm lint              # ESLint
 
 Run a single test file:
 ```bash
-cd web && pnpm vitest run src/__tests__/renderer.test.ts
+pnpm vitest run src/__tests__/renderer.test.ts
 ```
 
 Run a single test by name:
 ```bash
-cd web && pnpm vitest run -t "test name pattern"
+pnpm vitest run -t "test name pattern"
 ```
 
 ## Architecture
 
-This project has two parts:
-
-**`python/`** — original prototype for reading/writing reMarkable `.template` files. The main module is `python/src/customtemplates/__init__.py`. Not actively developed; used for reference.
-
-**`web/`** — React 19 + TypeScript app (the active codebase). Workflow is TDD: write tests first, then implement.
+This is a React 19 + TypeScript app. Workflow is TDD: write tests first, then implement.
 
 ### Data flow
 
@@ -45,7 +41,7 @@ This project has two parts:
           → pathDataToSvgD()    [lib/renderer.ts] — converts PathData tokens to SVG d string
 ```
 
-### Key types (`web/src/types/`)
+### Key types (`src/types/`)
 
 - `RemarkableTemplate` — root object: name/author/orientation + `constants[]` + `items[]`
 - `TemplateItem` — discriminated union: `GroupItem | PathItem | TextItem`
@@ -76,4 +72,4 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 
 ### Template files
 
-`.template` files are served from `web/public/templates/` (static copy of `templates_orig/` at the project root). The `vite-plugin-static-copy` plugin handles this. `templates_orig/` is unmodified originals from the device and is not tracked in git.
+`.template` files are served from `public/templates/`. The `vite-plugin-static-copy` plugin handles this. `remarkable_official_templates/` is for unmodified originals from the device and is not tracked in git (only the `.gitkeep` is tracked).

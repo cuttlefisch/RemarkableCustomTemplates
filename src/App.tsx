@@ -6,6 +6,7 @@ import { TemplateEditor } from './components/TemplateEditor'
 import { parseTemplate } from './lib/parser'
 import { parseRegistry } from './lib/registry'
 import { buildCustomEntry, buildDefaultTemplate, mergeRegistries, validateCustomName } from './lib/customTemplates'
+import { removeEntry } from './lib/registry'
 import { DEVICES, type DeviceId } from './lib/renderer'
 import type { TemplateRegistry, TemplateRegistryEntry } from './types/registry'
 import type { RemarkableTemplate } from './types/template'
@@ -267,6 +268,16 @@ export default function App() {
     }
   }
 
+  async function handleDelete() {
+    if (!selected?.isCustom) return
+    const slug = selected.filename.replace(/^custom\//, '')
+    await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+    setCustomRegistry(prev => removeEntry(prev, selected.filename))
+    setSelected(null)
+    setTemplate(null)
+    setEditorOpen(false)
+  }
+
   async function handleCreateNew() {
     setSidebarError(null)
     const nameErr = validateCustomName(newTemplateName.trim(), existingCustomNames)
@@ -491,6 +502,7 @@ export default function App() {
             onPendingNameChange={setPendingName}
             onApply={handleApply}
             onClose={() => setEditorOpen(false)}
+            onDelete={handleDelete}
             existingNames={existingCustomNames}
           />
           {editorError && (

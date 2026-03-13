@@ -29,10 +29,6 @@ remarkable_templates/
   canvas) and default foreground stroke color (the default color a user draws with on that
   template). These drive the dark-mode rendering path.
 
-### Planned — near term
-- **Delete custom templates from the UI** — custom templates can be created and edited but
-  not yet deleted through the interface.
-
 ### Planned — future
 - **Device sync** — instructions and tooling for pulling/pushing templates to/from the
   reMarkable device, including:
@@ -59,6 +55,7 @@ pnpm lint          # ESLint
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files
 - **Custom templates** — create new templates from scratch or fork existing ones; saves to `localStorage`
 - **Expression validation** — catches undefined constant references at Apply time, before the canvas errors
+- **Delete custom templates** — remove custom templates from the UI, clearing the file and registry entry
 
 ### Architecture
 

@@ -21,20 +21,10 @@
       "isCustom": true
     },
     {
-      "name": "total garbage",
-      "filename": "custom/LS total garbage",
-      "iconCode": "e9d1",
-      "landscape": true,
-      "categories": [
-        "Custom"
-      ],
-      "isCustom": true
-    },
-    {
       "name": "Dots dark",
-      "filename": "custom/LS Dots dark",
+      "filename": "custom/P Dots dark",
       "iconCode": "e9d1",
-      "landscape": true,
+      "landscape": false,
       "categories": [
         "Custom",
         "Creative",

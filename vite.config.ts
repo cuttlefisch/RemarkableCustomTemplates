@@ -119,13 +119,33 @@ const customTemplatesPlugin: Plugin = {
         return
       }
 
+      // DELETE /api/custom-templates/:slug — delete existing template
+      const deleteMatch = url.match(/^\/api\/custom-templates\/(.+)$/)
+      if (req.method === 'DELETE' && deleteMatch) {
+        try {
+          const slug = decodeURIComponent(deleteMatch[1])
+          const filePath = resolve(CUSTOM_DIR, `${slug}.template`)
+          if (existsSync(filePath)) unlinkSync(filePath)
+          const registry = readRegistry()
+          registry.templates = (registry.templates as Array<{ filename: string }>).filter(
+            e => e.filename !== `custom/${slug}`,
+          )
+          writeFileSync(CUSTOM_REGISTRY, JSON.stringify(registry, null, 2), 'utf8')
+          sendJson(res, 200, { ok: true })
+        } catch (e) {
+          sendJson(res, 400, { error: String(e) })
+        }
+        return
+      }
+
       next()
     })
   },
 }
 
 // https://vite.dev/config/
-// Template files are served from public/templates/ (copied from templates_orig/).
+// Template files are served from public/templates/.
+// Populate remarkable_official_templates/ from device, then copy into public/templates/.
 export default defineConfig({
   plugins: [react(), customTemplatesPlugin],
   test: {
