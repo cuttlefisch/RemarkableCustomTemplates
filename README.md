@@ -84,17 +84,31 @@ templates.json (registry)
 | `TemplateItem` | Discriminated union: `GroupItem \| PathItem \| TextItem` |
 | `ScalarValue` | `number \| string` — strings are arithmetic/ternary expressions |
 | `PathData` | Flat token array: `["M", x, y, "L", x2, y2, "C", ...]` |
-| `RepeatValue` | `0` (once), `N` (exact), `"down"`, `"infinite"`, `"up"`, `"right"` |
+| `RepeatValue` | `0` (once), `N` (exact), `"down"`, `"up"`, `"right"`, `"infinite"`, or any expression string |
 | `TemplateRegistry` | List of `TemplateRegistryEntry` from `templates.json` |
+
+### Repeat values
+
+| Value | Behaviour |
+|-------|-----------|
+| `0` | Render once at tile origin (no repeat) |
+| `N` | Render exactly N tiles |
+| `"down"` | Fill downward from tile origin to viewport bottom |
+| `"up"` | Fill upward from tile origin to viewport top |
+| `"right"` | Fill rightward from tile origin to viewport right edge |
+| `"infinite"` | Fill in both directions to cover the full viewport |
+| `"expr"` | Any constant expression resolving to a number (e.g. `"columns"`) |
 
 ### Device constants
 
-| Device | Portrait W×H | `paperOriginX` (portrait) |
-|--------|-------------|--------------------------|
-| rm1, rm2 | 1404×1872 | −234 |
-| rmPP (Paper Pro) | 954×1696 | −371 |
+| Device | Portrait W×H | Landscape W×H | `paperOriginX` (portrait) |
+|--------|-------------|---------------|--------------------------|
+| rm1, rm2 | 1404×1872 | 1872×1404 | −234 |
+| rmPP (Paper Pro) | 954×1696 | 1696×954 | −371 |
 
 `paperOriginX = templateWidth/2 − templateHeight/2`
+
+Templates that behave differently on smaller screens use `mobileMaxWidth` (typically 1000 px) in ternary constant expressions to branch between layouts.
 
 ### Expression evaluation
 
@@ -103,6 +117,12 @@ Constants are a `{key: value}[]` array evaluated in declaration order — later 
 ### Custom templates
 
 New templates are created with a starter JSON containing common sentinel constants (`mobileMaxWidth`, `offsetX`, `offsetY`, `mobileOffsetY`) so that expressions referencing those names work immediately. Custom templates are stored in `localStorage` and their `.template` files are written to `public/templates/custom/`.
+
+## Adding templates
+
+1. Place the `.template` JSON file in `public/templates/`
+2. Add a registry entry to `public/templates/templates.json`
+3. The browser will pick it up on next page load — no rebuild required
 
 ## Template file format
 
