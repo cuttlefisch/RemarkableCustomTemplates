@@ -32,11 +32,13 @@
     },
     {
       "name": "Dots dark",
-      "filename": "custom/P Dots dark",
+      "filename": "custom/LS Dots dark",
       "iconCode": "e9d1",
-      "landscape": false,
+      "landscape": true,
       "categories": [
-        "Custom"
+        "Custom",
+        "Creative",
+        "Grids"
       ],
       "isCustom": true
     },

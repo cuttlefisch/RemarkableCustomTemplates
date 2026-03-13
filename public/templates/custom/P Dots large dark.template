@@ -5,7 +5,6 @@
   "formatVersion": 1,
   "categories": [
     "Custom",
-    "Dark",
     "Creative",
     "Grids"
   ],
@@ -31,43 +30,6 @@
     }
   ],
   "items": [
-    {
-      "id": "bg",
-      "type": "group",
-      "boundingBox": {
-        "x": 0,
-        "y": 0,
-        "width": "templateWidth",
-        "height": "templateHeight"
-      },
-      "repeat": {
-        "rows": 0,
-        "columns": 0
-      },
-      "children": [
-        {
-          "type": "path",
-          "strokeColor": "#000000",
-          "fillColor": "#000000",
-          "antialiasing": false,
-          "data": [
-            "M",
-            0,
-            0,
-            "L",
-            "templateWidth",
-            0,
-            "L",
-            "templateWidth",
-            "templateHeight",
-            "L",
-            0,
-            "templateHeight",
-            "Z"
-          ]
-        }
-      ]
-    },
     {
       "type": "group",
       "boundingBox": {

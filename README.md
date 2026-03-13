@@ -12,20 +12,36 @@ This project lets you browse, preview, and edit those templates without a device
 
 ```
 remarkable_templates/
-├── python/          ← original Python prototype (reference only, not actively developed)
-│   └── src/customtemplates/
-└── web/             ← React 19 + TypeScript app (active codebase)
-    ├── src/
-    │   ├── types/       ← template.ts, registry.ts
-    │   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts
-    │   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
-    │   └── __tests__/   ← Vitest test suite (196 tests)
-    └── public/templates/ ← static .template files served to the browser
+├── src/
+│   ├── types/       ← template.ts, registry.ts
+│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts
+│   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
+│   └── __tests__/   ← Vitest test suite
+├── public/templates/ ← static .template files served to the browser
+└── remarkable_official_templates/ ← unmodified device originals (git-ignored)
 ```
+
+## Project status
+
+### In progress
+- **Dark mode** — fleshing out dark theme support; adding `background` and `foreground`
+  sentinel constants so templates can declare their intended background color (fills the
+  canvas) and default foreground stroke color (the default color a user draws with on that
+  template). These drive the dark-mode rendering path.
+
+### Planned — near term
+- **Delete custom templates from the UI** — custom templates can be created and edited but
+  not yet deleted through the interface.
+
+### Planned — future
+- **Device sync** — instructions and tooling for pulling/pushing templates to/from the
+  reMarkable device, including:
+  - Backup and rollback of device template states
+  - Automation via SSH/SCP/rsync (exact tooling TBD once work begins)
 
 ## Web app
 
-### Commands (run from `web/`)
+### Commands (run from project root)
 
 ```bash
 pnpm dev           # start dev server
@@ -86,7 +102,7 @@ Constants are a `{key: value}[]` array evaluated in declaration order — later 
 
 ### Custom templates
 
-New templates are created with a starter JSON containing common sentinel constants (`mobileMaxWidth`, `offsetX`, `offsetY`, `mobileOffsetY`) so that expressions referencing those names work immediately. Custom templates are stored in `localStorage` and their `.template` files are written to `web/public/templates/custom/`.
+New templates are created with a starter JSON containing common sentinel constants (`mobileMaxWidth`, `offsetX`, `offsetY`, `mobileOffsetY`) so that expressions referencing those names work immediately. Custom templates are stored in `localStorage` and their `.template` files are written to `public/templates/custom/`.
 
 ## Template file format
 

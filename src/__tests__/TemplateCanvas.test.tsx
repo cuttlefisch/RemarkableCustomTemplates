@@ -366,7 +366,7 @@ describe('TemplateCanvas group items', () => {
 
 // ─── Debug template ───────────────────────────────────────────────────────────
 //
-// Mirrors web/public/templates/Debug.template exactly.
+// Mirrors public/templates/Debug.template exactly.
 // If you change the template file, update this fixture and the assertions below.
 //
 // Constants (RM2 portrait: templateWidth=1404, templateHeight=1872):

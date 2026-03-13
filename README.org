@@ -6,9 +6,9 @@ A toolkit for authoring, browsing, and rendering custom [[https://remarkable.com
 
 #+begin_src
 remarkable_templates/
-├── python/          # Experimental Python prototype (template I/O utilities)
-├── templates_orig/  # Device-original .template files (source of truth, git-ignored)
-└── web/             # React/TypeScript browser app (primary development target)
+├── src/             # React/TypeScript source (types/, lib/, components/, __tests__/)
+├── public/          # Static assets served to the browser (templates/, vite.svg)
+└── remarkable_official_templates/  # Unmodified device originals (git-ignored)
 #+end_src
 
 ** Template Format
@@ -48,23 +48,15 @@ Templates that behave differently on smaller screens use ~mobileMaxWidth~ (typic
 The primary interface for browsing and validating templates.
 
 #+begin_src bash
-cd web
 pnpm install
 pnpm dev        # → http://localhost:5173
 pnpm test       # run all unit tests
 pnpm build      # production build
 #+end_src
 
-See ~web/README.md~ for full details.
-
 ** Adding Templates
 
-1. Place the ~.template~ JSON file in ~web/public/templates/~
-2. Add a registry entry to ~web/public/templates/templates.json~
+1. Place the ~.template~ JSON file in ~public/templates/~
+2. Add a registry entry to ~public/templates/templates.json~
 3. The browser will pick it up on next page load — no rebuild required
 
-** Python Prototype
-
-~python/~ contains early exploration code for reading and writing ~.template~ files.
-It is not a dependency of the web app and may be out of sync with the current
-template format.
