@@ -141,6 +141,37 @@ body {
   color: #4da3ff;
 }
 
+/* ── Official templates empty state ─────────────────────────────────────── */
+
+.sidebar-import-prompt {
+  margin: 8px 12px;
+  padding: 10px 12px;
+  background: #0d1f3c;
+  border: 1px solid #1a3a6b;
+  border-radius: 6px;
+  color: #8e9eb8;
+  font-size: 11px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.sidebar-import-prompt p + p {
+  margin-top: 4px;
+}
+
+.sidebar-import-prompt code {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  background: #162a50;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #6ea8fe;
+}
+
+.sidebar-import-prompt strong {
+  color: #ebebf5;
+}
+
 /* ── New template inline form ────────────────────────────────────────────── */
 
 .new-template-form {

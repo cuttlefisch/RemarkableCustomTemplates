@@ -66,6 +66,8 @@ export default function App() {
   const [loadingTemplate, setLoadingTemplate] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deviceId, setDeviceId] = useState<DeviceId>('rm2')
+  const [officialTemplatesAvailable, setOfficialTemplatesAvailable] = useState<boolean | null>(null)
+  const [importing, setImporting] = useState(false)
 
   // Editor state
   const [editorOpen, setEditorOpen] = useState(false)
@@ -84,14 +86,23 @@ export default function App() {
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOrientation, setFilterOrientation] = useState<'all' | 'portrait' | 'landscape'>('all')
 
-  // Import
+  // Import refs
   const importInputRef = useRef<HTMLInputElement>(null)
+  const officialInputRef = useRef<HTMLInputElement>(null)
 
   // Load the template registry + custom registry once on mount
   useEffect(() => {
     const mainFetch = fetch('/templates/templates.json')
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then(data => parseRegistry(data))
+      .then(r => {
+        if (r.status === 404) { setOfficialTemplatesAvailable(false); return null }
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(data => {
+        if (data === null) return { templates: [] }
+        setOfficialTemplatesAvailable(true)
+        return parseRegistry(data)
+      })
 
     const customFetch = fetch('/templates/custom/custom-registry.json')
       .then(r => { if (!r.ok) return { templates: [] }; return r.json() })
@@ -351,6 +362,51 @@ export default function App() {
     }
   }
 
+  async function handleImportOfficial(files: FileList) {
+    setImporting(true)
+    setSidebarError(null)
+    try {
+      const fileEntries = await Promise.all(
+        Array.from(files).map(async f => ({ name: f.name, content: await f.text() }))
+      )
+      const res = await fetch('/api/save-official-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: fileEntries }),
+      })
+      if (!res.ok) {
+        const body = await res.json() as { error?: string }
+        setSidebarError(`Import failed: ${body.error ?? res.status}`)
+        setImporting(false)
+        return
+      }
+      window.location.reload()
+    } catch (e) {
+      setSidebarError(`Import failed: ${e instanceof Error ? e.message : String(e)}`)
+      setImporting(false)
+    }
+  }
+
+  async function handleExportForDevice() {
+    try {
+      const res = await fetch('/api/export-templates')
+      if (!res.ok) {
+        const body = await res.json() as { error?: string }
+        setError(`Export failed: ${body.error ?? res.status}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'remarkable-templates.zip'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(`Export failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all')
 
   return (
@@ -394,6 +450,34 @@ export default function App() {
             accept=".template"
             style={{ display: 'none' }}
             onChange={handleImportFile}
+          />
+        </div>
+
+        <div className="sidebar-actions">
+          <button
+            className="sidebar-action-btn"
+            onClick={() => officialInputRef.current?.click()}
+            disabled={importing}
+            title="Import official templates from your reMarkable device"
+          >
+            {importing ? '…' : '↓ Official'}
+          </button>
+          <button
+            className="sidebar-action-btn"
+            onClick={handleExportForDevice}
+            disabled={officialTemplatesAvailable !== true}
+            title="Export merged templates as zip for your device"
+          >
+            ↑ Export
+          </button>
+          <input
+            ref={officialInputRef}
+            type="file"
+            // @ts-expect-error webkitdirectory is not in standard typings
+            webkitdirectory=""
+            multiple
+            style={{ display: 'none' }}
+            onChange={e => { if (e.target.files) handleImportOfficial(e.target.files); e.target.value = '' }}
           />
         </div>
 
@@ -476,6 +560,12 @@ export default function App() {
 
         <div className="sidebar-list">
           {loadingRegistry && <p className="sidebar-hint">Loading…</p>}
+          {officialTemplatesAvailable === false && (
+            <div className="sidebar-import-prompt">
+              <p>No official templates loaded.</p>
+              <p>Copy files to <code>remarkable_official_templates/</code> or use the <strong>↓ Official</strong> button above.</p>
+            </div>
+          )}
           {filteredTemplates.map(entry => (
             <button
               key={`${entry.filename}::${entry.landscape ?? false}`}

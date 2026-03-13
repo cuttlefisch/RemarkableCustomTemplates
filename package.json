@@ -2,7 +2,10 @@
   "name": "remarkable-templates",
   "description": "Browser-based SVG viewer and editor for reMarkable tablet template files",
   "license": "GPL-3.0",
-  "repository": { "type": "git", "url": "https://github.com/YOUR_ORG/remarkable_templates" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_ORG/remarkable_templates"
+  },
   "homepage": "https://github.com/YOUR_ORG/remarkable_templates#readme",
   "private": true,
   "version": "0.0.0",
@@ -34,6 +37,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "fflate": "^0.8.2",
     "globals": "^16.5.0",
     "jsdom": "^28.1.0",
     "typescript": "~5.9.3",
