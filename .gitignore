@@ -13,6 +13,7 @@ public/templates/custom/
 node_modules/
 dist/
 dist-ssr/
+dist-deploy/
 .vite/
 coverage/
 *.local

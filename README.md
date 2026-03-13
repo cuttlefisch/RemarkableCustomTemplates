@@ -17,8 +17,17 @@ remarkable_templates/
 │   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts
 │   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
 │   └── __tests__/   ← Vitest test suite
-├── public/templates/ ← static .template files served to the browser
-└── remarkable_official_templates/ ← unmodified device originals (git-ignored)
+├── public/
+│   └── templates/
+│       ├── custom/  ← custom .template files + custom-registry.json (git-ignored)
+│       └── ...      ← official .template files (git-ignored)
+├── scripts/
+│   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
+├── docs/
+│   └── device-sync.md       ← SSH setup + deploy workflow
+├── dist-deploy/     ← staging dir for device deployment (git-ignored)
+├── remarkable_official_templates/ ← unmodified device originals (git-ignored)
+└── Makefile         ← pull / backup / deploy / rollback targets
 ```
 
 ## Project status
@@ -29,11 +38,17 @@ remarkable_templates/
   canvas) and default foreground stroke color (the default color a user draws with on that
   template). These drive the dark-mode rendering path.
 
-### Planned — future
-- **Device sync** — instructions and tooling for pulling/pushing templates to/from the
-  reMarkable device, including:
-  - Backup and rollback of device template states
-  - Automation via SSH/SCP/rsync (exact tooling TBD once work begins)
+## Device sync
+
+```bash
+make pull         # fetch current templates from device → remarkable_official_templates/
+# edit templates in the web app
+make deploy       # backup on device, merge, rsync, restart xochitl
+make rollback     # restore most recent backup if something goes wrong
+make list-backups # see all backups stored on the device
+```
+
+See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and caveats.
 
 ## Web app
 
