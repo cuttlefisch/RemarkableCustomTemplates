@@ -89,7 +89,7 @@ This rsyncs the device's `/usr/share/remarkable/templates/` into `remarkable_off
 
 In the browser:
 
-1. Click **New template** in the sidebar to create a blank template, or select an existing one and click **Fork** to start from a copy.
+1. Click **New template** in the sidebar to create a blank template, or select an existing one and click **Save as New Template** to start from a copy.
 2. Edit the JSON in the Monaco editor. The canvas updates live as you apply changes.
 3. Toggle between **reMarkable 1/2** and **Paper Pro** previews using the device selector.
 4. Click **Apply** to validate and render. Any undefined constant references are reported before the canvas renders.
@@ -107,7 +107,7 @@ make deploy
 This runs four steps in order:
 
 1. **Backup** — remounts `/` read-write on the device, creates a timestamped `.tar.gz` in `/home/root/template-backups/`, validates the archive, then remounts read-only. Aborts if validation fails.
-2. **Merge** — runs `scripts/merge-templates.mjs` to combine `remarkable_official_templates/` and `public/templates/custom/` into `dist-deploy/` with a unified `templates.json`.
+2. **Merge** — runs `scripts/merge-templates.mjs` to combine `remarkable_official_templates/`, `public/templates/debug/`, and `public/templates/custom/` into `dist-deploy/` with a unified `templates.json`.
 3. **rsync** — remounts rw, pushes `dist-deploy/` to `/usr/share/remarkable/templates/` with `--delete`, remounts ro.
 4. **Restart** — restarts `xochitl` (the device UI). New templates appear in the picker within a few seconds.
 

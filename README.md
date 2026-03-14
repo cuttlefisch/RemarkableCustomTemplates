@@ -22,6 +22,7 @@ remarkable_templates/
 ├── public/
 │   └── templates/
 │       ├── custom/  ← custom .template files + custom-registry.json (git-ignored)
+│       ├── debug/   ← debug templates served in dev mode only
 │       └── ...      ← official .template files (git-ignored)
 ├── scripts/
 │   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
@@ -31,14 +32,6 @@ remarkable_templates/
 ├── remarkable_official_templates/ ← unmodified device originals (git-ignored)
 └── Makefile         ← pull / backup / deploy / rollback targets
 ```
-
-## Project status
-
-### In progress
-- **Dark mode** — fleshing out dark theme support; adding `background` and `foreground`
-  sentinel constants so templates can declare their intended background color (fills the
-  canvas) and default foreground stroke color (the default color a user draws with on that
-  template). These drive the dark-mode rendering path.
 
 ## Device sync
 
@@ -66,13 +59,15 @@ pnpm lint          # ESLint
 
 ### Features
 
-- **Template browser** — sidebar lists all built-in and custom templates, filterable by category
+- **Template browser** — sidebar lists all templates, filterable by category
 - **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872) and Paper Pro (954×1696)
 - **SVG canvas renderer** — faithfully renders groups, paths, and text items with full expression evaluation and tile repetition
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files
-- **Custom templates** — create new templates from scratch or fork existing ones; saves to `localStorage`
+- **Custom templates** — create from scratch or fork any existing template; saved as `.template` files via the dev server API
+- **Dark/light mode** — `foreground`/`background` sentinel constants control canvas background and default stroke color; invert with the dark mode toggle
 - **Expression validation** — catches undefined constant references at Apply time, before the canvas errors
 - **Delete custom templates** — remove custom templates from the UI, clearing the file and registry entry
+- **Debug templates** — `public/templates/debug/` contains responsive developer templates served in dev mode; included when deploying
 
 ### Architecture
 
@@ -122,7 +117,9 @@ templates.json (registry)
 
 `paperOriginX = templateWidth/2 − templateHeight/2`
 
-Templates that behave differently on smaller screens use `mobileMaxWidth` (typically 1000 px) in ternary constant expressions to branch between layouts.
+Templates that need to adapt layout across devices can use either approach:
+- **Ternary branching** — `"templateWidth > mobileMaxWidth ? bigValue : smallValue"` (common in official templates)
+- **Scale factors** — `{ "scaleX": "templateWidth / 1404" }`, then `{ "margin": "scaleX * 60" }` etc. (proportional scaling, fits all devices without branching)
 
 ### Expression evaluation
 
@@ -130,13 +127,16 @@ Constants are a `{key: value}[]` array evaluated in declaration order — later 
 
 ### Custom templates
 
-New templates are created with a starter JSON containing common sentinel constants (`mobileMaxWidth`, `offsetX`, `offsetY`, `mobileOffsetY`) so that expressions referencing those names work immediately. Custom templates are stored in `localStorage` and their `.template` files are written to `public/templates/custom/`.
+New templates are created with a starter JSON that includes `foreground`/`background` color constants and a full-page `bg` rectangle item, plus common layout sentinels (`mobileMaxWidth`, `offsetX`, `offsetY`, `mobileOffsetY`). Saving calls the dev server API, which writes `.template` files to `public/templates/custom/` and updates `custom-registry.json`.
 
 ## Adding templates
 
-1. Place the `.template` JSON file in `public/templates/`
-2. Add a registry entry to `public/templates/templates.json`
-3. The browser will pick it up on next page load — no rebuild required
+The primary workflow is through the web app: click **New template** in the sidebar to create one from scratch, or select any existing template and click **Save as New Template** to fork it. The dev server API handles file writes automatically.
+
+To add a template manually (advanced):
+1. Place the `.template` JSON file in `public/templates/custom/`
+2. Add a registry entry to `public/templates/custom/custom-registry.json` with `"isCustom": true` and a `"custom/"` filename prefix
+3. Restart the dev server to pick up the new file
 
 ## Template file format
 
@@ -146,10 +146,27 @@ New templates are created with a starter JSON containing common sentinel constan
   "author": "Custom",
   "orientation": "portrait",
   "constants": [
+    { "foreground": "#000000" },
+    { "background": "#ffffff" },
     { "mobileMaxWidth": 1000 },
     { "offsetY": 100 }
   ],
   "items": [
+    {
+      "id": "bg",
+      "type": "group",
+      "boundingBox": { "x": 0, "y": 0, "width": "templateWidth", "height": "templateHeight" },
+      "repeat": { "rows": "infinite", "columns": "infinite" },
+      "children": [
+        {
+          "type": "path",
+          "strokeColor": "background",
+          "fillColor": "background",
+          "antialiasing": false,
+          "data": ["M", 0, 0, "L", "parentWidth", 0, "L", "parentWidth", "parentHeight", "L", 0, "parentHeight", "Z"]
+        }
+      ]
+    },
     {
       "type": "group",
       "boundingBox": { "x": 0, "y": "offsetY", "width": "templateWidth", "height": 50 },
@@ -158,7 +175,7 @@ New templates are created with a starter JSON containing common sentinel constan
         {
           "type": "path",
           "data": ["M", 0, 0, "L", "templateWidth", 0],
-          "strokeColor": "#000000",
+          "strokeColor": "foreground",
           "strokeWidth": 1
         }
       ]
@@ -166,3 +183,5 @@ New templates are created with a starter JSON containing common sentinel constan
   ]
 }
 ```
+
+The `foreground` and `background` constants are sentinel values used by the dark mode toggle (swapping them inverts the theme). The `bg` item (full-page filled rectangle) ensures the canvas background color is rendered. Omit both if your template is always light-on-white.

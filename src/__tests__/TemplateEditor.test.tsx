@@ -172,39 +172,40 @@ describe('TemplateEditor orientation toggle', () => {
   })
 })
 
-// ─── Dark/light toggle ────────────────────────────────────────────────────────
+// ─── Invert button ────────────────────────────────────────────────────────────
 
-describe('TemplateEditor dark/light toggle', () => {
-  it('renders Light and Dark buttons', () => {
+describe('TemplateEditor invert button', () => {
+  it('renders Invert button', () => {
     renderEditor()
-    expect(screen.getByRole('button', { name: 'Light' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dark' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Invert' })).toBeInTheDocument()
   })
 
-  it('Light button is active for non-dark template', () => {
-    renderEditor()
-    expect(screen.getByRole('button', { name: 'Light' }).className).toContain('active')
-  })
-
-  it('clicking Dark adds "Dark" to categories in applied JSON', () => {
-    const onApply = vi.fn()
-    renderEditor({ isCustom: true, pendingName: 'My Grid', onApply })
-    fireEvent.click(screen.getByRole('button', { name: 'Dark' }))
-    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
-    const appliedJson = JSON.parse(onApply.mock.calls[0][0])
-    expect(appliedJson.categories).toContain('Dark')
-  })
-
-  it('clicking Light removes "Dark" from categories', () => {
-    const darkJson = JSON.stringify({
+  it('clicking Invert swaps fg/bg constants in applied JSON', () => {
+    const withColors = JSON.stringify({
       name: 'Test', author: 'test', templateVersion: '1.0.0', formatVersion: 1,
-      categories: ['Dark', 'Lines'], orientation: 'portrait', constants: [], items: [],
+      categories: ['Lines'], orientation: 'portrait',
+      constants: [{ foreground: '#000000' }, { background: '#ffffff' }],
+      items: [],
     })
     const onApply = vi.fn()
-    renderEditor({ json: darkJson, isCustom: true, pendingName: 'My Grid', onApply })
-    fireEvent.click(screen.getByRole('button', { name: 'Light' }))
+    renderEditor({ json: withColors, isCustom: true, pendingName: 'My Grid', onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'Invert' }))
     fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
-    const appliedJson = JSON.parse(onApply.mock.calls[0][0])
+    const appliedJson = JSON.parse(onApply.mock.calls[0][0]) as {
+      constants: Record<string, string>[]
+    }
+    const fg = appliedJson.constants.find(e => 'foreground' in e)?.foreground
+    const bg = appliedJson.constants.find(e => 'background' in e)?.background
+    expect(fg).toBe('#ffffff')
+    expect(bg).toBe('#000000')
+  })
+
+  it('does not add or remove Dark category when Invert is clicked', () => {
+    const onApply = vi.fn()
+    renderEditor({ isCustom: true, pendingName: 'My Grid', onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'Invert' }))
+    fireEvent.click(screen.getByRole('button', { name: /apply changes/i }))
+    const appliedJson = JSON.parse(onApply.mock.calls[0][0]) as { categories: string[] }
     expect(appliedJson.categories).not.toContain('Dark')
   })
 })

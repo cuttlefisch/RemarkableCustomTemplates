@@ -21,6 +21,7 @@ export function resolveConstants(
   const ctx: ResolvedConstants = { ...builtins }
   for (const entry of entries) {
     for (const [key, value] of Object.entries(entry)) {
+      if (typeof value === 'string' && value.trim().startsWith('#')) continue
       ctx[key] = evaluateExpression(value, ctx)
     }
   }

@@ -63,6 +63,40 @@ describe('TemplateCanvas SVG root', () => {
   })
 })
 
+// ─── Color constants ──────────────────────────────────────────────────────────
+
+describe('TemplateCanvas background color constants', () => {
+  it('uses background constant for bg rect fill when present', () => {
+    const { container } = render(
+      <TemplateCanvas template={makeTemplate({
+        constants: [{ foreground: '#ffffff' }, { background: '#000000' }],
+      })} />,
+    )
+    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#000000')
+  })
+
+  it('uses background constant even when it is light', () => {
+    const { container } = render(
+      <TemplateCanvas template={makeTemplate({
+        constants: [{ foreground: '#000000' }, { background: '#ffffff' }],
+      })} />,
+    )
+    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#ffffff')
+  })
+
+  it('falls back to Dark category when no background constant is present', () => {
+    const { container } = render(
+      <TemplateCanvas template={makeTemplate({ categories: ['Dark'] })} />,
+    )
+    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#000000')
+  })
+
+  it('falls back to white for non-dark template without background constant', () => {
+    const { container } = render(<TemplateCanvas template={makeTemplate()} />)
+    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#ffffff')
+  })
+})
+
 // ─── Path items ───────────────────────────────────────────────────────────────
 
 describe('TemplateCanvas path items', () => {
@@ -914,5 +948,65 @@ describe('TemplateCanvas integration', () => {
     expect(texts).toHaveLength(2)
     expect(texts[0]?.textContent).toBe('Week')
     expect(texts[1]?.textContent).toBe('Monday')
+  })
+})
+
+// ─── parentWidth / parentHeight at root level ─────────────────────────────────
+
+describe('TemplateCanvas parentWidth/parentHeight root-level resolution', () => {
+  it('top-level group with boundingBox.width="parentWidth" renders with width equal to templateWidth', () => {
+    // At root level parentWidth === templateWidth (portrait rm2 = 1404)
+    const template = makeTemplate({
+      items: [
+        {
+          type: 'group',
+          boundingBox: { x: 0, y: 0, width: 'parentWidth', height: 100 },
+          repeat: { rows: 1 },
+          children: [{ type: 'path', data: ['M', 0, 0, 'L', 'parentWidth', 0] }],
+        },
+      ],
+    })
+    const { container } = render(<TemplateCanvas template={template} />)
+    // The path's d should resolve parentWidth to templateWidth (1404)
+    expect(container.querySelector('path')?.getAttribute('d')).toBe('M 0 0 L 1404 0')
+  })
+
+  it('path child of top-level group using "parentWidth" resolves to templateWidth', () => {
+    const template = makeTemplate({
+      items: [
+        {
+          type: 'group',
+          boundingBox: { x: 0, y: 0, width: 1404, height: 1872 },
+          repeat: { rows: 0 },
+          children: [{ type: 'path', data: ['M', 0, 0, 'L', 'parentWidth', 'parentHeight'] }],
+        },
+      ],
+    })
+    const { container } = render(<TemplateCanvas template={template} />)
+    expect(container.querySelector('path')?.getAttribute('d')).toBe('M 0 0 L 1404 1872')
+  })
+
+  it('nested group: inner boundingBox using "parentWidth" gets outer tile width, not templateWidth', () => {
+    // Outer tile width=500 (not templateWidth=1404). Inner group's parentWidth should be 500.
+    const template = makeTemplate({
+      items: [
+        {
+          type: 'group',
+          boundingBox: { x: 0, y: 0, width: 500, height: 1872 },
+          repeat: { rows: 1 },
+          children: [
+            {
+              type: 'group',
+              boundingBox: { x: 0, y: 0, width: 'parentWidth', height: 100 },
+              repeat: { rows: 1 },
+              children: [{ type: 'path', data: ['M', 0, 0, 'L', 'parentWidth', 0] }],
+            },
+          ],
+        },
+      ],
+    })
+    const { container } = render(<TemplateCanvas template={template} />)
+    // Inner parentWidth = outer tile width = 500 (NOT 1404)
+    expect(container.querySelector('path')?.getAttribute('d')).toBe('M 0 0 L 500 0')
   })
 })

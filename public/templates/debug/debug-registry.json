@@ -1,0 +1,17 @@
+{
+  "templates": [
+    {
+      "name": "Debug",
+      "filename": "debug/P Debug",
+      "iconCode": "\ue9d8",
+      "categories": ["Debug"]
+    },
+    {
+      "name": "Debug Landscape",
+      "filename": "debug/LS Debug Landscape",
+      "iconCode": "\ue9d8",
+      "landscape": true,
+      "categories": ["Debug"]
+    }
+  ]
+}

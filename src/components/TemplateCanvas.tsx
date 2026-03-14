@@ -26,6 +26,7 @@ import {
   type ResolvedConstants,
 } from '../lib/renderer'
 import { resolveConstants, evaluateExpression } from '../lib/expression'
+import { extractColorConstants } from '../lib/color'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ export function TemplateCanvas({ template, className, deviceId = 'rm2' }: Templa
   const constants = resolveConstants(template.constants, builtins)
   const { templateWidth, templateHeight } = builtins
   const isDark = template.categories.includes('Dark')
+  const colorConstants = extractColorConstants(template.constants)
 
   return (
     <svg
@@ -52,9 +54,9 @@ export function TemplateCanvas({ template, className, deviceId = 'rm2' }: Templa
       className={className}
       style={{ aspectRatio: `${templateWidth} / ${templateHeight}` }}
     >
-      <rect width={templateWidth} height={templateHeight} fill={isDark ? '#000000' : '#ffffff'} />
+      <rect width={templateWidth} height={templateHeight} fill={colorConstants['background'] ?? (isDark ? '#000000' : '#ffffff')} />
       {template.items.map((item, i) => (
-        <ItemView key={item.id ?? i} item={item} constants={constants} />
+        <ItemView key={item.id ?? i} item={item} constants={constants} colorConstants={colorConstants} />
       ))}
     </svg>
   )
@@ -65,19 +67,27 @@ export function TemplateCanvas({ template, className, deviceId = 'rm2' }: Templa
 interface ItemViewProps {
   item: TemplateItem
   constants: ResolvedConstants
+  colorConstants: Record<string, string>
 }
 
-function ItemView({ item, constants }: ItemViewProps): ReactElement | null {
+function ItemView({ item, constants, colorConstants }: ItemViewProps): ReactElement | null {
   switch (item.type) {
-    case 'path':  return <PathView  item={item} constants={constants} />
+    case 'path':  return <PathView  item={item} constants={constants} colorConstants={colorConstants} />
     case 'text':  return <TextView  item={item} constants={constants} />
-    case 'group': return <GroupView item={item} constants={constants} />
+    case 'group': return <GroupView item={item} constants={constants} colorConstants={colorConstants} />
   }
 }
 
 // ─── Path ─────────────────────────────────────────────────────────────────────
 
-function PathView({ item, constants }: { item: PathItem; constants: ResolvedConstants }) {
+/** Resolve a color value: hex strings pass through; constant names are looked up. */
+function resolveColor(value: string | undefined, colorConstants: Record<string, string>, fallback: string): string {
+  if (!value) return fallback
+  if (value.startsWith('#')) return value
+  return colorConstants[value] ?? fallback
+}
+
+function PathView({ item, constants, colorConstants }: { item: PathItem; constants: ResolvedConstants; colorConstants: Record<string, string> }) {
   const d = pathDataToSvgD(item.data, constants)
   const strokeWidth = resolveScalar(item.strokeWidth ?? 1, constants)
 
@@ -85,8 +95,8 @@ function PathView({ item, constants }: { item: PathItem; constants: ResolvedCons
     <path
       id={item.id}
       d={d}
-      stroke={item.strokeColor ?? '#000000'}
-      fill={item.fillColor ?? 'none'}
+      stroke={resolveColor(item.strokeColor, colorConstants, '#000000')}
+      fill={resolveColor(item.fillColor, colorConstants, 'none')}
       strokeWidth={strokeWidth}
     />
   )
@@ -124,7 +134,7 @@ function resolveRepeat(value: RepeatValue, constants: ResolvedConstants): Repeat
 
 // ─── Group ────────────────────────────────────────────────────────────────────
 
-function GroupView({ item, constants }: { item: GroupItem; constants: ResolvedConstants }) {
+function GroupView({ item, constants, colorConstants }: { item: GroupItem; constants: ResolvedConstants; colorConstants: Record<string, string> }) {
   const x = resolveScalar(item.boundingBox.x, constants)
   const y = resolveScalar(item.boundingBox.y, constants)
   const w = resolveScalar(item.boundingBox.width, constants)
@@ -149,7 +159,7 @@ function GroupView({ item, constants }: { item: GroupItem; constants: ResolvedCo
       tiles.push(
         <g key={key} transform={`translate(${formatNum(tx)}, ${formatNum(ty)})`}>
           {item.children.map((child, i) => (
-            <ItemView key={child.id ?? i} item={child} constants={childConstants} />
+            <ItemView key={child.id ?? i} item={child} constants={childConstants} colorConstants={colorConstants} />
           ))}
         </g>,
       )

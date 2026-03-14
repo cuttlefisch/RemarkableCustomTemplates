@@ -66,6 +66,8 @@ export function deviceBuiltins(
     templateHeight: h,
     paperOriginX: w / 2 - h / 2,
     paperOriginY: 0,
+    parentWidth: w,
+    parentHeight: h,
   }
 }
 
@@ -199,10 +201,12 @@ export function collectMissingConstants(
 ): string[] {
   const builtins = deviceBuiltins(template.orientation, deviceId)
   const knownKeys = new Set(Object.keys(builtins))
+  knownKeys.add('textWidth')  // renderer-injected virtual constant for text items
   const missing = new Set<string>()
 
   function checkExpr(value: ScalarValue) {
     if (typeof value !== 'string') return
+    if (value.trim().startsWith('#')) return
     const identifiers = value.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) ?? []
     for (const id of identifiers) {
       if (!knownKeys.has(id)) missing.add(id)

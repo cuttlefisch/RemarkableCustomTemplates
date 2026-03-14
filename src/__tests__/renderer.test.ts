@@ -310,6 +310,18 @@ describe('deviceBuiltins', () => {
   it('throws for unknown deviceId', () => {
     expect(() => deviceBuiltins('portrait', 'rm99' as DeviceId)).toThrow()
   })
+
+  it('portrait rm2 includes parentWidth === templateWidth and parentHeight === templateHeight', () => {
+    const b = deviceBuiltins('portrait')
+    expect(b.parentWidth).toBe(b.templateWidth)
+    expect(b.parentHeight).toBe(b.templateHeight)
+  })
+
+  it('landscape rm2 includes parentWidth === templateWidth and parentHeight === templateHeight', () => {
+    const b = deviceBuiltins('landscape')
+    expect(b.parentWidth).toBe(b.templateWidth)
+    expect(b.parentHeight).toBe(b.templateHeight)
+  })
 })
 
 // ─── collectMissingConstants ──────────────────────────────────────────────────
@@ -443,5 +455,42 @@ describe('collectMissingConstants', () => {
     ]
     const result = collectMissingConstants(makeTemplate([], items))
     expect(result).toContain('nestedConst')
+  })
+
+  it('does not flag parentWidth or parentHeight in path data tokens', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'path',
+        data: ['M', 0, 0, 'L', 'parentWidth', 'parentHeight'],
+      },
+    ]
+    expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
+  })
+
+  it('does not flag parentWidth or parentHeight in a group boundingBox expression', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 0, y: 0, width: 'parentWidth', height: 'parentHeight' },
+        children: [],
+      },
+    ]
+    expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
+  })
+
+  it('does not flag parentWidth or parentHeight inside a nested group child path', () => {
+    const items: TemplateItem[] = [
+      {
+        type: 'group',
+        boundingBox: { x: 0, y: 0, width: 100, height: 100 },
+        children: [
+          {
+            type: 'path',
+            data: ['M', 0, 0, 'L', 'parentWidth', 0, 'L', 'parentWidth', 'parentHeight'],
+          },
+        ],
+      },
+    ]
+    expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
   })
 })

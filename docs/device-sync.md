@@ -67,7 +67,7 @@ That's it. The device restarts `xochitl` (the UI) automatically, so new template
 ## What `make deploy` does
 
 1. **Backup** (`make backup`) — SSHes in, remounts `/` read-write, creates a timestamped `.tar.gz` in `/home/root/template-backups/`, validates the archive with `tar -tzf`, then remounts read-only. If validation fails, make aborts here.
-2. **Merge** (`make build-deploy`) — runs `scripts/merge-templates.mjs` to combine `remarkable_official_templates/` and `public/templates/custom/` into `dist-deploy/` with a merged `templates.json`.
+2. **Merge** (`make build-deploy`) — runs `scripts/merge-templates.mjs` to combine `remarkable_official_templates/`, `public/templates/debug/`, and `public/templates/custom/` into `dist-deploy/` with a merged `templates.json`.
 3. **Remount rw** — SSHes in and runs `mount -o remount,rw /` (the root filesystem is read-only by default).
 4. **rsync** — pushes `dist-deploy/` to `/usr/share/remarkable/templates/` with `--delete` (removes stale entries).
 5. **Remount ro + restart** — SSHes back in, remounts read-only, and restarts `xochitl`.

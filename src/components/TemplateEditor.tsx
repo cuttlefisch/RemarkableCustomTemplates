@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import MonacoEditor from '@monaco-editor/react'
 import { parseTemplate } from '../lib/parser'
-import { validateCustomName, toggleDark } from '../lib/customTemplates'
+import { validateCustomName, invertColors, syncBgItemColor } from '../lib/customTemplates'
 import { collectMissingConstants } from '../lib/renderer'
 
 export interface TemplateEditorProps {
@@ -34,13 +34,11 @@ export function TemplateEditor({
   const [localJson, setLocalJson] = useState(json)
   const [error, setError] = useState<string | null>(null)
 
-  // Derive orientation and dark state from current JSON (best-effort)
+  // Derive orientation from current JSON (best-effort)
   let isLandscape = false
-  let isDark = false
   try {
-    const parsed = JSON.parse(localJson) as { orientation?: string; categories?: string[] }
+    const parsed = JSON.parse(localJson) as { orientation?: string }
     isLandscape = parsed.orientation === 'landscape'
-    isDark = Array.isArray(parsed.categories) && parsed.categories.includes('Dark')
   } catch { /* invalid JSON — ignore */ }
 
   // Sync editor content when the prop updates (async fetch completes after selection change).
@@ -101,7 +99,7 @@ export function TemplateEditor({
     }
 
     setError(null)
-    onApply(localJson, pendingName)
+    onApply(syncBgItemColor(localJson), pendingName)
   }
 
   function handleOrientToggle(landscape: boolean) {
@@ -111,9 +109,9 @@ export function TemplateEditor({
     } catch { /* invalid JSON — ignore */ }
   }
 
-  function handleDarkToggle(dark: boolean) {
+  function handleInvert() {
     try {
-      setLocalJson(toggleDark(localJson, dark))
+      setLocalJson(invertColors(localJson))
     } catch { /* invalid JSON — ignore */ }
   }
 
@@ -135,16 +133,7 @@ export function TemplateEditor({
             title="Landscape"
           >LS</button>
         </div>
-        <div className="orient-toggle">
-          <button
-            className={`orient-btn${!isDark ? ' active' : ''}`}
-            onClick={() => handleDarkToggle(false)}
-          >Light</button>
-          <button
-            className={`orient-btn${isDark ? ' active' : ''}`}
-            onClick={() => handleDarkToggle(true)}
-          >Dark</button>
-        </div>
+        <button className="editor-apply-btn" onClick={handleInvert}>Invert</button>
         <button className="editor-apply-btn" onClick={handleApply}>
           {buttonLabel}
         </button>

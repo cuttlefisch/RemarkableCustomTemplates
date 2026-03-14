@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdirSync } from 'node:fs'
+import { resolveStringConstants } from './src/lib/customTemplates'
 import { resolve } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { zipSync, strToU8 } from 'fflate'
@@ -9,6 +10,8 @@ import { zipSync, strToU8 } from 'fflate'
 const OFFICIAL_DIR = resolve(__dirname, 'remarkable_official_templates')
 const CUSTOM_DIR = resolve(__dirname, 'public/templates/custom')
 const CUSTOM_REGISTRY = resolve(CUSTOM_DIR, 'custom-registry.json')
+const DEBUG_DIR = resolve(__dirname, 'public/templates/debug')
+const DEBUG_REGISTRY = resolve(DEBUG_DIR, 'debug-registry.json')
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((res, rej) => {
@@ -39,12 +42,49 @@ const customTemplatesPlugin: Plugin = {
     server.middlewares.use(async (req, res, next) => {
       const url = req.url ?? ''
 
-      // GET /templates/* (not /templates/custom/*) — serve from OFFICIAL_DIR
+      // GET /templates/* (not /templates/custom/*) — serve from OFFICIAL_DIR or DEBUG_DIR
       if (req.method === 'GET') {
         const officialMatch = url.match(/^\/templates\/(?!custom\/)(.+)$/)
         if (officialMatch) {
           const filename = decodeURIComponent(officialMatch[1])
+
+          // Serve debug templates from public/templates/debug/
+          const debugMatch = filename.match(/^debug\/(.+)$/)
+          if (debugMatch) {
+            const debugFile = debugMatch[1]
+            const debugPath = resolve(DEBUG_DIR, debugFile)
+            const ct = debugFile.endsWith('.json') ? 'application/json' : 'application/octet-stream'
+            if (existsSync(debugPath)) {
+              res.writeHead(200, { 'Content-Type': ct })
+              res.end(readFileSync(debugPath))
+              return
+            }
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Not found' }))
+            return
+          }
+
           const filePath = resolve(OFFICIAL_DIR, filename)
+
+          // templates.json: serve debug entries even without official templates
+          if (filename === 'templates.json') {
+            const debugTemplates = existsSync(DEBUG_REGISTRY)
+              ? (JSON.parse(readFileSync(DEBUG_REGISTRY, 'utf8')) as { templates: unknown[] }).templates
+              : []
+            if (existsSync(filePath)) {
+              const officialReg = JSON.parse(readFileSync(filePath, 'utf8')) as { templates: unknown[] }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ templates: [...debugTemplates, ...officialReg.templates] }, null, 2))
+            } else if (debugTemplates.length > 0) {
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ templates: debugTemplates }, null, 2))
+            } else {
+              res.writeHead(404, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Not found' }))
+            }
+            return
+          }
+
           if (existsSync(filePath)) {
             const content = readFileSync(filePath)
             const ct = filename.endsWith('.json') ? 'application/json' : 'application/octet-stream'
@@ -96,6 +136,12 @@ const customTemplatesPlugin: Plugin = {
             customRegistry = JSON.parse(readFileSync(CUSTOM_REGISTRY, 'utf8')) as { templates: Array<{ filename: string }> }
           } catch { /* no custom templates */ }
 
+          // Load debug registry
+          let debugRegistry: { templates: Array<{ filename: string }> } = { templates: [] }
+          try { debugRegistry = JSON.parse(readFileSync(DEBUG_REGISTRY, 'utf8')) as { templates: Array<{ filename: string }> } } catch { /* empty */ }
+          const debugEntries = debugRegistry.templates.map(e => ({ ...e, filename: e.filename.replace(/^debug\//, '') }))
+          const debugFilenames = new Set(debugEntries.map(e => e.filename))
+
           // Flatten custom filenames (strip "custom/" prefix) and check for collisions
           const officialFilenames = new Set(officialRegistry.templates.map(e => e.filename))
           const warningFiles: string[] = []
@@ -109,14 +155,20 @@ const customTemplatesPlugin: Plugin = {
               return true
             })
 
+          const filteredOfficial = officialRegistry.templates.filter(e => !debugFilenames.has(e.filename))
           const mergedRegistry = {
             ...officialRegistry,
-            templates: [...officialRegistry.templates, ...customEntries],
+            templates: [...debugEntries, ...filteredOfficial, ...customEntries],
+          }
+
+          // Escape non-ASCII chars as \uXXXX to match device JSON format
+          function escapeUnicode(str: string): string {
+            return str.replace(/[\u0080-\uFFFF]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
           }
 
           // Build zip file map
           const fileMap: Record<string, Uint8Array> = {}
-          fileMap['templates.json'] = strToU8(JSON.stringify(mergedRegistry, null, 2))
+          fileMap['templates.json'] = strToU8(escapeUnicode(JSON.stringify(mergedRegistry, null, 2)))
 
           // Add official template files
           for (const file of readdirSync(OFFICIAL_DIR)) {
@@ -125,14 +177,26 @@ const customTemplatesPlugin: Plugin = {
             }
           }
 
-          // Add custom template files
+          // Add custom template files (resolve named color references for device compatibility)
           if (existsSync(CUSTOM_DIR)) {
             for (const file of readdirSync(CUSTOM_DIR)) {
               if (file.endsWith('.template')) {
                 const flatName = file
                 if (!fileMap[flatName]) {
-                  fileMap[flatName] = readFileSync(resolve(CUSTOM_DIR, file))
+                  const raw = readFileSync(resolve(CUSTOM_DIR, file), 'utf8')
+                  fileMap[flatName] = strToU8(resolveStringConstants(raw))
                 }
+              }
+            }
+          }
+
+          // Add debug template files
+          if (existsSync(DEBUG_DIR)) {
+            for (const entry of debugEntries) {
+              const shortName = entry.filename
+              const filePath = resolve(DEBUG_DIR, `${shortName}.template`)
+              if (existsSync(filePath) && !fileMap[`${shortName}.template`]) {
+                fileMap[`${shortName}.template`] = strToU8(resolveStringConstants(readFileSync(filePath, 'utf8')))
               }
             }
           }

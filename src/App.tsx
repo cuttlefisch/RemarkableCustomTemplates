@@ -5,7 +5,7 @@ import { TemplateCanvas } from './components/TemplateCanvas'
 import { TemplateEditor } from './components/TemplateEditor'
 import { parseTemplate } from './lib/parser'
 import { parseRegistry } from './lib/registry'
-import { buildCustomEntry, buildDefaultTemplate, mergeRegistries, validateCustomName } from './lib/customTemplates'
+import { buildCustomEntry, buildDefaultTemplate, mergeRegistries, validateCustomName, injectColorConstants } from './lib/customTemplates'
 import { removeEntry } from './lib/registry'
 import { DEVICES, type DeviceId } from './lib/renderer'
 import type { TemplateRegistry, TemplateRegistryEntry } from './types/registry'
@@ -53,6 +53,15 @@ class CanvasErrorBoundary extends Component<CanvasErrorBoundaryProps, CanvasErro
 /** Always includes 'Custom' as the first category. */
 function mergeCategories(cats: string[]): string[] {
   return ['Custom', ...cats.filter(c => c !== 'Custom')]
+}
+
+/** Look up the US College icon from the loaded registry, falling back to the known glyph. */
+function getCollegeIconCode(registry: TemplateRegistry | null, landscape: boolean): string {
+  const entries = registry?.templates ?? []
+  const match = entries.find(t => t.name === 'US College' && !!(t.landscape) === landscape)
+  if (match) return match.iconCode
+  const any = entries.find(t => t.name === 'US College')
+  return any?.iconCode ?? '\ue9d8'
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -143,6 +152,7 @@ export default function App() {
   // Fetch and parse the selected template file
   useEffect(() => {
     if (!selected) return
+    const controller = new AbortController()
     setLoadingTemplate(true)
     setError(null)
     setTemplate(null)
@@ -153,7 +163,7 @@ export default function App() {
       .map(seg => encodeURIComponent(seg))
       .join('/')
 
-    fetch(`/templates/${fetchPath}.template`)
+    fetch(`/templates/${fetchPath}.template`, { signal: controller.signal })
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
@@ -161,14 +171,18 @@ export default function App() {
       .then(data => {
         const parsed = parseTemplate(data)
         setTemplate(parsed)
-        setEditorJson(JSON.stringify(data, null, 2))
-        setPendingName(selected.filename.startsWith('custom/') ? selected.name : `My ${selected.name}`)
+        const isCustom = selected.filename.startsWith('custom/')
+        const displayData = isCustom ? data : { ...data, name: `Custom ${data.name as string}` }
+        setEditorJson(JSON.stringify(displayData, null, 2))
+        setPendingName(isCustom ? selected.name : `Custom ${data.name as string}`)
         setLoadingTemplate(false)
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return
         setError(`No template file found for "${selected.filename}"`)
         setLoadingTemplate(false)
       })
+    return () => controller.abort()
   }, [selected])
 
   const mergedRegistry = registry ? mergeRegistries(registry, customRegistry) : null
@@ -216,7 +230,7 @@ export default function App() {
             if (nameErr) { setEditorError(nameErr); return }
           }
 
-          const renamedEntry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories))
+          const renamedEntry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories), getCollegeIconCode(registry, newLandscape))
           const newSlug = renamedEntry.filename.replace('custom/', '')
           const updatedContent = JSON.stringify(
             { ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2,
@@ -237,7 +251,7 @@ export default function App() {
           setTemplate(tpl)
         } else {
           // Content-only update — sync categories to registry entry too
-          const updatedEntry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories))
+          const updatedEntry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories), getCollegeIconCode(registry, newLandscape))
           const updatedContent = JSON.stringify(
             { ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2,
           )
@@ -258,10 +272,10 @@ export default function App() {
         }
       } else {
         // Save original as new custom template
-        const entry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories))
+        const entry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories), getCollegeIconCode(registry, newLandscape))
         const slug = entry.filename.replace('custom/', '')
-        const updatedContent = JSON.stringify(
-          { ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2,
+        const updatedContent = injectColorConstants(
+          JSON.stringify({ ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2),
         )
         const res = await fetch('/api/custom-templates', {
           method: 'POST',
@@ -296,7 +310,7 @@ export default function App() {
 
     try {
       const name = newTemplateName.trim()
-      const entry = buildCustomEntry(name, newTemplateLandscape)
+      const entry = buildCustomEntry(name, newTemplateLandscape, ['Custom'], getCollegeIconCode(registry, newTemplateLandscape))
       const slug = entry.filename.replace('custom/', '')
       const content = buildDefaultTemplate(name, newTemplateLandscape)
       const res = await fetch('/api/custom-templates', {
@@ -343,7 +357,7 @@ export default function App() {
     if (nameErr) { setSidebarError(nameErr); return }
 
     try {
-      const entry = buildCustomEntry(name, landscape, mergeCategories(tpl.categories))
+      const entry = buildCustomEntry(name, landscape, mergeCategories(tpl.categories), getCollegeIconCode(registry, landscape))
       const slug = entry.filename.replace('custom/', '')
       const rawObj = raw as Record<string, unknown>
       const updatedContent = JSON.stringify(
