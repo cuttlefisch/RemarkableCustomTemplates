@@ -221,6 +221,29 @@ export function injectColorConstants(json: string): string {
 }
 
 /**
+ * Replaces #000000 strokeColor/fillColor values with the 'foreground' sentinel
+ * throughout the item tree (recursively). Applied when forking official templates
+ * so color inversion works out of the box.
+ */
+export function mapForegroundColors(json: string): string {
+  const parsed = JSON.parse(json) as Record<string, unknown>
+  const items = Array.isArray(parsed.items) ? (parsed.items as unknown[]) : []
+
+  function mapItem(item: unknown): unknown {
+    if (typeof item !== 'object' || item === null) return item
+    const result = { ...(item as Record<string, unknown>) }
+    if (result.strokeColor === '#000000') result.strokeColor = FOREGROUND_CONST
+    if (result.fillColor === '#000000') result.fillColor = FOREGROUND_CONST
+    if (Array.isArray(result.children)) {
+      result.children = result.children.map(mapItem)
+    }
+    return result
+  }
+
+  return JSON.stringify({ ...parsed, items: items.map(mapItem) }, null, 2)
+}
+
+/**
  * Ensures the bg item's fillColor/strokeColor reference the 'background' constant
  * by name rather than a hardcoded hex. No-op if bg item is absent.
  * Handles migration of templates that stored resolved hex values.

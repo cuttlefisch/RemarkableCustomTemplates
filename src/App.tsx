@@ -5,7 +5,7 @@ import { TemplateCanvas } from './components/TemplateCanvas'
 import { TemplateEditor } from './components/TemplateEditor'
 import { parseTemplate } from './lib/parser'
 import { parseRegistry } from './lib/registry'
-import { buildCustomEntry, buildDefaultTemplate, mergeRegistries, validateCustomName, injectColorConstants } from './lib/customTemplates'
+import { buildCustomEntry, buildDefaultTemplate, mergeRegistries, validateCustomName, injectColorConstants, mapForegroundColors } from './lib/customTemplates'
 import { removeEntry } from './lib/registry'
 import { DEVICES, type DeviceId } from './lib/renderer'
 import type { TemplateRegistry, TemplateRegistryEntry } from './types/registry'
@@ -172,8 +172,7 @@ export default function App() {
         const parsed = parseTemplate(data)
         setTemplate(parsed)
         const isCustom = selected.filename.startsWith('custom/')
-        const displayData = isCustom ? data : { ...data, name: `Custom ${data.name as string}` }
-        setEditorJson(JSON.stringify(displayData, null, 2))
+        setEditorJson(JSON.stringify(data, null, 2))
         setPendingName(isCustom ? selected.name : `Custom ${data.name as string}`)
         setLoadingTemplate(false)
       })
@@ -275,7 +274,9 @@ export default function App() {
         const entry = buildCustomEntry(name, newLandscape, mergeCategories(tpl.categories), getCollegeIconCode(registry, newLandscape))
         const slug = entry.filename.replace('custom/', '')
         const updatedContent = injectColorConstants(
-          JSON.stringify({ ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2),
+          mapForegroundColors(
+            JSON.stringify({ ...parsed, name, categories: mergeCategories(tpl.categories) }, null, 2),
+          ),
         )
         const res = await fetch('/api/custom-templates', {
           method: 'POST',

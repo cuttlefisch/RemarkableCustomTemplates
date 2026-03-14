@@ -7,6 +7,7 @@ import {
   mergeRegistries,
   buildBackgroundItem,
   invertColors,
+  mapForegroundColors,
   resolveStringConstants,
   injectColorConstants,
   syncBgItemColor,
@@ -571,6 +572,60 @@ describe('syncBgItemColor', () => {
   it('no-op when no bg item present', () => {
     const json = makeJsonNoBg()
     expect(syncBgItemColor(json)).toBe(json)
+  })
+})
+
+// ─── mapForegroundColors ──────────────────────────────────────────────────────
+
+describe('mapForegroundColors', () => {
+  const makeJson = (items: unknown[]) => JSON.stringify({
+    name: 'T', author: 'a', templateVersion: '1.0.0', formatVersion: 1,
+    categories: [], orientation: 'portrait', constants: [], items,
+  })
+
+  it('replaces #000000 strokeColor with foreground sentinel', () => {
+    const json = makeJson([{ type: 'path', strokeColor: '#000000', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
+  })
+
+  it('replaces #000000 fillColor with foreground sentinel', () => {
+    const json = makeJson([{ type: 'path', fillColor: '#000000', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { fillColor?: string }[] }
+    expect(result.items[0]?.fillColor).toBe(FOREGROUND_CONST)
+  })
+
+  it('does not replace non-black colors', () => {
+    const json = makeJson([{ type: 'path', strokeColor: '#ff0000', fillColor: '#0000ff', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe('#ff0000')
+    expect(result.items[0]?.fillColor).toBe('#0000ff')
+  })
+
+  it('does not replace undefined/absent colors', () => {
+    const json = makeJson([{ type: 'path', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBeUndefined()
+    expect(result.items[0]?.fillColor).toBeUndefined()
+  })
+
+  it('maps recursively inside group children', () => {
+    const json = makeJson([{
+      type: 'group',
+      boundingBox: { x: 0, y: 0, width: 10, height: 10 },
+      repeat: { rows: 0 },
+      children: [{ type: 'path', strokeColor: '#000000', data: [] }],
+    }])
+    const result = JSON.parse(mapForegroundColors(json)) as {
+      items: { children?: { strokeColor?: string }[] }[]
+    }
+    expect(result.items[0]?.children?.[0]?.strokeColor).toBe(FOREGROUND_CONST)
+  })
+
+  it('is idempotent when colors already reference the sentinel', () => {
+    const json = makeJson([{ type: 'path', strokeColor: FOREGROUND_CONST, data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
   })
 })
 
