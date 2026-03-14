@@ -149,8 +149,15 @@ const officialEntries = officialRegistry.templates ?? [];
 let customEntries = [];
 const customRegistryPath = join(CUSTOM_DIR, 'custom-registry.json');
 if (existsSync(customRegistryPath)) {
-  const customRegistry = JSON.parse(readFileSync(customRegistryPath, 'utf8'));
-  customEntries = customRegistry.templates ?? [];
+  try {
+    const customRegistry = JSON.parse(readFileSync(customRegistryPath, 'utf8'));
+    customEntries = customRegistry.templates ?? [];
+  } catch (e) {
+    console.error(`Error: could not parse custom registry at ${customRegistryPath}`);
+    console.error(`  ${e.message}`);
+    console.error('Fix or delete the file, then re-run.');
+    process.exit(1);
+  }
 }
 
 // 3. Flatten custom entries: strip "custom/" prefix, drop isCustom field

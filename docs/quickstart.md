@@ -13,7 +13,7 @@ This guide walks through the full workflow from a fresh clone to deploying custo
 ## 1. Clone and install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
 cd remarkable_templates
 pnpm install
 ```
@@ -145,7 +145,7 @@ ssh remarkable-wlan "mount -o remount,rw / && \
 ## Summary
 
 ```bash
-git clone <repo-url> && cd remarkable_templates
+git clone https://github.com/cuttlefisch/RemarkableCustomTemplates && cd remarkable_templates
 pnpm install
 pnpm dev                  # open http://localhost:5173
 make pull                 # pull official templates from device

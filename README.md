@@ -1,5 +1,10 @@
 # remarkable-templates
 
+[![CI](https://github.com/cuttlefisch/RemarkableCustomTemplates/actions/workflows/ci.yml/badge.svg)](https://github.com/cuttlefisch/RemarkableCustomTemplates/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/cuttlefisch/RemarkableCustomTemplates/graph/badge.svg)](https://codecov.io/gh/cuttlefisch/RemarkableCustomTemplates)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen)](https://nodejs.org/)
+
 A browser-based editor and viewer for reMarkable tablet `.template` files.
 
 **New here?** See the [Quickstart guide](docs/quickstart.md) to get up and running.
@@ -16,9 +21,9 @@ This project lets you browse, preview, and edit those templates without a device
 remarkable_templates/
 ├── src/
 │   ├── types/       ← template.ts, registry.ts
-│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts
+│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts
 │   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
-│   └── __tests__/   ← Vitest test suite
+│   └── __tests__/   ← Vitest test suite (9 files, 331 tests)
 ├── public/
 │   └── templates/
 │       ├── custom/  ← custom .template files + custom-registry.json (git-ignored)
@@ -27,9 +32,14 @@ remarkable_templates/
 ├── scripts/
 │   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
 ├── docs/
+│   ├── quickstart.md        ← clone-to-deploy walkthrough
 │   └── device-sync.md       ← SSH setup + deploy workflow
+├── .github/
+│   ├── workflows/ci.yml     ← GitHub Actions: lint, type-check, test, build
+│   └── CONTRIBUTING.md
 ├── dist-deploy/     ← staging dir for device deployment (git-ignored)
 ├── remarkable_official_templates/ ← unmodified device originals (git-ignored)
+├── LICENSE
 └── Makefile         ← pull / backup / deploy / rollback targets
 ```
 

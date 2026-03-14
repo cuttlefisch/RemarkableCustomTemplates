@@ -297,11 +297,16 @@ export default function App() {
   async function handleDelete() {
     if (!selected?.isCustom) return
     const slug = selected.filename.replace(/^custom\//, '')
-    await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
-    setCustomRegistry(prev => removeEntry(prev, selected.filename))
-    setSelected(null)
-    setTemplate(null)
-    setEditorOpen(false)
+    try {
+      const res = await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      setCustomRegistry(prev => removeEntry(prev, selected.filename))
+      setSelected(null)
+      setTemplate(null)
+      setEditorOpen(false)
+    } catch (e) {
+      setError(`Failed to delete: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   async function handleCreateNew() {
@@ -390,7 +395,8 @@ export default function App() {
         body: JSON.stringify({ files: fileEntries }),
       })
       if (!res.ok) {
-        const body = await res.json() as { error?: string }
+        let body: { error?: string } = {}
+        try { body = await res.json() as { error?: string } } catch { /* non-JSON response */ }
         setSidebarError(`Import failed: ${body.error ?? res.status}`)
         setImporting(false)
         return
@@ -406,7 +412,8 @@ export default function App() {
     try {
       const res = await fetch('/api/export-templates')
       if (!res.ok) {
-        const body = await res.json() as { error?: string }
+        let body: { error?: string } = {}
+        try { body = await res.json() as { error?: string } } catch { /* non-JSON response */ }
         setError(`Export failed: ${body.error ?? res.status}`)
         return
       }

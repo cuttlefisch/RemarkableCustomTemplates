@@ -3,7 +3,7 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdirSync } from 'node:fs'
 import { resolveStringConstants } from './src/lib/customTemplates'
-import { resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { zipSync, strToU8 } from 'fflate'
 
@@ -30,6 +30,12 @@ function readRegistry(): { templates: unknown[] } {
   }
 }
 
+function assertWithin(base: string, resolved: string): void {
+  if (!resolved.startsWith(base + sep) && resolved !== base) {
+    throw new Error(`Path traversal attempt rejected: ${resolved}`)
+  }
+}
+
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   const json = JSON.stringify(body)
   res.writeHead(status, { 'Content-Type': 'application/json' })
@@ -52,7 +58,15 @@ const customTemplatesPlugin: Plugin = {
           const debugMatch = filename.match(/^debug\/(.+)$/)
           if (debugMatch) {
             const debugFile = debugMatch[1]
-            const debugPath = resolve(DEBUG_DIR, debugFile)
+            let debugPath: string
+            try {
+              debugPath = resolve(DEBUG_DIR, debugFile)
+              assertWithin(DEBUG_DIR, debugPath)
+            } catch {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Invalid path' }))
+              return
+            }
             const ct = debugFile.endsWith('.json') ? 'application/json' : 'application/octet-stream'
             if (existsSync(debugPath)) {
               res.writeHead(200, { 'Content-Type': ct })
@@ -64,7 +78,15 @@ const customTemplatesPlugin: Plugin = {
             return
           }
 
-          const filePath = resolve(OFFICIAL_DIR, filename)
+          let filePath: string
+          try {
+            filePath = resolve(OFFICIAL_DIR, filename)
+            assertWithin(OFFICIAL_DIR, filePath)
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid path' }))
+            return
+          }
 
           // templates.json: serve debug entries even without official templates
           if (filename === 'templates.json') {
@@ -111,7 +133,9 @@ const customTemplatesPlugin: Plugin = {
           }
           mkdirSync(OFFICIAL_DIR, { recursive: true })
           for (const { name, content } of body.files) {
-            writeFileSync(resolve(OFFICIAL_DIR, name), content, 'utf8')
+            const filePath = resolve(OFFICIAL_DIR, name)
+            assertWithin(OFFICIAL_DIR, filePath)
+            writeFileSync(filePath, content, 'utf8')
           }
           sendJson(res, 200, { ok: true, count: body.files.length })
         } catch (e) {
@@ -252,6 +276,7 @@ const customTemplatesPlugin: Plugin = {
             entry?: unknown
           }
           const filePath = resolve(CUSTOM_DIR, `${filename}.template`)
+          assertWithin(CUSTOM_DIR, filePath)
           writeFileSync(filePath, body.content, 'utf8')
 
           if (body.entry) {
@@ -282,9 +307,11 @@ const customTemplatesPlugin: Plugin = {
           const { newSlug, newName, content } = body
           mkdirSync(CUSTOM_DIR, { recursive: true })
           const newPath = resolve(CUSTOM_DIR, `${newSlug}.template`)
+          assertWithin(CUSTOM_DIR, newPath)
           writeFileSync(newPath, content, 'utf8')
           if (newSlug !== oldSlug) {
             const oldPath = resolve(CUSTOM_DIR, `${oldSlug}.template`)
+            assertWithin(CUSTOM_DIR, oldPath)
             if (existsSync(oldPath)) unlinkSync(oldPath)
           }
           const registry = readRegistry()
@@ -307,6 +334,7 @@ const customTemplatesPlugin: Plugin = {
         try {
           const slug = decodeURIComponent(deleteMatch[1])
           const filePath = resolve(CUSTOM_DIR, `${slug}.template`)
+          assertWithin(CUSTOM_DIR, filePath)
           if (existsSync(filePath)) unlinkSync(filePath)
           const registry = readRegistry()
           registry.templates = (registry.templates as Array<{ filename: string }>).filter(
