@@ -23,7 +23,7 @@ remarkable_templates/
 │   ├── types/       ← template.ts, registry.ts
 │   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts
 │   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
-│   └── __tests__/   ← Vitest test suite (9 files, 331 tests)
+│   └── __tests__/   ← Vitest test suite
 ├── public/
 │   └── templates/
 │       ├── custom/  ← custom .template files + custom-registry.json (git-ignored)

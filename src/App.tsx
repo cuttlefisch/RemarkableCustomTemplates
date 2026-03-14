@@ -5,7 +5,7 @@ import { TemplateCanvas } from './components/TemplateCanvas'
 import { TemplateEditor } from './components/TemplateEditor'
 import { parseTemplate } from './lib/parser'
 import { parseRegistry } from './lib/registry'
-import { buildCustomEntry, buildDefaultTemplate, mergeRegistries, validateCustomName, injectColorConstants, mapForegroundColors } from './lib/customTemplates'
+import { buildCustomEntry, buildDefaultTemplate, mergeCategories, mergeRegistries, validateCustomName, injectColorConstants, mapForegroundColors } from './lib/customTemplates'
 import { removeEntry } from './lib/registry'
 import { DEVICES, type DeviceId } from './lib/renderer'
 import type { TemplateRegistry, TemplateRegistryEntry } from './types/registry'
@@ -49,11 +49,6 @@ class CanvasErrorBoundary extends Component<CanvasErrorBoundaryProps, CanvasErro
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Always includes 'Custom' as the first category. */
-function mergeCategories(cats: string[]): string[] {
-  return ['Custom', ...cats.filter(c => c !== 'Custom')]
-}
 
 /** Look up the US College icon from the loaded registry, falling back to the known glyph. */
 function getCollegeIconCode(registry: TemplateRegistry | null, landscape: boolean): string {

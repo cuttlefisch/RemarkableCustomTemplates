@@ -346,6 +346,11 @@ export function buildDefaultTemplate(name: string, landscape: boolean): string {
   return JSON.stringify(template, null, 2)
 }
 
+/** Ensure "Custom" is first; preserve all other tags (including "Dark") from the template file. */
+export function mergeCategories(cats: string[]): string[] {
+  return ['Custom', ...cats.filter(c => c !== 'Custom')]
+}
+
 /** Prepend custom entries before main entries. Does not mutate inputs. */
 export function mergeRegistries(main: TemplateRegistry, custom: TemplateRegistry): TemplateRegistry {
   return { templates: [...custom.templates, ...main.templates] }

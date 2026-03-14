@@ -166,10 +166,24 @@ const flattenedCustom = customEntries.map(({ isCustom: _drop, filename, ...rest 
   filename: filename.replace(/^custom\//, ''),
 }));
 
+// 3b. Sync categories from each custom .template file (source of truth for tags like "Dark")
+const syncedCustom = flattenedCustom.map(entry => {
+  const tplPath = join(CUSTOM_DIR, `${entry.filename.replace(/^custom\//, '')}.template`);
+  if (existsSync(tplPath)) {
+    try {
+      const tpl = JSON.parse(readFileSync(tplPath, 'utf8'));
+      if (Array.isArray(tpl.categories)) {
+        return { ...entry, categories: ['Custom', ...tpl.categories.filter(c => c !== 'Custom')] };
+      }
+    } catch { /* ignore, keep registry categories */ }
+  }
+  return entry;
+});
+
 // 4. Deduplicate: skip custom entries whose flat filename conflicts with an official one
 const officialFilenames = new Set(officialEntries.map((e) => e.filename));
 const dedupedCustom = [];
-for (const entry of flattenedCustom) {
+for (const entry of syncedCustom) {
   if (officialFilenames.has(entry.filename)) {
     console.warn(`Warning: skipping custom entry "${entry.name}" — filename "${entry.filename}" conflicts with an official template.`);
   } else {

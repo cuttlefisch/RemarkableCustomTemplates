@@ -4,6 +4,7 @@ import {
   validateCustomName,
   buildCustomEntry,
   buildDefaultTemplate,
+  mergeCategories,
   mergeRegistries,
   buildBackgroundItem,
   invertColors,
@@ -18,6 +19,30 @@ import {
 } from '../lib/customTemplates'
 import { parseTemplate } from '../lib/parser'
 import type { TemplateRegistry } from '../types/registry'
+
+// ─── mergeCategories ─────────────────────────────────────────────────────────
+
+describe('mergeCategories', () => {
+  it('prepends "Custom" when not present', () => {
+    expect(mergeCategories(['Dark'])).toEqual(['Custom', 'Dark'])
+  })
+
+  it('does not duplicate "Custom" when already first', () => {
+    expect(mergeCategories(['Custom', 'Dark'])).toEqual(['Custom', 'Dark'])
+  })
+
+  it('preserves "Dark" and other tags unchanged', () => {
+    expect(mergeCategories(['Custom', 'Dark', 'Lines'])).toEqual(['Custom', 'Dark', 'Lines'])
+  })
+
+  it('returns ["Custom"] for empty input', () => {
+    expect(mergeCategories([])).toEqual(['Custom'])
+  })
+
+  it('moves "Custom" to front if it appears mid-list', () => {
+    expect(mergeCategories(['Dark', 'Custom', 'Lines'])).toEqual(['Custom', 'Dark', 'Lines'])
+  })
+})
 
 // ─── slugify ──────────────────────────────────────────────────────────────────
 

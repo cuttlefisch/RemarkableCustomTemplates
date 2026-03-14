@@ -179,10 +179,24 @@ const customTemplatesPlugin: Plugin = {
               return true
             })
 
+          // Sync categories from each custom .template file (source of truth for tags like "Dark")
+          const syncedCustomEntries = customEntries.map(entry => {
+            const tplPath = resolve(CUSTOM_DIR, `${entry.filename}.template`)
+            if (existsSync(tplPath)) {
+              try {
+                const tpl = JSON.parse(readFileSync(tplPath, 'utf8')) as { categories?: unknown }
+                if (Array.isArray(tpl.categories)) {
+                  return { ...entry, categories: ['Custom', ...tpl.categories.filter((c: unknown) => c !== 'Custom')] }
+                }
+              } catch { /* ignore, keep registry categories */ }
+            }
+            return entry
+          })
+
           const filteredOfficial = officialRegistry.templates.filter(e => !debugFilenames.has(e.filename))
           const mergedRegistry = {
             ...officialRegistry,
-            templates: [...debugEntries, ...filteredOfficial, ...customEntries],
+            templates: [...debugEntries, ...filteredOfficial, ...syncedCustomEntries],
           }
 
           // Escape non-ASCII chars as \uXXXX to match device JSON format
