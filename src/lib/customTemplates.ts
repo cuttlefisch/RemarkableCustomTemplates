@@ -119,7 +119,12 @@ export function resolveStringConstants(json: string): string {
           ctx[k] = evaluateExpression(v, ctx)
           keptConstants.push(entry)
         } catch {
-          nonScalarMap[k] = v
+          // Complex expressions (ternary, ||/&&, forward references) can't be
+          // evaluated at export time. Keep them in the constants array so the
+          // device evaluates them natively. Do NOT add to nonScalarMap — that
+          // would inline the raw expression string into bounding-box / data
+          // fields, producing expressions the device can't parse.
+          keptConstants.push(entry)
         }
       }
     }

@@ -361,7 +361,7 @@ describe('resolveStringConstants', () => {
     expect(result.constants.some(e => 'foreground' in e)).toBe(false)
   })
 
-  it('leaves scalar string expression constants in place', () => {
+  it('keeps evaluatable arithmetic constants, strips color constants', () => {
     const json = makeTemplateJson(
       [{ halfWidth: 'templateWidth / 2' }, { fg: '#000000' }],
       [],
@@ -371,13 +371,35 @@ describe('resolveStringConstants', () => {
     expect(result.constants.some(e => 'fg' in e)).toBe(false)
   })
 
-  it('resolves TextItem text when it exactly matches a non-scalar constant name', () => {
+  it('keeps non-evaluatable non-color constants for device evaluation', () => {
+    const json = makeTemplateJson(
+      [{ mobileMaxWidth: 1000 }, { offsetX: 'templateWidth < mobileMaxWidth ? 50 : 0' }],
+      [],
+    )
+    const result = JSON.parse(resolveStringConstants(json)) as { constants: Record<string, unknown>[] }
+    expect(result.constants.some(e => 'offsetX' in e)).toBe(true)
+  })
+
+  it('does not inline non-evaluatable constant into bounding box fields', () => {
+    const json = makeTemplateJson(
+      [{ mobileMaxWidth: 1000 }, { offsetX: 'templateWidth < mobileMaxWidth ? 50 : 0' }],
+      [{ type: 'group', boundingBox: { x: 'offsetX', y: 0, width: 100, height: 100 }, repeat: { rows: 0 }, children: [] }],
+    )
+    const result = JSON.parse(resolveStringConstants(json)) as {
+      items: { boundingBox?: { x?: unknown } }[]
+    }
+    // The constant name must be preserved so the device evaluates it natively.
+    expect(result.items[0]?.boundingBox?.x).toBe('offsetX')
+  })
+
+  it('does not inline non-color string constants into TextItem text field', () => {
     const json = makeTemplateJson(
       [{ dayLabel: 'Monday' }],
       [{ type: 'text', text: 'dayLabel', x: 0, y: 0, fontSize: 12 }],
     )
     const result = JSON.parse(resolveStringConstants(json)) as { items: { text?: string }[] }
-    expect(result.items[0]?.text).toBe('Monday')
+    // Kept in constants array; device resolves the reference.
+    expect(result.items[0]?.text).toBe('dayLabel')
   })
 
   it('does not replace TextItem text that has no matching constant', () => {
@@ -389,14 +411,15 @@ describe('resolveStringConstants', () => {
     expect(result.items[0]?.text).toBe('Hello World')
   })
 
-  it('inlines non-scalar constant name into ScalarValue expression (word-boundary substitution)', () => {
+  it('does not inline non-color string constants into data array tokens', () => {
     const json = makeTemplateJson(
       [{ offsetX: 100 }, { labelText: 'Mon' }],
       [{ type: 'path', fillColor: '#000', strokeColor: '#000',
         data: ['M', 'offsetX', 0, 'L', 'labelText', 10] }],
     )
     const result = JSON.parse(resolveStringConstants(json)) as { items: { data?: unknown[] }[] }
-    expect(result.items[0]?.data?.[4]).toBe('(Mon)')
+    // labelText is kept in constants for device evaluation; token is unchanged.
+    expect(result.items[0]?.data?.[4]).toBe('labelText')
     expect(result.items[0]?.data?.[5]).toBe(10)
   })
 })
