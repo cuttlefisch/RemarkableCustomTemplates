@@ -129,6 +129,15 @@ Constants are a `{key: value}[]` array evaluated in declaration order — later 
 
 New templates are created with a starter JSON that includes `foreground`/`background` color constants and a full-page `bg` rectangle item, plus common layout sentinels (`mobileMaxWidth`, `offsetX`, `offsetY`, `mobileOffsetY`). Saving calls the dev server API, which writes `.template` files to `public/templates/custom/` and updates `custom-registry.json`.
 
+**Forking official templates** — clicking **Save as New Template** on an official template does the following automatically before saving:
+
+1. Any path `strokeColor: "#000000"` is replaced with the `foreground` sentinel.
+2. Any path with no `strokeColor` defined gets `strokeColor: "foreground"` injected (the device renders undefined stroke as black, so this preserves the visual while making it invertible).
+3. Any path `fillColor: "#000000"` is replaced with `foreground`. Paths with no `fillColor` are left alone (undefined fill = transparent on the device).
+4. `foreground`/`background` constants are appended if absent, and the `bg` item is prepended if absent.
+
+The result is a fully invertible custom template: hitting **Invert** swaps `foreground` ↔ `background` throughout.
+
 ## Adding templates
 
 The primary workflow is through the web app: click **New template** in the sidebar to create one from scratch, or select any existing template and click **Save as New Template** to fork it. The dev server API handles file writes automatically.
@@ -184,4 +193,11 @@ To add a template manually (advanced):
 }
 ```
 
-The `foreground` and `background` constants are sentinel values recognized by the editor: `background` fills the canvas and `foreground` is the default stroke color. The invert button swaps their values, letting you preview the template with any color scheme. The `bg` item (full-page filled rectangle) renders the background on device. Omit both if your template is always light-on-white with no color customization needed.
+The `foreground` and `background` constants are sentinel values recognized by the editor:
+
+| Constant | Default | Role |
+|----------|---------|------|
+| `foreground` | `#000000` | Default stroke color; referenced by path items to stay invertible |
+| `background` | `#ffffff` | Canvas fill color; referenced by the `bg` item |
+
+The **Invert** button swaps their values, letting you preview any color scheme. The `bg` item (full-page filled rectangle referencing `background`) renders the canvas background color on the device. Omit both if your template is always light-on-white with no color customization needed.
