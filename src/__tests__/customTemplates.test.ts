@@ -150,8 +150,8 @@ describe('buildBackgroundItem', () => {
 
   it('has infinite repeat for rows and columns', () => {
     const item = buildBackgroundItem()
-    expect(item.repeat.rows).toBe('infinite')
-    expect(item.repeat.columns).toBe('infinite')
+    expect(item.repeat?.rows).toBe('infinite')
+    expect(item.repeat?.columns).toBe('infinite')
   })
 
   it('path data uses parentWidth/parentHeight', () => {

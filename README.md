@@ -64,7 +64,7 @@ pnpm lint          # ESLint
 - **SVG canvas renderer** — faithfully renders groups, paths, and text items with full expression evaluation and tile repetition
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files
 - **Custom templates** — create from scratch or fork any existing template; saved as `.template` files via the dev server API
-- **Dark/light mode** — `foreground`/`background` sentinel constants control canvas background and default stroke color; invert with the dark mode toggle
+- **Color defaults** — `foreground`/`background` sentinel constants set the canvas background color and default stroke color; the invert button swaps them (useful for previewing dark-paper or inverted themes)
 - **Expression validation** — catches undefined constant references at Apply time, before the canvas errors
 - **Delete custom templates** — remove custom templates from the UI, clearing the file and registry entry
 - **Debug templates** — `public/templates/debug/` contains responsive developer templates served in dev mode; included when deploying
@@ -184,4 +184,4 @@ To add a template manually (advanced):
 }
 ```
 
-The `foreground` and `background` constants are sentinel values used by the dark mode toggle (swapping them inverts the theme). The `bg` item (full-page filled rectangle) ensures the canvas background color is rendered. Omit both if your template is always light-on-white.
+The `foreground` and `background` constants are sentinel values recognized by the editor: `background` fills the canvas and `foreground` is the default stroke color. The invert button swaps their values, letting you preview the template with any color scheme. The `bg` item (full-page filled rectangle) renders the background on device. Omit both if your template is always light-on-white with no color customization needed.

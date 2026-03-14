@@ -1,15 +1,14 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { parseTemplate } from '../lib/parser'
 import { resolveConstants } from '../lib/expression'
 import { deviceBuiltins } from '../lib/renderer'
 import { resolveStringConstants } from '../lib/customTemplates'
 import type { PathItem, GroupItem, TextItem } from '../types/template'
+import raw from '../../public/templates/debug/P Debug.template?raw'
+import lsRaw from '../../public/templates/debug/LS Debug Landscape.template?raw'
 
-const templatePath = resolve(__dirname, '../../public/templates/debug/P Debug.template')
-const raw = readFileSync(templatePath, 'utf8')
-const json = JSON.parse(raw)
+const json = JSON.parse(raw) as { constants: unknown[] }
+const lsJson = JSON.parse(lsRaw) as { constants: unknown[] }
 
 describe('Debug.template', () => {
   it('parses without error', () => { expect(() => parseTemplate(json)).not.toThrow() })
@@ -119,10 +118,6 @@ describe('Debug.template', () => {
 })
 
 describe('Debug Landscape.template', () => {
-  const lsPath = resolve(__dirname, '../../public/templates/debug/LS Debug Landscape.template')
-  const lsRaw = readFileSync(lsPath, 'utf8')
-  const lsJson = JSON.parse(lsRaw)
-
   it('parses without error', () => { expect(() => parseTemplate(lsJson)).not.toThrow() })
 
   const lsTemplate = parseTemplate(lsJson)
