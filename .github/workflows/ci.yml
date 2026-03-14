@@ -23,6 +23,7 @@ jobs:
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: cuttlefisch/RemarkableCustomTemplates
           files: ./coverage/lcov.info
           fail_ci_if_error: true
       - run: pnpm build
