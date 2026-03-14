@@ -602,11 +602,28 @@ describe('mapForegroundColors', () => {
     expect(result.items[0]?.fillColor).toBe('#0000ff')
   })
 
-  it('does not replace undefined/absent colors', () => {
+  it('populates missing strokeColor with foreground (device defaults to black)', () => {
     const json = makeJson([{ type: 'path', data: [] }])
-    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
-    expect(result.items[0]?.strokeColor).toBeUndefined()
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
+  })
+
+  it('does not populate missing fillColor (undefined means no fill / transparent)', () => {
+    const json = makeJson([{ type: 'path', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { fillColor?: string }[] }
     expect(result.items[0]?.fillColor).toBeUndefined()
+  })
+
+  it('only maps path items, not group or text items', () => {
+    const json = makeJson([
+      { type: 'group', strokeColor: '#000000', boundingBox: { x: 0, y: 0, width: 10, height: 10 }, repeat: { rows: 0 }, children: [] },
+      { type: 'text', strokeColor: '#000000', text: 'hi', position: { x: 0, y: 0 }, fontSize: 12 },
+    ])
+    const result = JSON.parse(mapForegroundColors(json)) as {
+      items: { strokeColor?: string }[]
+    }
+    expect(result.items[0]?.strokeColor).toBe('#000000')
+    expect(result.items[1]?.strokeColor).toBe('#000000')
   })
 
   it('maps recursively inside group children', () => {

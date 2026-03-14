@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import MonacoEditor from '@monaco-editor/react'
 import { parseTemplate } from '../lib/parser'
 import { validateCustomName, invertColors, syncBgItemColor } from '../lib/customTemplates'
@@ -33,6 +33,9 @@ export function TemplateEditor({
 }: TemplateEditorProps) {
   const [localJson, setLocalJson] = useState(json)
   const [error, setError] = useState<string | null>(null)
+  // Track whether localJson was modified by the user (vs. initialized from prop).
+  // Only sync pendingName from JSON content after user edits, not on initial load.
+  const userEditedRef = useRef(false)
 
   // Derive orientation from current JSON (best-effort)
   let isLandscape = false
@@ -45,10 +48,13 @@ export function TemplateEditor({
   useEffect(() => {
     setLocalJson(json)  // eslint-disable-line react-hooks/set-state-in-effect
     setError(null)
+    userEditedRef.current = false
   }, [json])
 
-  // Sync toolbar name when the Monaco `name` field changes
+  // Sync toolbar name when the user edits the Monaco `name` field.
+  // Skipped on initial load so the fork-name suggestion in pendingName is preserved.
   useEffect(() => {
+    if (!userEditedRef.current) return
     try {
       const parsed = JSON.parse(localJson) as { name?: unknown }
       if (typeof parsed.name === 'string' && parsed.name !== pendingName) {
@@ -158,7 +164,7 @@ export function TemplateEditor({
           language="json"
           theme="vs-dark"
           value={localJson}
-          onChange={v => setLocalJson(v ?? '')}
+          onChange={v => { userEditedRef.current = true; setLocalJson(v ?? '') }}
           options={{
             formatOnPaste: true,
             formatOnType: true,

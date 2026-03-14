@@ -232,8 +232,18 @@ export function mapForegroundColors(json: string): string {
   function mapItem(item: unknown): unknown {
     if (typeof item !== 'object' || item === null) return item
     const result = { ...(item as Record<string, unknown>) }
-    if (result.strokeColor === '#000000') result.strokeColor = FOREGROUND_CONST
-    if (result.fillColor === '#000000') result.fillColor = FOREGROUND_CONST
+    if (result.type === 'path') {
+      // strokeColor undefined → device defaults to black → map to foreground
+      // strokeColor #000000 → explicitly black → map to foreground
+      if (result.strokeColor === '#000000' || result.strokeColor === undefined) {
+        result.strokeColor = FOREGROUND_CONST
+      }
+      // fillColor #000000 → explicitly black fill → map to foreground
+      // fillColor undefined → no fill (transparent) → leave as-is
+      if (result.fillColor === '#000000') {
+        result.fillColor = FOREGROUND_CONST
+      }
+    }
     if (Array.isArray(result.children)) {
       result.children = result.children.map(mapItem)
     }
