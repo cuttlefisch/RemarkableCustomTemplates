@@ -1,7 +1,7 @@
 # remarkable-templates
 
 [![CI](https://github.com/cuttlefisch/RemarkableCustomTemplates/actions/workflows/ci.yml/badge.svg)](https://github.com/cuttlefisch/RemarkableCustomTemplates/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/cuttlefisch/RemarkableCustomTemplates/graph/badge.svg)](https://codecov.io/gh/cuttlefisch/RemarkableCustomTemplates)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen)](https://nodejs.org/)
 

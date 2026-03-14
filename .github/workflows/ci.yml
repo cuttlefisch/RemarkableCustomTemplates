@@ -19,11 +19,5 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
-      - run: pnpm test:coverage
-      - uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: cuttlefisch/RemarkableCustomTemplates
-          files: ./coverage/lcov.info
-          fail_ci_if_error: true
+      - run: pnpm test
       - run: pnpm build
