@@ -111,6 +111,36 @@ scp dist-deploy/"P My Template" remarkable-wlan:/usr/share/remarkable/templates/
 ssh remarkable-wlan "systemctl restart xochitl"
 ```
 
+## rm_methods deploy (cloud-sync compatible)
+
+The classic `make deploy` workflow uses SSH to push files directly to `/usr/share/remarkable/templates/`. This works but bypasses xochitl's cloud sync — templates deployed this way won't sync across devices.
+
+The rm_methods workflow instead drops files into xochitl's user content directory (`/home/root/.local/share/remarkable/xochitl/`), which xochitl treats as locally-created content and syncs to the cloud.
+
+### Workflow
+
+```bash
+pnpm dev                        # dev server must be running
+make build-rm-methods-dist      # export ZIP from dev server, extract to rm-methods-dist/
+make deploy-rm-methods          # back up existing files, rsync, restart xochitl
+```
+
+Each template produces three files in `rm-methods-dist/`:
+- `<uuid>.template` — template JSON enriched with `iconData` and `labels`
+- `<uuid>.metadata` — `visibleName`, `source: "com.remarkable.methods"`, timestamps
+- `<uuid>.content` — empty `{}`
+
+UUIDs are generated on first export and persisted in `custom-registry.json` / `debug-registry.json` so they remain stable across subsequent exports.
+
+### Rollback
+
+```bash
+make rollback-rm-methods        # restore most recent local backup to device
+make list-backups-rm-methods    # list available backups
+```
+
+Backups are stored in `rm-methods-backups/` and contain only the files that were in `rm-methods-dist/` at backup time.
+
 ## Caveats
 
 - **Firmware updates wipe templates.** After a firmware update, the device restores its own default `templates/` directory. Run `make pull` + `make deploy` again to re-apply your customizations.

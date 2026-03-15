@@ -8,6 +8,8 @@ export interface TemplateRegistryEntry {
   landscape?: boolean
   categories: TemplateCategory[]
   isCustom?: boolean
+  /** UUID used as xochitl filename for rm_methods deployment; persisted on first export. */
+  rmMethodsId?: string
 }
 
 export interface TemplateRegistry {

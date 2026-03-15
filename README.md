@@ -45,6 +45,8 @@ remarkable_templates/
 
 ## Device sync
 
+### Classic deploy (direct SSH)
+
 ```bash
 make pull         # fetch current templates from device → remarkable_official_templates/
 # edit templates in the web app
@@ -53,7 +55,18 @@ make rollback     # restore most recent backup if something goes wrong
 make list-backups # see all backups stored on the device
 ```
 
-See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and caveats.
+### rm_methods deploy (cloud-sync compatible)
+
+Drops files into xochitl's user content directory so they sync across devices:
+
+```bash
+pnpm dev                        # dev server must be running
+make build-rm-methods-dist      # export ZIP → rm-methods-dist/
+make deploy-rm-methods          # back up, rsync, restart xochitl
+make rollback-rm-methods        # restore most recent rm_methods backup
+```
+
+See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and full details on both workflows.
 
 ## Web app
 

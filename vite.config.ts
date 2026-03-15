@@ -2,7 +2,10 @@ import { defineConfig } from 'vitest/config'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdirSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { resolveStringConstants } from './src/lib/customTemplates'
+import { generateTemplateIcon } from './src/lib/iconGenerator'
+import { parseTemplate } from './src/lib/parser'
 import { resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { zipSync, strToU8 } from 'fflate'
@@ -249,6 +252,93 @@ const customTemplatesPlugin: Plugin = {
             headers['X-Skipped-Files'] = warningFiles.join(', ')
           }
           res.writeHead(200, headers)
+          res.end(Buffer.from(zipped))
+        } catch (e) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(e) }))
+        }
+        return
+      }
+
+      // GET /api/export-rm-methods — zip custom + debug templates in rm_methods UUID format
+      if (req.method === 'GET' && url === '/api/export-rm-methods') {
+        try {
+          // Load registries (no official templates required)
+          let customReg: { templates: Array<{ filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string }> } = { templates: [] }
+          let debugReg:  { templates: Array<{ filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string }> } = { templates: [] }
+          try { customReg = JSON.parse(readFileSync(CUSTOM_REGISTRY, 'utf8')) as typeof customReg } catch { /* no custom */ }
+          try { debugReg  = JSON.parse(readFileSync(DEBUG_REGISTRY,  'utf8')) as typeof debugReg  } catch { /* no debug  */ }
+
+          // Ensure every entry has a persisted UUID; write back registries if any were added
+          let customDirty = false
+          let debugDirty  = false
+          for (const entry of customReg.templates) {
+            if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); customDirty = true }
+          }
+          for (const entry of debugReg.templates) {
+            if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); debugDirty = true }
+          }
+          if (customDirty) writeFileSync(CUSTOM_REGISTRY, JSON.stringify(customReg, null, 2), 'utf8')
+          if (debugDirty)  writeFileSync(DEBUG_REGISTRY,  JSON.stringify(debugReg,  null, 2), 'utf8')
+
+          const now = new Date().toISOString()
+          const fileMap: Record<string, Uint8Array> = {}
+
+          function addEntry(
+            entry: { filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string },
+            templateDir: string,
+            filePrefix: string,
+          ) {
+            const uuid = entry.rmMethodsId!
+            const shortName = entry.filename.replace(new RegExp(`^${filePrefix}/`), '')
+            const tplPath = resolve(templateDir, `${shortName}.template`)
+            if (!existsSync(tplPath)) return
+
+            const rawContent = readFileSync(tplPath, 'utf8')
+            const resolvedContent = resolveStringConstants(rawContent)
+
+            // Parse template to generate icon and read fields
+            let iconData: string | undefined
+            let labels: string[]
+            try {
+              const tplObj = JSON.parse(resolvedContent) as Record<string, unknown>
+              const tpl = parseTemplate(tplObj)
+              iconData = generateTemplateIcon(tpl)
+              labels = (tpl.labels ?? tpl.categories ?? ['Custom']).filter((l: string) => l.length > 0)
+              if (labels.length === 0) labels = ['Custom']
+              // Embed iconData and labels into the template file
+              const enriched = { ...tplObj, iconData, labels }
+              fileMap[`${uuid}.template`] = strToU8(JSON.stringify(enriched, null, 2))
+            } catch {
+              // If parsing fails, include the raw resolved content without enrichment
+              fileMap[`${uuid}.template`] = strToU8(resolvedContent)
+              labels = (entry.categories ?? ['Custom']).filter((l: string) => l.length > 0)
+              if (labels.length === 0) labels = ['Custom']
+            }
+
+            // {uuid}.metadata
+            const metadata = {
+              type: 'TemplateType',
+              visibleName: entry.name,
+              source: 'com.remarkable.methods',
+              createdTime: now,
+              lastModified: now,
+            }
+            fileMap[`${uuid}.metadata`] = strToU8(JSON.stringify(metadata, null, 2))
+
+            // {uuid}.content
+            fileMap[`${uuid}.content`] = strToU8('{}')
+          }
+
+          for (const entry of customReg.templates) addEntry(entry, CUSTOM_DIR, 'custom')
+          for (const entry of debugReg.templates)  addEntry(entry, DEBUG_DIR,  'debug')
+
+          const zipped = zipSync(fileMap)
+          res.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': 'attachment; filename="remarkable-rm-methods.zip"',
+            'Content-Length': String(zipped.length),
+          })
           res.end(Buffer.from(zipped))
         } catch (e) {
           res.writeHead(500, { 'Content-Type': 'application/json' })

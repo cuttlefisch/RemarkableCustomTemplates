@@ -92,4 +92,10 @@ export interface RemarkableTemplate {
   orientation: 'portrait' | 'landscape'
   constants: ConstantEntry[]
   items: TemplateItem[]
+  /** Labels shown in xochitl (rm_methods format); synced from categories on export. */
+  labels?: string[]
+  /** Device models this template supports, e.g. ["rm2", "rmPP"]. */
+  supportedScreens?: string[]
+  /** Base64-encoded SVG icon (150×200 portrait or 200×150 landscape). */
+  iconData?: string
 }

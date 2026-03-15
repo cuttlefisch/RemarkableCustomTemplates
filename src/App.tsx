@@ -424,6 +424,27 @@ export default function App() {
     }
   }
 
+  async function handleExportRmMethods() {
+    try {
+      const res = await fetch('/api/export-rm-methods')
+      if (!res.ok) {
+        let body: { error?: string } = {}
+        try { body = await res.json() as { error?: string } } catch { /* non-JSON response */ }
+        setError(`rm_methods export failed: ${body.error ?? res.status}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'remarkable-rm-methods.zip'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(`rm_methods export failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all')
 
   return (
@@ -486,6 +507,13 @@ export default function App() {
             title="Export merged templates as zip for your device"
           >
             ↑ Export
+          </button>
+          <button
+            className="sidebar-action-btn"
+            onClick={handleExportRmMethods}
+            title="Export custom templates in rm_methods format (firmware 3.17+)"
+          >
+            ↑ rm_methods
           </button>
           <input
             ref={officialInputRef}
