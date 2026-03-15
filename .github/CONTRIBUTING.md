@@ -18,6 +18,7 @@ This project follows test-driven development. Write tests first, then implement.
 ```bash
 pnpm test          # run all tests once
 pnpm test:watch    # watch mode (re-runs on file changes)
+pnpm test:coverage # with v8 coverage report
 pnpm lint          # ESLint
 pnpm build         # tsc -b + vite build (catches type errors)
 ```
@@ -42,6 +43,9 @@ Add tests to the appropriate file in `src/__tests__/`. Each test file mirrors a 
 | `parser.test.ts` | `lib/parser.ts` |
 | `registry.test.ts` | `lib/registry.ts` |
 | `renderer.test.ts` | `lib/renderer.ts` |
+| `color.test.ts` | `lib/color.ts` |
+| `customTemplates.test.ts` | `lib/customTemplates.ts` |
+| `debugTemplate.test.ts` | test-only helpers (no direct source counterpart) |
 | `TemplateCanvas.test.tsx` | `components/TemplateCanvas.tsx` |
 | `TemplateEditor.test.tsx` | `components/TemplateEditor.tsx` |
 
@@ -50,6 +54,7 @@ Add tests to the appropriate file in `src/__tests__/`. Each test file mirrors a 
 1. Place the `.template` JSON file in `public/templates/`
 2. Add an entry to `public/templates/templates.json` with `name`, `filename`, `iconCode`, `landscape`, and `categories`
 3. Verify it renders correctly in the dev server: `pnpm dev`
+   - Tip: use the **Import** button in the UI to load your `.template` file as a custom template and preview rendering before committing
 
 ## Pull Request Checklist
 
