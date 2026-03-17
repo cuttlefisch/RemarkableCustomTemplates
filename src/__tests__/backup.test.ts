@@ -160,6 +160,21 @@ describe('validateBackupContents', () => {
     expect(result.warnings.some(w => w.includes('rmMethodsId'))).toBe(true)
   })
 
+  it('validates a backup whose template was re-serialized from trailing-comma source', () => {
+    // Simulate the backup endpoint re-serializing a template that originally had trailing commas.
+    // After JSON.parse → JSON.stringify, the result should be valid and pass validation.
+    const trailingCommaSource = '{"name":"TC","author":"x","templateVersion":"1.0.0","formatVersion":1,"categories":["Custom"],"orientation":"portrait","constants":[],"items":[]}'
+    const reSerialized = JSON.stringify(JSON.parse(trailingCommaSource), null, 2)
+    const files = makeZip({
+      'backup-manifest.json': JSON.stringify({ version: 1, createdAt: new Date().toISOString(), templateCount: { custom: 1, debug: 0 } }),
+      'custom/custom-registry.json': minimalRegistry([{ name: 'TC', filename: 'custom/P TC', rmMethodsId: 'uuid-tc' }]),
+      'custom/P TC.template': reSerialized,
+    })
+    const result = validateBackupContents(files)
+    expect(result.valid).toBe(true)
+    expect(result.errors).toEqual([])
+  })
+
   it('errors on completely empty backup', () => {
     const files = makeZip({
       'backup-manifest.json': JSON.stringify({ version: 1, createdAt: new Date().toISOString(), templateCount: { custom: 0, debug: 0 } }),

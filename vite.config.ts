@@ -446,20 +446,32 @@ const customTemplatesPlugin: Plugin = {
             fileMap['debug/debug-registry.json'] = strToU8(JSON.stringify(debugReg, null, 2))
           }
 
-          // Add custom template files as-is (no resolveStringConstants)
+          // Add custom template files, re-serialized to ensure valid JSON
           if (existsSync(CUSTOM_DIR)) {
             for (const file of readdirSync(CUSTOM_DIR)) {
               if (file.endsWith('.template')) {
-                fileMap[`custom/${file}`] = readFileSync(resolve(CUSTOM_DIR, file))
+                try {
+                  const raw = readFileSync(resolve(CUSTOM_DIR, file), 'utf8')
+                  const parsed = JSON.parse(raw)
+                  fileMap[`custom/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
+                } catch {
+                  // Skip files that aren't valid JSON — don't include broken templates in backups
+                }
               }
             }
           }
 
-          // Add debug template files as-is
+          // Add debug template files, re-serialized to ensure valid JSON
           if (existsSync(DEBUG_DIR)) {
             for (const file of readdirSync(DEBUG_DIR)) {
               if (file.endsWith('.template')) {
-                fileMap[`debug/${file}`] = readFileSync(resolve(DEBUG_DIR, file))
+                try {
+                  const raw = readFileSync(resolve(DEBUG_DIR, file), 'utf8')
+                  const parsed = JSON.parse(raw)
+                  fileMap[`debug/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
+                } catch {
+                  // Skip files that aren't valid JSON — don't include broken templates in backups
+                }
               }
             }
           }
