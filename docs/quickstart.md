@@ -4,9 +4,9 @@ This guide walks through the full workflow from a fresh clone to deploying custo
 
 ## Prerequisites
 
-- Node.js 20+ and [pnpm](https://pnpm.io/installation)
 - A reMarkable device on the same network as your machine
 - Git
+- (Optional) Node.js 20+ and [pnpm](https://pnpm.io/installation) — `make setup` installs both if missing
 
 ---
 
@@ -15,13 +15,15 @@ This guide walks through the full workflow from a fresh clone to deploying custo
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
 cd remarkable_templates
-pnpm install
+make setup    # installs Node.js (via nvm) + pnpm + project dependencies
 ```
+
+If you already have Node.js and pnpm, `make install` (or `pnpm install`) is enough.
 
 ## 2. Run the web app
 
 ```bash
-pnpm dev
+make dev      # or: pnpm dev
 ```
 
 Open `http://localhost:5173` in your browser. The template browser loads on the left; the SVG canvas preview is on the right.
@@ -101,7 +103,7 @@ In the browser:
 
 1. Click **New template** in the sidebar to create a blank template, or select an existing one and click **Save as New Template** to start from a copy.
 2. Edit the JSON in the Monaco editor. The canvas updates live as you apply changes.
-3. Toggle between **reMarkable 1/2** and **Paper Pro** previews using the device selector.
+3. Toggle between **RM 1 & 2**, **Paper Pro**, and **Move** previews using the device selector.
 4. Click **Apply** to validate and render. Any undefined constant references are reported before the canvas renders.
 
 Custom templates are saved to `public/templates/custom/` and registered in `public/templates/custom/custom-registry.json`. These files are git-ignored by default — add them to version control if you want to track your templates.
@@ -165,8 +167,8 @@ See [device-sync.md](device-sync.md) for full details on both workflows.
 
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates && cd remarkable_templates
-pnpm install
-pnpm dev                          # open http://localhost:5173
+make setup                        # install toolchain + dependencies
+make dev                          # open http://localhost:5173
 make pull                         # pull official templates from device
 make pull-rm-methods              # pull rm_methods templates to browse/fork
 # create/edit templates in the web app

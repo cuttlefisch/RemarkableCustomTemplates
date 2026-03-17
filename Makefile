@@ -16,10 +16,55 @@ METHODS_DIR := public/templates/methods
 MANIFEST_UUIDS := python3 scripts/manifest-uuids.py
 BUILD_METHODS_REGISTRY := python3 scripts/build-methods-registry.py
 
-.PHONY: help pull pull-rm-methods backup build-deploy deploy rollback list-backups build-rm-methods-dist deploy-rm-methods backup-rm-methods rollback-rm-methods rollback-rm-methods-original list-backups-rm-methods
+.PHONY: help setup configure install dev test lint build clean pull pull-rm-methods backup build-deploy deploy rollback list-backups build-rm-methods-dist deploy-rm-methods backup-rm-methods rollback-rm-methods rollback-rm-methods-original list-backups-rm-methods
 
 help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+# ── Dev setup ────────────────────────────────────────────────────────────────
+
+setup: ## Install Node.js (via nvm) and pnpm, then install project dependencies
+	@if command -v node >/dev/null 2>&1; then \
+	  echo "Node.js $$(node -v) found"; \
+	else \
+	  echo "Node.js not found — installing via nvm..."; \
+	  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash; \
+	  export NVM_DIR="$$HOME/.nvm"; \
+	  [ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
+	  nvm install 20; \
+	fi
+	@if command -v pnpm >/dev/null 2>&1; then \
+	  echo "pnpm $$(pnpm -v) found"; \
+	else \
+	  echo "Installing pnpm..."; \
+	  corepack enable && corepack prepare pnpm@latest --activate 2>/dev/null \
+	    || npm install -g pnpm; \
+	fi
+	pnpm install
+	@echo ""
+	@echo "Setup complete. Run 'make dev' or 'pnpm dev' to start the dev server."
+
+configure: setup ## Alias for setup (install toolchain + dependencies)
+
+install: ## Install project dependencies (assumes Node.js and pnpm are present)
+	pnpm install
+
+dev: ## Start the Vite dev server
+	pnpm dev
+
+test: ## Run all tests once
+	pnpm test
+
+lint: ## Run ESLint
+	pnpm lint
+
+build: ## Type-check and build for production
+	pnpm build
+
+clean: ## Remove build artifacts and caches
+	rm -rf dist dist-deploy rm-methods-dist node_modules/.vite
+
+# ── Device sync ──────────────────────────────────────────────────────────────
 
 pull: ## Pull templates from the device into remarkable_official_templates/
 	rsync -avz --progress $(DEVICE):$(TEMPLATES_PATH)/ remarkable_official_templates/
