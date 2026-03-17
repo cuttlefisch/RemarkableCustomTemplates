@@ -13,6 +13,7 @@ pnpm test:coverage     # with v8 coverage
 pnpm dev               # dev server
 pnpm build             # tsc + vite build
 pnpm lint              # ESLint
+make pull-rm-methods   # pull rm_methods templates from device
 ```
 
 Run a single test file:
@@ -68,8 +69,16 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 
 ### Registry (`lib/registry.ts`, `types/registry.ts`)
 
-`templates.json` is the registry: a list of `TemplateRegistryEntry` with `name`, `filename`, `iconCode`, `landscape`, `categories`. Parsed with `parseRegistry()`; mutated with `addEntry()`, `removeEntry()`, `updateEntry()`, `filterByCategory()`.
+`templates.json` is the registry: a list of `TemplateRegistryEntry` with `name`, `filename`, `iconCode`, `landscape`, `categories`, optional `rmMethodsId` (UUID), and optional `origin` (`"official-methods"` or `"custom-methods"` for pulled methods templates). Parsed with `parseRegistry()`; mutated with `addEntry()`, `removeEntry()`, `updateEntry()`, `filterByCategory()`.
 
 ### Template files
 
-`.template` files are served from `public/templates/`. The `vite-plugin-static-copy` plugin handles this. `remarkable_official_templates/` is for unmodified originals from the device and is not tracked in git (only the `.gitkeep` is tracked).
+`.template` files are served from `public/templates/`. The `vite-plugin-static-copy` plugin handles this. `remarkable_official_templates/` is for unmodified originals from the device and is not tracked in git (only the `.gitkeep` is tracked). `public/templates/methods/` stores rm_methods templates pulled from the device via `make pull-rm-methods` (git-ignored).
+
+### rm_methods deploy (preferred)
+
+rm_methods is the recommended deployment format — it syncs templates across paired devices via the reMarkable cloud. Build generates `rm-methods-dist/` with UUID-named file triplets (`.template`, `.metadata`, `.content`) plus a `.manifest` file (JSON with name, version, hash, createdTime per UUID). `rm-methods-backups/.deployed-manifest` tracks what's currently on the device, enabling orphan cleanup on deploy and precise rollbacks. See `docs/device-sync.md` for full details.
+
+### Backup/restore (`lib/backup.ts`)
+
+`GET /api/backup` exports a ZIP of custom + debug templates with registries and a `backup-manifest.json`. `POST /api/restore?mode=merge` imports a backup ZIP, merging new entries (matched by `rmMethodsId` then `filename`). Validation uses `parseRegistry()` and `parseTemplate()` on every file. Methods templates are excluded from backups.

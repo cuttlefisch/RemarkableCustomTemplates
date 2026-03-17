@@ -28,6 +28,7 @@ remarkable_templates/
 │   └── templates/
 │       ├── custom/  ← custom .template files + custom-registry.json (git-ignored)
 │       ├── debug/   ← debug templates served in dev mode only
+│       ├── methods/ ← rm_methods templates pulled from device (git-ignored)
 │       └── ...      ← official .template files (git-ignored)
 ├── scripts/
 │   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
@@ -45,7 +46,33 @@ remarkable_templates/
 
 ## Device sync
 
-### Classic deploy (direct SSH)
+### rm_methods deploy (recommended — syncs across devices)
+
+Deploys templates in the same format as official reMarkable methods content, so xochitl syncs them across paired devices via the cloud:
+
+```bash
+pnpm dev                        # dev server must be running
+make build-rm-methods-dist      # export ZIP → rm-methods-dist/
+make deploy-rm-methods          # back up, deploy, restart xochitl
+make rollback-rm-methods        # revert to previous deploy
+make rollback-rm-methods-original  # remove all custom templates
+```
+
+Deploys are tracked with a manifest file — removed templates are automatically cleaned up from the device, and rollbacks precisely restore previous state.
+
+### Pull rm_methods templates from the device
+
+```bash
+make pull-rm-methods    # pull official + custom rm_methods templates to browse/fork
+```
+
+### Backup and restore
+
+Click **↓ Backup** in the sidebar to download a ZIP of all custom and debug templates (preserves `rmMethodsId` UUIDs). Click **↑ Restore** to merge a backup ZIP back in. See [docs/device-sync.md](docs/device-sync.md) for details.
+
+### Classic deploy (alternative — no sync)
+
+Pushes templates directly to `/usr/share/remarkable/templates/`. Simpler, but templates only exist on the device you push to:
 
 ```bash
 make pull         # fetch current templates from device → remarkable_official_templates/
@@ -53,17 +80,6 @@ make pull         # fetch current templates from device → remarkable_official_
 make deploy       # backup on device, merge, rsync, restart xochitl
 make rollback     # restore most recent backup if something goes wrong
 make list-backups # see all backups stored on the device
-```
-
-### rm_methods deploy (cloud-sync compatible)
-
-Drops files into xochitl's user content directory so they sync across devices:
-
-```bash
-pnpm dev                        # dev server must be running
-make build-rm-methods-dist      # export ZIP → rm-methods-dist/
-make deploy-rm-methods          # back up, rsync, restart xochitl
-make rollback-rm-methods        # restore most recent rm_methods backup
 ```
 
 See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and full details on both workflows.

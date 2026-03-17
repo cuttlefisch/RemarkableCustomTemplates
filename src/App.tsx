@@ -90,9 +90,13 @@ export default function App() {
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOrientation, setFilterOrientation] = useState<'all' | 'portrait' | 'landscape'>('all')
 
+  // Backup/restore state
+  const [restoring, setRestoring] = useState(false)
+
   // Import refs
   const importInputRef = useRef<HTMLInputElement>(null)
   const officialInputRef = useRef<HTMLInputElement>(null)
+  const restoreInputRef = useRef<HTMLInputElement>(null)
 
   // Load the template registry + custom registry once on mount
   useEffect(() => {
@@ -168,7 +172,7 @@ export default function App() {
         setTemplate(parsed)
         const isCustom = selected.filename.startsWith('custom/')
         setEditorJson(JSON.stringify(data, null, 2))
-        setPendingName(isCustom ? selected.name : `Custom ${data.name as string}`)
+        setPendingName(isCustom ? selected.name : `Custom ${data.name as string ?? selected.name}`)
         setLoadingTemplate(false)
       })
       .catch((err: unknown) => {
@@ -445,6 +449,64 @@ export default function App() {
     }
   }
 
+  async function handleBackup() {
+    try {
+      const res = await fetch('/api/backup')
+      if (!res.ok) {
+        let body: { error?: string } = {}
+        try { body = await res.json() as { error?: string } } catch { /* non-JSON response */ }
+        setError(`Backup failed: ${body.error ?? res.status}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const dateStr = new Date().toISOString().slice(0, 10)
+      a.download = `remarkable-backup-${dateStr}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(`Backup failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  async function handleRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setRestoring(true)
+    setSidebarError(null)
+
+    try {
+      const body = await file.arrayBuffer()
+      const res = await fetch('/api/restore?mode=merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/zip' },
+        body,
+      })
+      const result = await res.json() as { ok?: boolean; error?: string; details?: string[]; added?: string[]; skipped?: string[]; warnings?: string[] }
+      if (!res.ok) {
+        const details = result.details ? `\n${result.details.join('\n')}` : ''
+        setSidebarError(`Restore failed: ${result.error ?? res.status}${details}`)
+        setRestoring(false)
+        return
+      }
+      const addedCount = result.added?.length ?? 0
+      const skippedCount = result.skipped?.length ?? 0
+      setSidebarError(null)
+      setRestoring(false)
+      if (addedCount > 0) {
+        window.location.reload()
+      } else {
+        setSidebarError(`Restore complete: ${addedCount} added, ${skippedCount} skipped (all templates already present)`)
+      }
+    } catch (e) {
+      setSidebarError(`Restore failed: ${e instanceof Error ? e.message : String(e)}`)
+      setRestoring(false)
+    }
+  }
+
   const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all')
 
   return (
@@ -523,6 +585,31 @@ export default function App() {
             multiple
             style={{ display: 'none' }}
             onChange={e => { if (e.target.files) handleImportOfficial(e.target.files); e.target.value = '' }}
+          />
+        </div>
+
+        <div className="sidebar-actions">
+          <button
+            className="sidebar-action-btn"
+            onClick={handleBackup}
+            title="Download a backup of all custom + debug templates"
+          >
+            ↓ Backup
+          </button>
+          <button
+            className="sidebar-action-btn"
+            onClick={() => restoreInputRef.current?.click()}
+            disabled={restoring}
+            title="Restore templates from a backup ZIP (merge mode)"
+          >
+            {restoring ? '…' : '↑ Restore'}
+          </button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept=".zip"
+            style={{ display: 'none' }}
+            onChange={handleRestoreFile}
           />
         </div>
 
@@ -618,7 +705,7 @@ export default function App() {
               onClick={() => setSelected(entry)}
             >
               <span className="template-btn-name">{entry.name}</span>
-              <span className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}>
+              <span className={`orient-badge ${entry.isCustom ? 'custom' : (entry.origin ? 'methods' : (entry.landscape ? 'ls' : 'p'))}`}>
                 {entry.landscape ? 'LS' : 'P'}
               </span>
             </button>
@@ -672,6 +759,8 @@ export default function App() {
                   {selected.landscape ? 'Landscape' : 'Portrait'}
                 </button>
                 {selected.isCustom && <span className="tag tag-custom">Custom</span>}
+                {selected.origin === 'official-methods' && <span className="tag tag-methods">Methods</span>}
+                {selected.origin === 'custom-methods' && <span className="tag tag-methods">Methods (custom)</span>}
                 {(template?.categories ?? selected.categories)
                   .filter(cat => !(selected.isCustom && cat === 'Custom'))
                   .map(cat => (

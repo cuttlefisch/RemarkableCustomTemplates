@@ -10,6 +10,8 @@ export interface TemplateRegistryEntry {
   isCustom?: boolean
   /** UUID used as xochitl filename for rm_methods deployment; persisted on first export. */
   rmMethodsId?: string
+  /** Origin tag for methods templates pulled from the device. */
+  origin?: 'official-methods' | 'custom-methods' | string
 }
 
 export interface TemplateRegistry {

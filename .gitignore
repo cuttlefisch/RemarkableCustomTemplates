@@ -9,11 +9,16 @@ public/templates/templates.json
 # Custom user templates (user-local data)
 public/templates/custom/
 
+# Methods templates pulled from device
+public/templates/methods/
+
 # Node / web
 node_modules/
 dist/
 dist-ssr/
 dist-deploy/
+rm-methods-dist/
+rm-methods-backups/
 .vite/
 coverage/
 *.local

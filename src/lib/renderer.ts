@@ -38,8 +38,8 @@ export const DEVICES: Record<string, DeviceSpec> = {
   },
   rmPP: {
     id: 'rmPP',
-    name: 'reMarkable Paper Pro',
-    shortName: 'Paper Pro',
+    name: 'reMarkable Paper Pro / Move',
+    shortName: 'Paper Pro / Move',
     portraitWidth: 954,
     portraitHeight: 1696,
   },
