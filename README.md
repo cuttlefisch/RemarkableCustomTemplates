@@ -5,7 +5,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen)](https://nodejs.org/)
 
-A browser-based editor and viewer for reMarkable tablet `.template` files.
+A browser-based tool for browsing, previewing, editing, and deploying custom page templates on reMarkable tablets. Create templates from scratch or fork existing ones, preview them across all device resolutions, and deploy to your device with cloud sync across paired tablets.
 
 **New here?** See the [Quickstart guide](docs/quickstart.md) to get up and running.
 
@@ -13,7 +13,12 @@ A browser-based editor and viewer for reMarkable tablet `.template` files.
 
 reMarkable templates are JSON files that describe page layouts using a tree of groups, paths, and text items. Values throughout the tree can be numeric literals or arithmetic expression strings that reference named constants (e.g. `"templateWidth / 2 - offsetX"`). The device evaluates these at render time, injecting built-in constants like `templateWidth` and `templateHeight`.
 
-This project lets you browse, preview, and edit those templates without a device.
+This project provides:
+
+- **Web editor** — browse, preview, and edit templates with a live SVG canvas and Monaco JSON editor, with multi-device resolution switching (RM 1&2, Paper Pro, Paper Pro Move)
+- **Deploy to device** — push templates via SSH in the rm_methods format so they sync across paired devices through the reMarkable cloud, with manifest-tracked deploys, automatic orphan cleanup, and one-command rollback
+- **Backup/restore** — export and import your custom templates as a ZIP, preserving UUIDs for deploy continuity
+- **Pull from device** — fetch official and custom rm_methods templates from your device to browse or fork into new designs
 
 ## Project structure
 
