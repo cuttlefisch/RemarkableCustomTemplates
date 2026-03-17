@@ -150,6 +150,7 @@ backup-rm-methods: ## Back up current device state before deploying rm_methods t
 	  dir=$(RM_METHODS_BACKUP_DIR)/rm-methods_$${ts}; \
 	  echo "Backing up current deploy to $$dir/"; \
 	  filelist=$$($(MANIFEST_UUIDS) $(RM_METHODS_DEPLOYED_MANIFEST) | awk '{printf "%s.template\n%s.metadata\n%s.content\n", $$1, $$1, $$1}'); \
+	  mkdir -p $$dir && \
 	  echo "$$filelist" | rsync -avz --ignore-missing-args --files-from=- $(DEVICE):$(RM_METHODS_PATH)/ $$dir/ && \
 	  cp $(RM_METHODS_DEPLOYED_MANIFEST) $$dir/.manifest && \
 	  echo "Backup complete: $$dir/"; \
