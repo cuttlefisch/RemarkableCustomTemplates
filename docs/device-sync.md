@@ -240,10 +240,10 @@ The `origin` field helps distinguish templates in the UI:
 
 ### Backup
 
-Click **↓ Backup** in the sidebar (or `GET /api/backup` programmatically) to download a ZIP containing all custom and debug templates plus their registries:
+Click **↓ Backup** on the **Device & Sync** page (or `GET /api/backup` programmatically) to download a ZIP containing all custom and debug templates plus their registries:
 
 ```
-remarkable-backup-2026-03-17.zip
+remarkable-backup-2026-03-17_143022.zip
 ├── backup-manifest.json
 ├── custom/
 │   ├── custom-registry.json
@@ -257,7 +257,7 @@ Methods templates are excluded — they're pulled from the device, not user-auth
 
 ### Restore
 
-Click **↑ Restore** in the sidebar to upload a backup ZIP. The default mode is **merge**: templates already present (matched by `rmMethodsId` first, then `filename`) are skipped; new ones are added. The page reloads automatically if any templates were added.
+Click **↑ Restore** on the **Device & Sync** page to upload a backup ZIP. The default mode is **merge**: templates already present (matched by `rmMethodsId` first, then `filename`) are skipped; new ones are added. The page reloads automatically if any templates were added.
 
 For programmatic use: `POST /api/restore?mode=merge` (or `mode=replace` to overwrite).
 

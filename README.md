@@ -21,8 +21,11 @@ This project lets you browse, preview, and edit those templates without a device
 remarkable_templates/
 ├── src/
 │   ├── types/       ← template.ts, registry.ts
-│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts
-│   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
+│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts,
+│   │                   backup.ts, methodsTemplates.ts, rmMethods.ts, iconGenerator.ts
+│   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx, NavBar.tsx, CanvasErrorBoundary.tsx
+│   ├── pages/       ← TemplatesPage.tsx, DevicePage.tsx
+│   ├── hooks/       ← useRegistry.ts
 │   └── __tests__/   ← Vitest test suite
 ├── public/
 │   └── templates/
@@ -31,14 +34,18 @@ remarkable_templates/
 │       ├── methods/ ← rm_methods templates pulled from device (git-ignored)
 │       └── ...      ← official .template files (git-ignored)
 ├── scripts/
-│   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
+│   ├── merge-templates.mjs       ← merges official + custom into dist-deploy/
+│   ├── build-methods-registry.py ← processes pulled UUID triplets into methods registry
+│   └── manifest-uuids.py         ← manifest diffing helper
 ├── docs/
 │   ├── quickstart.md        ← clone-to-deploy walkthrough
 │   └── device-sync.md       ← SSH setup + deploy workflow
 ├── .github/
 │   ├── workflows/ci.yml     ← GitHub Actions: lint, type-check, test, build
 │   └── CONTRIBUTING.md
-├── dist-deploy/     ← staging dir for device deployment (git-ignored)
+├── dist-deploy/     ← staging dir for classic device deployment (git-ignored)
+├── rm-methods-dist/ ← staging dir for rm_methods deploy (git-ignored)
+├── rm-methods-backups/ ← device backups + deployed manifest (git-ignored)
 ├── remarkable_official_templates/ ← unmodified device originals (git-ignored)
 ├── LICENSE
 └── Makefile         ← pull / backup / deploy / rollback targets
@@ -68,7 +75,7 @@ make pull-rm-methods    # pull official + custom rm_methods templates to browse/
 
 ### Backup and restore
 
-Click **↓ Backup** in the sidebar to download a ZIP of all custom and debug templates (preserves `rmMethodsId` UUIDs). Click **↑ Restore** to merge a backup ZIP back in. See [docs/device-sync.md](docs/device-sync.md) for details.
+Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all custom and debug templates (preserves `rmMethodsId` UUIDs). The filename includes a timestamp (e.g. `remarkable-backup-2026-03-17_143022.zip`). Click **↑ Restore** to merge a backup ZIP back in. See [docs/device-sync.md](docs/device-sync.md) for details.
 
 ### Classic deploy (alternative — no sync)
 
@@ -98,7 +105,7 @@ pnpm lint          # ESLint
 
 ### Features
 
-- **Template browser** — sidebar lists all templates, filterable by category
+- **Template browser** — sidebar lists all templates, filterable by category, orientation, source (Official/Methods), and name search
 - **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872), Paper Pro (1620×2160), and Paper Pro Move (954×1696)
 - **SVG canvas renderer** — faithfully renders groups, paths, and text items with full expression evaluation and tile repetition
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files
@@ -106,7 +113,7 @@ pnpm lint          # ESLint
 - **Color defaults** — `foreground`/`background` sentinel constants set the canvas background color and default stroke color; the invert button swaps them (useful for previewing dark-paper or inverted themes)
 - **Expression validation** — catches undefined constant references at Apply time, before the canvas errors
 - **Delete custom templates** — remove custom templates from the UI, clearing the file and registry entry
-- **Debug templates** — `public/templates/debug/` contains responsive developer templates served in dev mode; included when deploying
+- **Debug templates** — `public/templates/debug/` contains responsive developer templates served in dev mode; included when deploying. Debug templates include orientation labels in the title and a filled pentagon icon for easy identification
 
 ### Architecture
 

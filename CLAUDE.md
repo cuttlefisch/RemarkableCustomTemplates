@@ -72,6 +72,12 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 
 `templates.json` is the registry: a list of `TemplateRegistryEntry` with `name`, `filename`, `iconCode`, `landscape`, `categories`, optional `rmMethodsId` (UUID), and optional `origin` (`"official-methods"` or `"custom-methods"` for pulled methods templates). Parsed with `parseRegistry()`; mutated with `addEntry()`, `removeEntry()`, `updateEntry()`, `filterByCategory()`.
 
+The dev server merges `debug-registry.json` + `methods-registry.json` + official `templates.json` into the served `GET /templates/templates.json`. The frontend loads `custom-registry.json` separately.
+
+### UI structure
+
+Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a sidebar listing all templates with source filter chips (Official / Methods) that filter by `origin` / `isCustom`, plus category, orientation, and name search filters.
+
 ### Template files
 
 `.template` files are served from `public/templates/`. The `vite-plugin-static-copy` plugin handles this. `remarkable_official_templates/` is for unmodified originals from the device and is not tracked in git (only the `.gitkeep` is tracked). `public/templates/methods/` stores rm_methods templates pulled from the device via `make pull-rm-methods` (git-ignored).
@@ -82,4 +88,4 @@ rm_methods is the recommended deployment format — it syncs templates across pa
 
 ### Backup/restore (`lib/backup.ts`)
 
-`GET /api/backup` exports a ZIP of custom + debug templates with registries and a `backup-manifest.json`. `POST /api/restore?mode=merge` imports a backup ZIP, merging new entries (matched by `rmMethodsId` then `filename`). Validation uses `parseRegistry()` and `parseTemplate()` on every file. Methods templates are excluded from backups.
+`GET /api/backup` exports a ZIP of custom + debug templates with registries and a `backup-manifest.json`. Backup filename includes a timestamp with HHMMSS (e.g. `remarkable-backup-2026-03-17_143022.zip`). `POST /api/restore?mode=merge` imports a backup ZIP, merging new entries (matched by `rmMethodsId` then `filename`). Validation uses `parseRegistry()` and `parseTemplate()` on every file. Methods templates are excluded from backups. Backup and restore controls are on the **Device & Sync** page (`/device`).

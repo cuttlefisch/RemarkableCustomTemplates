@@ -126,9 +126,9 @@ On first deploy, a pristine baseline is captured automatically. Each subsequent 
 
 ## 8. Back up your templates
 
-Click **↓ Backup** in the sidebar to download a ZIP of all your custom and debug templates. This preserves `rmMethodsId` UUIDs — critical for device sync continuity.
+Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all your custom and debug templates. This preserves `rmMethodsId` UUIDs — critical for device sync continuity.
 
-To restore: click **↑ Restore** and select the backup ZIP. Templates already present are skipped; new ones are merged in.
+To restore: click **↑ Restore** on the same page and select the backup ZIP. Templates already present are skipped; new ones are merged in.
 
 ---
 
@@ -172,7 +172,7 @@ make dev                          # open http://localhost:5173
 make pull                         # pull official templates from device
 make pull-rm-methods              # pull rm_methods templates to browse/fork
 # create/edit templates in the web app
-# click ↓ Backup in the sidebar to save a backup ZIP
+# click ↓ Backup on the Device & Sync page to save a backup ZIP
 make build-rm-methods-dist        # export for cloud-sync deploy
 make deploy-rm-methods            # backup → deploy → restart
 make rollback-rm-methods          # revert to previous deploy if needed

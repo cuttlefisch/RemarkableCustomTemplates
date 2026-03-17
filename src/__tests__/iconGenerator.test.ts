@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest'
 import { generateTemplateIcon } from '../lib/iconGenerator'
 import type { RemarkableTemplate, PathItem, GroupItem, TextItem } from '../types/template'

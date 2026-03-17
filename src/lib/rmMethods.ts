@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Helpers for rm_methods export: content hashing, version bumping,
  * metadata generation, and manifest types.

@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Generate a base64-encoded SVG icon for a reMarkable template.
  *

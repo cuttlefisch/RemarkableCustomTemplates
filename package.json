@@ -4,9 +4,9 @@
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_ORG/remarkable_templates"
+    "url": "https://github.com/cuttlefisch/RemarkableCustomTemplates"
   },
-  "homepage": "https://github.com/YOUR_ORG/remarkable_templates#readme",
+  "homepage": "https://github.com/cuttlefisch/RemarkableCustomTemplates#readme",
   "private": true,
   "version": "0.0.0",
   "type": "module",
