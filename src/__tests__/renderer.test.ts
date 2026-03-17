@@ -219,16 +219,19 @@ describe('computeTileRange', () => {
 // ─── DEVICES map ─────────────────────────────────────────────────────────────
 
 describe('DEVICES', () => {
-  it('rm1 and rm2 share the same screen resolution', () => {
-    expect(DEVICES.rm1.portraitWidth).toBe(1404)
-    expect(DEVICES.rm1.portraitHeight).toBe(1872)
-    expect(DEVICES.rm2.portraitWidth).toBe(DEVICES.rm1.portraitWidth)
-    expect(DEVICES.rm2.portraitHeight).toBe(DEVICES.rm1.portraitHeight)
+  it('rm has 1404×1872 screen resolution', () => {
+    expect(DEVICES.rm.portraitWidth).toBe(1404)
+    expect(DEVICES.rm.portraitHeight).toBe(1872)
   })
 
-  it('rmPP has a smaller screen', () => {
-    expect(DEVICES.rmPP.portraitWidth).toBe(954)
-    expect(DEVICES.rmPP.portraitHeight).toBe(1696)
+  it('rmPP has a 1620×2160 screen', () => {
+    expect(DEVICES.rmPP.portraitWidth).toBe(1620)
+    expect(DEVICES.rmPP.portraitHeight).toBe(2160)
+  })
+
+  it('rmPPM has a 954×1696 screen', () => {
+    expect(DEVICES.rmPPM.portraitWidth).toBe(954)
+    expect(DEVICES.rmPPM.portraitHeight).toBe(1696)
   })
 
   it('all devices are portrait by default (height > width)', () => {
@@ -241,69 +244,84 @@ describe('DEVICES', () => {
 // ─── deviceBuiltins ───────────────────────────────────────────────────────────
 
 describe('deviceBuiltins', () => {
-  // ── rm2 (default) ──────────────────────────────────────────────────────────
+  // ── rm (default) ───────────────────────────────────────────────────────────
 
-  it('rm2 portrait has correct dimensions (default device)', () => {
+  it('rm portrait has correct dimensions (default device)', () => {
     const b = deviceBuiltins('portrait')
     expect(b.templateWidth).toBe(1404)
     expect(b.templateHeight).toBe(1872)
   })
 
-  it('rm2 landscape swaps width and height', () => {
+  it('rm landscape swaps width and height', () => {
     const b = deviceBuiltins('landscape')
     expect(b.templateWidth).toBe(1872)
     expect(b.templateHeight).toBe(1404)
   })
 
-  it('rm2 portrait paperOriginX is negative (left of viewport)', () => {
+  it('rm portrait paperOriginX is negative (left of viewport)', () => {
     const b = deviceBuiltins('portrait')
     // 1404/2 - 1872/2 = -234
     expect(b.paperOriginX).toBe(-234)
   })
 
-  it('rm2 landscape paperOriginX is positive (inset from left)', () => {
+  it('rm landscape paperOriginX is positive (inset from left)', () => {
     const b = deviceBuiltins('landscape')
     // 1872/2 - 1404/2 = 234
     expect(b.paperOriginX).toBe(234)
   })
 
-  // ── rm1 ────────────────────────────────────────────────────────────────────
+  // ── rmPP (Paper Pro) ─────────────────────────────────────────────────────
 
-  it('rm1 portrait matches rm2 (same screen resolution)', () => {
-    const rm1 = deviceBuiltins('portrait', 'rm1')
-    const rm2 = deviceBuiltins('portrait', 'rm2')
-    expect(rm1.templateWidth).toBe(rm2.templateWidth)
-    expect(rm1.templateHeight).toBe(rm2.templateHeight)
-    expect(rm1.paperOriginX).toBe(rm2.paperOriginX)
+  it('rmPP portrait: width=1620, height=2160', () => {
+    const b = deviceBuiltins('portrait', 'rmPP')
+    expect(b.templateWidth).toBe(1620)
+    expect(b.templateHeight).toBe(2160)
   })
 
-  // ── rmPP ───────────────────────────────────────────────────────────────────
+  it('rmPP landscape: width=2160, height=1620', () => {
+    const b = deviceBuiltins('landscape', 'rmPP')
+    expect(b.templateWidth).toBe(2160)
+    expect(b.templateHeight).toBe(1620)
+  })
 
-  it('rmPP portrait: width=954, height=1696', () => {
+  it('rmPP portrait paperOriginX = 1620/2 - 2160/2 = -270', () => {
     const b = deviceBuiltins('portrait', 'rmPP')
+    expect(b.paperOriginX).toBe(1620 / 2 - 2160 / 2)
+    expect(b.paperOriginX).toBe(-270)
+  })
+
+  it('rmPP landscape paperOriginX = 2160/2 - 1620/2 = 270', () => {
+    const b = deviceBuiltins('landscape', 'rmPP')
+    expect(b.paperOriginX).toBe(270)
+  })
+
+  // ── rmPPM (Paper Pro Move) ──────────────────────────────────────────────
+
+  it('rmPPM portrait: width=954, height=1696', () => {
+    const b = deviceBuiltins('portrait', 'rmPPM')
     expect(b.templateWidth).toBe(954)
     expect(b.templateHeight).toBe(1696)
   })
 
-  it('rmPP landscape: width=1696, height=954', () => {
-    const b = deviceBuiltins('landscape', 'rmPP')
+  it('rmPPM landscape: width=1696, height=954', () => {
+    const b = deviceBuiltins('landscape', 'rmPPM')
     expect(b.templateWidth).toBe(1696)
     expect(b.templateHeight).toBe(954)
   })
 
-  it('rmPP portrait paperOriginX = 954/2 - 1696/2 = -371', () => {
-    const b = deviceBuiltins('portrait', 'rmPP')
+  it('rmPPM portrait paperOriginX = 954/2 - 1696/2 = -371', () => {
+    const b = deviceBuiltins('portrait', 'rmPPM')
     expect(b.paperOriginX).toBe(954 / 2 - 1696 / 2)
     expect(b.paperOriginX).toBe(-371)
   })
 
-  it('rmPP templateWidth < mobileMaxWidth=1000 → hits mobile layout branch', () => {
-    const b = deviceBuiltins('portrait', 'rmPP')
+  it('rmPPM templateWidth < mobileMaxWidth=1000 → hits mobile layout branch', () => {
+    const b = deviceBuiltins('portrait', 'rmPPM')
     expect(b.templateWidth).toBeLessThan(1000)
   })
 
-  it('rmPP landscape paperOriginX = 1696/2 - 954/2 = 371', () => {
-    const b = deviceBuiltins('landscape', 'rmPP')
+  it('rmPPM landscape paperOriginX = 1696/2 - 954/2 = 371', () => {
+    const b = deviceBuiltins('landscape', 'rmPPM')
     expect(b.paperOriginX).toBe(371)
   })
 
@@ -311,13 +329,13 @@ describe('deviceBuiltins', () => {
     expect(() => deviceBuiltins('portrait', 'rm99' as DeviceId)).toThrow()
   })
 
-  it('portrait rm2 includes parentWidth === templateWidth and parentHeight === templateHeight', () => {
+  it('portrait rm includes parentWidth === templateWidth and parentHeight === templateHeight', () => {
     const b = deviceBuiltins('portrait')
     expect(b.parentWidth).toBe(b.templateWidth)
     expect(b.parentHeight).toBe(b.templateHeight)
   })
 
-  it('landscape rm2 includes parentWidth === templateWidth and parentHeight === templateHeight', () => {
+  it('landscape rm includes parentWidth === templateWidth and parentHeight === templateHeight', () => {
     const b = deviceBuiltins('landscape')
     expect(b.parentWidth).toBe(b.templateWidth)
     expect(b.parentHeight).toBe(b.templateHeight)

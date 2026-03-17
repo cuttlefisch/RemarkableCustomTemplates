@@ -38,7 +38,7 @@ describe('output format', () => {
 
 // ─── Icon dimensions — portrait rm2 ──────────────────────────────────────────
 
-describe('icon dimensions — portrait rm2', () => {
+describe('icon dimensions — portrait rm', () => {
   it('SVG has width="150" height="200"', () => {
     const svg = decode(generateTemplateIcon(makeTemplate()))
     expect(svg).toContain('width="150"')
@@ -53,7 +53,7 @@ describe('icon dimensions — portrait rm2', () => {
 
 // ─── Icon dimensions — landscape rm2 ─────────────────────────────────────────
 
-describe('icon dimensions — landscape rm2', () => {
+describe('icon dimensions — landscape rm', () => {
   it('SVG has width="200" height="150"', () => {
     const svg = decode(generateTemplateIcon(makeTemplate({ orientation: 'landscape' })))
     expect(svg).toContain('width="200"')
@@ -69,8 +69,17 @@ describe('icon dimensions — landscape rm2', () => {
 // ─── Icon dimensions — rmPP ───────────────────────────────────────────────────
 
 describe('icon dimensions — rmPP', () => {
-  it('portrait viewBox is "0 0 954 1696"', () => {
+  it('portrait viewBox is "0 0 1620 2160"', () => {
     const svg = decode(generateTemplateIcon(makeTemplate(), 'rmPP'))
+    expect(svg).toContain('viewBox="0 0 1620 2160"')
+  })
+})
+
+// ─── Icon dimensions — rmPPM ──────────────────────────────────────────────────
+
+describe('icon dimensions — rmPPM', () => {
+  it('portrait viewBox is "0 0 954 1696"', () => {
+    const svg = decode(generateTemplateIcon(makeTemplate(), 'rmPPM'))
     expect(svg).toContain('viewBox="0 0 954 1696"')
   })
 })

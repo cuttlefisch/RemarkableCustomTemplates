@@ -41,7 +41,7 @@ function resolveColor(value: string | undefined, colorConstants: Record<string, 
  * Build a minimal SVG string rendering the template, then return it as a
  * base64 string (suitable for embedding in the `iconData` field).
  */
-export function generateTemplateIcon(template: RemarkableTemplate, deviceId: DeviceId = 'rm2'): string {
+export function generateTemplateIcon(template: RemarkableTemplate, deviceId: DeviceId = 'rm'): string {
   const builtins = deviceBuiltins(template.orientation, deviceId)
   const constants = resolveConstants(template.constants, builtins)
   const { templateWidth, templateHeight } = builtins

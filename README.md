@@ -99,7 +99,7 @@ pnpm lint          # ESLint
 ### Features
 
 - **Template browser** — sidebar lists all templates, filterable by category
-- **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872) and Paper Pro (954×1696)
+- **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872), Paper Pro (1620×2160), and Paper Pro Move (954×1696)
 - **SVG canvas renderer** — faithfully renders groups, paths, and text items with full expression evaluation and tile repetition
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files
 - **Custom templates** — create from scratch or fork any existing template; saved as `.template` files via the dev server API
@@ -151,8 +151,9 @@ templates.json (registry)
 
 | Device | Portrait W×H | Landscape W×H | `paperOriginX` (portrait) |
 |--------|-------------|---------------|--------------------------|
-| rm1, rm2 | 1404×1872 | 1872×1404 | −234 |
-| rmPP (Paper Pro) | 954×1696 | 1696×954 | −371 |
+| rm (RM 1 & 2) | 1404×1872 | 1872×1404 | −234 |
+| rmPP (Paper Pro) | 1620×2160 | 2160×1620 | −270 |
+| rmPPM (Paper Pro Move) | 954×1696 | 1696×954 | −371 |
 
 `paperOriginX = templateWidth/2 − templateHeight/2`
 

@@ -62,8 +62,9 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 
 | Device | Portrait W×H | Notes |
 |--------|-------------|-------|
-| rm1, rm2 | 1404×1872 | same pixel dimensions |
-| rmPP (Paper Pro) | 954×1696 | |
+| rm (RM 1 & 2) | 1404×1872 | same pixel dimensions |
+| rmPP (Paper Pro) | 1620×2160 | |
+| rmPPM (Paper Pro Move) | 954×1696 | |
 
 `paperOriginX = templateWidth/2 - templateHeight/2` (negative in portrait, positive in landscape).
 

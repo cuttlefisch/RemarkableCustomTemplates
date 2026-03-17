@@ -355,3 +355,12 @@ export function mergeCategories(cats: string[]): string[] {
 export function mergeRegistries(main: TemplateRegistry, custom: TemplateRegistry): TemplateRegistry {
   return { templates: [...custom.templates, ...main.templates] }
 }
+
+/** Look up the US College icon from the loaded registry, falling back to the known glyph. */
+export function getCollegeIconCode(registry: TemplateRegistry | null, landscape: boolean): string {
+  const entries = registry?.templates ?? []
+  const match = entries.find(t => t.name === 'US College' && !!(t.landscape) === landscape)
+  if (match) return match.iconCode
+  const any = entries.find(t => t.name === 'US College')
+  return any?.iconCode ?? '\ue9d8'
+}
