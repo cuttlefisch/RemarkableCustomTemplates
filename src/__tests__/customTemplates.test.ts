@@ -748,4 +748,42 @@ describe('mergeRegistries', () => {
     expect(main.templates).toHaveLength(1)
     expect(custom.templates).toHaveLength(1)
   })
+
+  it('deduplicates by rmMethodsId, keeping the first (custom) entry', () => {
+    const custom: TemplateRegistry = { templates: [{
+      name: 'My Template', filename: 'custom/my-template', iconCode: 'e001',
+      categories: ['Custom'], rmMethodsId: 'abc-123',
+    }] }
+    const main: TemplateRegistry = { templates: [{
+      name: 'My Template (methods)', filename: 'methods/abc-123', iconCode: 'e001',
+      categories: ['Lines'], rmMethodsId: 'abc-123',
+    }] }
+    const merged = mergeRegistries(main, custom)
+    expect(merged.templates).toHaveLength(1)
+    expect(merged.templates[0].name).toBe('My Template')
+  })
+
+  it('keeps entries without rmMethodsId even if names collide', () => {
+    const custom: TemplateRegistry = { templates: [{
+      name: 'A', filename: 'custom/a', iconCode: 'e001', categories: ['Custom'],
+    }] }
+    const main: TemplateRegistry = { templates: [{
+      name: 'A', filename: 'a', iconCode: 'e001', categories: ['Lines'],
+    }] }
+    const merged = mergeRegistries(main, custom)
+    expect(merged.templates).toHaveLength(2)
+  })
+
+  it('keeps entries with different rmMethodsIds', () => {
+    const custom: TemplateRegistry = { templates: [{
+      name: 'A', filename: 'custom/a', iconCode: 'e001',
+      categories: ['Custom'], rmMethodsId: 'uuid-1',
+    }] }
+    const main: TemplateRegistry = { templates: [{
+      name: 'B', filename: 'methods/uuid-2', iconCode: 'e001',
+      categories: ['Lines'], rmMethodsId: 'uuid-2',
+    }] }
+    const merged = mergeRegistries(main, custom)
+    expect(merged.templates).toHaveLength(2)
+  })
 })

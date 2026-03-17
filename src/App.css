@@ -651,6 +651,10 @@ body {
   color: #4da3ff;
 }
 
+.cat-chip.source-chip {
+  border-style: dashed;
+}
+
 .filter-clear {
   background: none;
   border: none;

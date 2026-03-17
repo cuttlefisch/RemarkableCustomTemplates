@@ -103,8 +103,10 @@ export function DevicePage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const dateStr = new Date().toISOString().slice(0, 10)
-      a.download = `remarkable-backup-${dateStr}.zip`
+      const now = new Date()
+      const dateStr = now.toISOString().slice(0, 10)
+      const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '')
+      a.download = `remarkable-backup-${dateStr}_${timeStr}.zip`
       a.click()
       URL.revokeObjectURL(url)
       setStatus('Backup downloaded successfully.')

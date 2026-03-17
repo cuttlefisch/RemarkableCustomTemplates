@@ -56,6 +56,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOrientation, setFilterOrientation] = useState<'all' | 'portrait' | 'landscape'>('all')
+  const [filterSource, setFilterSource] = useState<'methods' | 'official' | null>(null)
 
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -116,6 +117,8 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       if (filterCategory && !t.categories.includes(filterCategory)) return false
       if (filterOrientation === 'portrait' && t.landscape === true) return false
       if (filterOrientation === 'landscape' && t.landscape !== true) return false
+      if (filterSource === 'methods' && !t.origin) return false
+      if (filterSource === 'official' && (t.isCustom || t.origin === 'custom-methods' || t.categories.includes('Debug'))) return false
       return true
     })
     .sort((a, b) => {
@@ -294,7 +297,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
   }
 
-  const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all')
+  const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all' || filterSource)
 
   return (
     <div className={`app-content${editorOpen ? ' editing' : ''}`}>
@@ -404,6 +407,16 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
               >LS</button>
             </div>
           </div>
+          <div className="cat-chips">
+            <button
+              className={`cat-chip source-chip${filterSource === 'official' ? ' active' : ''}`}
+              onClick={() => setFilterSource(filterSource === 'official' ? null : 'official')}
+            >Official</button>
+            <button
+              className={`cat-chip source-chip${filterSource === 'methods' ? ' active' : ''}`}
+              onClick={() => setFilterSource(filterSource === 'methods' ? null : 'methods')}
+            >Methods</button>
+          </div>
           {allCategories.length > 0 && (
             <div className="cat-chips">
               {allCategories.map(cat => (
@@ -420,7 +433,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
           {anyFilterActive && (
             <button
               className="filter-clear"
-              onClick={() => { setSearchQuery(''); setFilterCategory(null); setFilterOrientation('all') }}
+              onClick={() => { setSearchQuery(''); setFilterCategory(null); setFilterOrientation('all'); setFilterSource(null) }}
             >× Clear filters</button>
           )}
         </div>

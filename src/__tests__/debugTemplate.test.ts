@@ -43,10 +43,11 @@ describe('Debug.template', () => {
     it('border item exists', () => {
       expect(template.items.find(i => i.id === 'border')).toBeDefined()
     })
-    it('title uses textWidth centering', () => {
+    it('title uses textWidth centering and contains orientation', () => {
       const t = template.items.find(i => i.id === 'title') as TextItem
       expect(t?.type).toBe('text')
       expect((t?.position.x as string)).toContain('textWidth')
+      expect(t?.text).toContain('Portrait')
     })
     it('has all four color ramp sections (gs, r, g, b swatches)', () => {
       expect(template.items.find(i => i.id === 'gs-0')).toBeDefined()
@@ -107,6 +108,12 @@ describe('Debug.template', () => {
       const sizes = new Set(texts().map(t => t.fontSize))
       expect(sizes.size).toBeGreaterThanOrEqual(4)
     })
+    it('bz-pentagon exists with fillColor #00cc00 and Z command', () => {
+      const pent = template.items.find(i => i.id === 'bz-pentagon') as PathItem
+      expect(pent).toBeDefined()
+      expect(pent.fillColor).toBe('#00cc00')
+      expect(pent.data).toContain('Z')
+    })
   })
 
   describe('resolveStringConstants', () => {
@@ -126,6 +133,15 @@ describe('Debug Landscape.template', () => {
   it('has group with columns="infinite"', () => {
     const groups = lsTemplate.items.filter(i => i.type === 'group') as GroupItem[]
     expect(groups.some(g => g.repeat?.columns === 'infinite')).toBe(true)
+  })
+  it('title contains "Landscape"', () => {
+    const t = lsTemplate.items.find(i => i.id === 'title') as TextItem
+    expect(t?.text).toContain('Landscape')
+  })
+  it('bz-pentagon exists with fillColor #00cc00', () => {
+    const pent = lsTemplate.items.find(i => i.id === 'bz-pentagon') as PathItem
+    expect(pent).toBeDefined()
+    expect(pent.fillColor).toBe('#00cc00')
   })
   it('vlines paperOriginX = 234 in landscape', () => {
     const ctx = resolveConstants(lsTemplate.constants, deviceBuiltins('landscape'))

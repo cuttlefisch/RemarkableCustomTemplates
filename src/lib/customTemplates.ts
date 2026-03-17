@@ -351,9 +351,17 @@ export function mergeCategories(cats: string[]): string[] {
   return ['Custom', ...cats.filter(c => c !== 'Custom')]
 }
 
-/** Prepend custom entries before main entries. Does not mutate inputs. */
+/** Prepend custom entries before main entries, deduplicating by rmMethodsId. Does not mutate inputs. */
 export function mergeRegistries(main: TemplateRegistry, custom: TemplateRegistry): TemplateRegistry {
-  return { templates: [...custom.templates, ...main.templates] }
+  const all = [...custom.templates, ...main.templates]
+  const seen = new Set<string>()
+  const deduped = all.filter(entry => {
+    if (!entry.rmMethodsId) return true
+    if (seen.has(entry.rmMethodsId)) return false
+    seen.add(entry.rmMethodsId)
+    return true
+  })
+  return { templates: deduped }
 }
 
 /** Look up the US College icon from the loaded registry, falling back to the known glyph. */
