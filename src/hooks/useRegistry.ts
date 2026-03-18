@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, createContext, useContext } from 'react'
 import { parseRegistry } from '../lib/registry'
 import { parseTemplate } from '../lib/parser'
 import { mergeCategories, mergeRegistries } from '../lib/customTemplates'
@@ -13,6 +13,7 @@ export interface RegistryState {
   officialTemplatesAvailable: boolean | null
   mergedRegistry: TemplateRegistry | null
   existingCustomNames: string[]
+  refreshRegistry: () => void
 }
 
 export const RegistryContext = createContext<RegistryState | null>(null)
@@ -28,6 +29,11 @@ export function useRegistry(): RegistryState {
   const [customRegistry, setCustomRegistry] = useState<TemplateRegistry>({ templates: [] })
   const [loadingRegistry, setLoadingRegistry] = useState(true)
   const [officialTemplatesAvailable, setOfficialTemplatesAvailable] = useState<boolean | null>(null)
+  const [fetchKey, setFetchKey] = useState(0)
+
+  const refreshRegistry = useCallback(() => {
+    setFetchKey(k => k + 1)
+  }, [])
 
   useEffect(() => {
     const mainFetch = fetch('/templates/templates.json')
@@ -75,7 +81,7 @@ export function useRegistry(): RegistryState {
         console.error(`Failed to load registry: ${String(e)}`)
         setLoadingRegistry(false)
       })
-  }, [])
+  }, [fetchKey])
 
   const mergedRegistry = registry ? mergeRegistries(registry, customRegistry) : null
   const existingCustomNames = customRegistry.templates.map(t => t.name)
@@ -89,5 +95,6 @@ export function useRegistry(): RegistryState {
     officialTemplatesAvailable,
     mergedRegistry,
     existingCustomNames,
+    refreshRegistry,
   }
 }

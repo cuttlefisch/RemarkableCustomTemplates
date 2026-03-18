@@ -12,6 +12,12 @@ public/templates/custom/
 # Methods templates pulled from device
 public/templates/methods/
 
+# Server data (device config, SSH keys)
+data/
+
+# Server build output
+dist-server/
+
 # Node / web
 node_modules/
 dist/
