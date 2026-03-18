@@ -117,7 +117,7 @@ export function DeviceBackupsCard({ configured, onStatus, onError }: Props) {
         <div className="device-op-section">
           <h3 className="device-op-section-title">Local Backups</h3>
           <p className="device-card-desc">
-            Download a backup of all custom and debug templates, or restore from a previous backup ZIP.
+            Download a backup of all custom and debug templates, registries, and deployment manifests needed to restore your device to its current state. Restore from a previous backup ZIP to pick up where you left off.
           </p>
           <div className="device-card-btn-row">
             <button className="device-card-btn" onClick={handleBackup}>

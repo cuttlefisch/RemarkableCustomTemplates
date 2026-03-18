@@ -15,6 +15,7 @@ export interface BuildMethodsRegistryOptions {
   outputDir: string
   manifestPath?: string
   deployedManifestPath?: string
+  deviceManifestUuids?: string[]
 }
 
 export interface BuildMethodsRegistryResult {
@@ -28,7 +29,7 @@ function inferOrientation(templateBody: Record<string, unknown>): string {
 }
 
 export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): Promise<BuildMethodsRegistryResult> {
-  const { tempDir, outputDir, manifestPath, deployedManifestPath } = opts
+  const { tempDir, outputDir, manifestPath, deployedManifestPath, deviceManifestUuids } = opts
 
   // Collect known custom UUIDs from manifests
   const customUuids = new Set<string>()
@@ -37,6 +38,9 @@ export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): P
   }
   if (deployedManifestPath) {
     for (const uuid of readManifestUuids(deployedManifestPath)) customUuids.add(uuid)
+  }
+  if (deviceManifestUuids) {
+    for (const uuid of deviceManifestUuids) customUuids.add(uuid)
   }
 
   // Find all metadata files

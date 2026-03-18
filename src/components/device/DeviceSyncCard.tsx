@@ -287,6 +287,7 @@ function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSy
 
 export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
+  const [showPullHelp, setShowPullHelp] = useState(false)
   const syncStatus = useSyncStatus()
   const pullOfficial = useDeviceOp('/api/device/pull-official', { onSuccess: onSyncComplete })
   const pullMethods = useDeviceOp('/api/device/pull-methods', { onSuccess: onSyncComplete })
@@ -335,6 +336,21 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
             <div className="device-op-section">
               <h3 className="device-op-section-title">Pull from Device</h3>
               <p className="device-op-desc">Download templates from your device to browse or use as a starting point for custom templates.</p>
+              <button
+                className="device-form-help-toggle"
+                onClick={() => setShowPullHelp(!showPullHelp)}
+                style={{ marginBottom: 8 }}
+              >
+                {showPullHelp ? 'Hide details' : 'What does pulling do?'}
+              </button>
+              {showPullHelp && (
+                <div className="device-form-help" style={{ marginBottom: 12 }}>
+                  <p><strong>Pull Classic</strong> downloads single-file templates from <code>/usr/share/remarkable/templates/</code> on the device.</p>
+                  <p><strong>Pull Methods</strong> downloads all methods-format templates from the device, including both official reMarkable templates and any custom templates that were deployed by this app (or another instance).</p>
+                  <p>Custom templates previously deployed via this app are automatically detected and tagged as "Methods (custom)". This works even when connecting to a new device that was set up by another instance of the app.</p>
+                  <p>Pulled templates appear as read-only in the sidebar. To edit one, open it and use <strong>"Save as New Template"</strong> to fork it into your custom collection.</p>
+                </div>
+              )}
               <div className="device-card-btn-row">
                 <OpButton
                   label="Pull Classic Templates"
@@ -371,7 +387,10 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
                 />
               </div>
               <p className="device-card-hint">
-                Classic deploys single-file templates to the system partition — no cloud sync, wiped on firmware updates. rm_methods is recommended.
+                rm_methods (recommended) syncs across paired devices and survives firmware updates. Classic deploys to the system partition — no cloud sync, wiped on updates.
+              </p>
+              <p className="device-card-hint">
+                Deploying via rm_methods will remove any custom templates from the device that are no longer in your local collection. Official reMarkable methods templates are always preserved.
               </p>
             </div>
 

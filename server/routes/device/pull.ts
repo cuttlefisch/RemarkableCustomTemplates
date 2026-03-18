@@ -13,6 +13,7 @@ import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pullDirectory, pullFile } from '../../lib/sftp.ts'
 import { buildMethodsRegistry } from '../../lib/buildMethodsRegistry.ts'
+import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
@@ -82,6 +83,12 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
           // Template file may not exist
         }
       }
+
+      // Read device manifest for custom UUID detection before closing connection
+      const deviceManifest = await readDeviceManifest(sftp)
+      const deviceManifestUuids = deviceManifest
+        ? parseManifestUuids(JSON.stringify(deviceManifest))
+        : []
       client.end()
 
       // Build methods registry from pulled files
@@ -97,6 +104,7 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         outputDir: config.methodsDir,
         manifestPath,
         deployedManifestPath,
+        deviceManifestUuids,
       })
 
       // Cleanup temp dir

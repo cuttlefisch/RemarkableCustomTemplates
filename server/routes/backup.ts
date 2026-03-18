@@ -55,6 +55,13 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
       }
     }
 
+    // Include deployed manifest for device state tracking
+    if (existsSync(config.rmMethodsDeployedManifest)) {
+      try {
+        fileMap['manifests/.deployed-manifest'] = strToU8(readFileSync(config.rmMethodsDeployedManifest, 'utf8'))
+      } catch { /* skip if unreadable */ }
+    }
+
     const zipped = zipSync(fileMap)
     const now = new Date()
     const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -189,6 +196,15 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
           writeFileSync(config.debugRegistry, JSON.stringify(existingDebugReg, null, 2), 'utf8')
         }
       }
+    }
+
+    // Restore deployed manifest if present in backup
+    const deployedManifestData = files['manifests/.deployed-manifest']
+    if (deployedManifestData) {
+      try {
+        mkdirSync(config.rmMethodsBackupDir, { recursive: true })
+        writeFileSync(config.rmMethodsDeployedManifest, Buffer.from(deployedManifestData))
+      } catch { /* best effort */ }
     }
 
     return reply.send({ ok: true, added, skipped, warnings: validation.warnings })
