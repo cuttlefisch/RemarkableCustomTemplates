@@ -26,9 +26,9 @@ function useDeviceOp(url: string, confirmMsg?: string) {
         const restoredFrom = data.restoredFrom as string | undefined
         const msg =
           message ??
-          (steps ? steps.join(' → ') : '') ||
+          ((steps ? steps.join(' → ') : '') ||
           (count !== undefined ? `Pulled ${count} templates` : '') ||
-          (restoredFrom ? `Restored from ${restoredFrom}` : 'Done')
+          (restoredFrom ? `Restored from ${restoredFrom}` : 'Done'))
         setResult({ ok: true, message: msg, steps })
       }
     } catch (e) {
