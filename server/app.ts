@@ -20,6 +20,8 @@ import devicePullRoutes from './routes/device/pull.ts'
 import deviceDeployRoutes from './routes/device/deploy.ts'
 import deviceRollbackRoutes from './routes/device/rollback.ts'
 import deviceBackupRoutes from './routes/device/backups.ts'
+import deviceRemoveAllRoutes from './routes/device/removeAll.ts'
+import deviceSyncStatusRoutes from './routes/device/syncStatus.ts'
 
 export async function createApp(config: ServerConfig) {
   const app = Fastify({
@@ -48,6 +50,8 @@ export async function createApp(config: ServerConfig) {
   deviceDeployRoutes(app, config)
   deviceRollbackRoutes(app, config)
   deviceBackupRoutes(app, config)
+  deviceRemoveAllRoutes(app, config)
+  deviceSyncStatusRoutes(app, config)
 
   // In production, serve the built frontend (dist/ is at the app root, not in dataDir)
   if (config.production) {

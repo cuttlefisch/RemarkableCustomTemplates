@@ -149,3 +149,13 @@ export function readRemoteFile(sftp: SFTPWrapper, remotePath: string): Promise<s
     stream.on('error', reject)
   })
 }
+
+/** Write a string to a remote file. */
+export function writeRemoteFile(sftp: SFTPWrapper, remotePath: string, content: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const stream = sftp.createWriteStream(remotePath, { encoding: 'utf8' })
+    stream.on('close', () => resolve())
+    stream.on('error', reject)
+    stream.end(content)
+  })
+}

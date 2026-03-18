@@ -10,13 +10,19 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from
 import { resolve } from 'node:path'
 import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
-import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
-import { readManifestUuids, diffManifestUuids } from '../../lib/manifestUuids.ts'
+import { getSftp, pushDirectory, removeFiles, pullFile } from '../../lib/sftp.ts'
+import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { buildRmMethodsDist, writeRmMethodsDist } from '../../lib/buildRmMethodsDist.ts'
 import { buildClassicDist, writeClassicDist } from '../../lib/buildClassicDist.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
+import {
+  RM_METHODS_PATH,
+  readDeviceManifest,
+  writeDeviceManifest,
+  parseManifestUuids,
+  mergeDeployedUuids,
+} from '../../lib/deviceManifest.ts'
 
-const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
 
 function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
@@ -46,6 +52,14 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       const distDir = config.rmMethodsDistDir
       const manifestPath = resolve(distDir, '.manifest')
 
+      // Single SSH connection for entire operation
+      const client = await connect(deviceConfig)
+      const sftp = await getSftp(client)
+
+      // Read device manifest for orphan tracking
+      const deviceManifest = await readDeviceManifest(sftp)
+      const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
+
       // Backup current deployment
       mkdirSync(config.rmMethodsBackupDir, { recursive: true })
       if (!existsSync(config.rmMethodsOriginalBackup)) {
@@ -61,42 +75,36 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
         copyFileSync(config.rmMethodsDeployedManifest, resolve(backupDir, '.manifest'))
 
         // Pull deployed files for backup
-        const client = await connect(deviceConfig)
-        const sftp = await getSftp(client)
-        const uuids = readManifestUuids(config.rmMethodsDeployedManifest)
-        for (const uuid of uuids) {
+        const localUuids = readManifestUuids(config.rmMethodsDeployedManifest)
+        const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
+        for (const uuid of allUuids) {
           for (const ext of ['.template', '.metadata', '.content']) {
             try {
-              const { pullFile: pullOneFile } = await import('../../lib/sftp.ts')
-              await pullOneFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(backupDir, `${uuid}${ext}`))
+              await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(backupDir, `${uuid}${ext}`))
             } catch { /* file may not exist */ }
           }
         }
-        client.end()
-        steps.push(`Backed up ${uuids.length} templates`)
+        steps.push(`Backed up ${allUuids.length} templates`)
       }
 
-      // Remove orphaned templates
-      if (existsSync(config.rmMethodsDeployedManifest)) {
-        const removed = diffManifestUuids(config.rmMethodsDeployedManifest, manifestPath)
-        if (removed.length > 0) {
-          const client = await connect(deviceConfig)
-          const sftp = await getSftp(client)
-          const filesToRemove = removed.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
-          await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
-          client.end()
-          steps.push(`Removed ${removed.length} orphaned templates`)
-        }
+      // Remove orphaned templates (merged from local + device manifests)
+      const localUuids = readManifestUuids(config.rmMethodsDeployedManifest)
+      const allPreviousUuids = mergeDeployedUuids(localUuids, deviceUuids)
+      const newUuids = new Set(readManifestUuids(manifestPath))
+      const orphans = allPreviousUuids.filter(uuid => !newUuids.has(uuid))
+      if (orphans.length > 0) {
+        const filesToRemove = orphans.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
+        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
+        steps.push(`Removed ${orphans.length} orphaned templates`)
       }
 
       // Push new templates
-      const client = await connect(deviceConfig)
-      const sftp = await getSftp(client)
       const pushed = await pushDirectory(sftp, distDir, RM_METHODS_PATH, f => f !== '.manifest')
       steps.push(`Pushed ${pushed.length} files`)
 
-      // Update deployed manifest
+      // Update deployed manifest (local cache + device)
       copyFileSync(manifestPath, config.rmMethodsDeployedManifest)
+      await writeDeviceManifest(sftp, buildResult.manifest)
 
       // Restart xochitl
       await exec(client, 'systemctl restart xochitl')

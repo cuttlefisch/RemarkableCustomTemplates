@@ -12,10 +12,16 @@ import { resolve } from 'node:path'
 import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
-import { readManifestUuids, diffManifestUuids } from '../../lib/manifestUuids.ts'
+import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
-
-const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
+import {
+  RM_METHODS_PATH,
+  readDeviceManifest,
+  writeDeviceManifest,
+  removeDeviceManifest,
+  parseManifestUuids,
+  mergeDeployedUuids,
+} from '../../lib/deviceManifest.ts'
 
 function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
   try {
@@ -58,22 +64,31 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
+      // Read device manifest for merged orphan tracking
+      const deviceManifest = await readDeviceManifest(sftp)
+      const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
+      const localUuids = existsSync(config.rmMethodsDeployedManifest)
+        ? readManifestUuids(config.rmMethodsDeployedManifest)
+        : []
+      const allCurrentUuids = mergeDeployedUuids(localUuids, deviceUuids)
+
       // Remove templates added since backup
-      if (existsSync(config.rmMethodsDeployedManifest)) {
-        const removed = diffManifestUuids(config.rmMethodsDeployedManifest, latestManifest)
-        if (removed.length > 0) {
-          const filesToRemove = removed.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
-          await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
-          steps.push(`Removed ${removed.length} templates added since backup`)
-        }
+      const backupUuids = new Set(readManifestUuids(latestManifest))
+      const orphans = allCurrentUuids.filter(uuid => !backupUuids.has(uuid))
+      if (orphans.length > 0) {
+        const filesToRemove = orphans.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
+        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
+        steps.push(`Removed ${orphans.length} templates added since backup`)
       }
 
       // Push backup files
       const pushed = await pushDirectory(sftp, latest, RM_METHODS_PATH, f => f !== '.manifest')
       steps.push(`Restored ${pushed.length} files from backup`)
 
-      // Update deployed manifest
+      // Update deployed manifest (local + device)
       copyFileSync(latestManifest, config.rmMethodsDeployedManifest)
+      const backupManifestContent = JSON.parse(readFileSync(latestManifest, 'utf8'))
+      await writeDeviceManifest(sftp, backupManifestContent)
 
       // Restart
       await exec(client, 'systemctl restart xochitl')
@@ -103,15 +118,24 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
-      // Remove all deployed templates
-      if (existsSync(config.rmMethodsDeployedManifest)) {
-        const uuids = readManifestUuids(config.rmMethodsDeployedManifest)
-        if (uuids.length > 0) {
-          const filesToRemove = uuids.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
-          await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
-          steps.push(`Removed ${uuids.length} deployed templates`)
-        }
+      // Merge local + device manifest UUIDs for complete removal
+      const deviceManifest = await readDeviceManifest(sftp)
+      const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
+      const localUuids = existsSync(config.rmMethodsDeployedManifest)
+        ? readManifestUuids(config.rmMethodsDeployedManifest)
+        : []
+      const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
+
+      if (allUuids.length > 0) {
+        const filesToRemove = allUuids.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
+        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
+        steps.push(`Removed ${allUuids.length} deployed templates`)
       }
+
+      // Remove device manifest
+      try {
+        await removeDeviceManifest(sftp)
+      } catch { /* may not exist */ }
 
       // Copy original manifest to deployed
       const originalManifest = resolve(config.rmMethodsOriginalBackup, '.manifest')

@@ -3,7 +3,7 @@
  * Shared between the export endpoint (ZIP download) and deploy (writes to disk).
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ServerConfig } from '../config.ts'
@@ -117,10 +117,18 @@ export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
   return { files, manifest, templateCount: Object.keys(manifestTemplates).length }
 }
 
-/** Write the build result to rm-methods-dist/ on disk. */
+/** Write the build result to rm-methods-dist/ on disk, removing stale files. */
 export function writeRmMethodsDist(config: ServerConfig, result: RmMethodsBuildResult): void {
   mkdirSync(config.rmMethodsDistDir, { recursive: true })
   for (const [name, content] of Object.entries(result.files)) {
     writeFileSync(resolve(config.rmMethodsDistDir, name), content, 'utf8')
+  }
+
+  // Clean stale files not in the current build
+  const expectedFiles = new Set(Object.keys(result.files))
+  for (const file of readdirSync(config.rmMethodsDistDir)) {
+    if (!expectedFiles.has(file)) {
+      unlinkSync(resolve(config.rmMethodsDistDir, file))
+    }
   }
 }
