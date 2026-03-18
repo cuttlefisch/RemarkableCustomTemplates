@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { generateKeyPairSync } from 'node:crypto'
+import { utils as sshUtils } from 'ssh2'
 import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 
@@ -112,26 +113,28 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       const privateKeyPath = resolve(config.sshDir, 'id_remarkable')
       const publicKeyPath = resolve(config.sshDir, 'id_remarkable.pub')
 
-      const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+      // Generate key pair: OpenSSH format for ssh2 compatibility
+      const { privateKey } = generateKeyPairSync('rsa', {
         modulusLength: 4096,
         publicKeyEncoding: { type: 'spki', format: 'pem' },
-        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
       })
 
-      // Convert PEM public key to OpenSSH format for authorized_keys
-      // ssh2 can generate this for us via ssh-keygen style, but we'll use a simpler approach
+      // ssh2 needs PKCS#1 (RSA PRIVATE KEY) format — PKCS#8 is not supported
       writeFileSync(privateKeyPath, privateKey, { mode: 0o600 })
-      writeFileSync(publicKeyPath, publicKey)
 
-      // Connect with current auth (password) and append public key
+      // Use ssh2's parser to extract OpenSSH-format public key for authorized_keys
+      const parsed = sshUtils.parseKey(privateKey)
+      if (parsed instanceof Error) throw parsed
+      const pubBlob = (parsed as { getPublicSSH: () => Buffer }).getPublicSSH()
+      const opensshPubStr = `ssh-rsa ${pubBlob.toString('base64')} remarkable-templates`
+      writeFileSync(publicKeyPath, opensshPubStr + '\n')
+
+      // Connect with current auth (password) and install the public key
       const client = await connect(deviceConfig)
-
-      // Read the public key and format for authorized_keys
-      const pubKeyContent = readFileSync(publicKeyPath, 'utf8').trim()
-      const escapedPubKey = pubKeyContent.replace(/'/g, "'\\''")
+      const escapedPubKey = opensshPubStr.replace(/'/g, "'\\''")
 
       await exec(client, `mkdir -p /root/.ssh && chmod 700 /root/.ssh`)
-      // Append if not already present
       await exec(client, `grep -qF '${escapedPubKey}' /root/.ssh/authorized_keys 2>/dev/null || echo '${escapedPubKey}' >> /root/.ssh/authorized_keys`)
       await exec(client, `chmod 600 /root/.ssh/authorized_keys`)
       client.end()
