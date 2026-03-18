@@ -11,7 +11,7 @@ import type { FastifyInstance } from 'fastify'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { generateKeyPairSync } from 'node:crypto'
-import { utils as sshUtils } from 'ssh2'
+import ssh2 from 'ssh2'
 import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 
@@ -124,7 +124,7 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       writeFileSync(privateKeyPath, privateKey, { mode: 0o600 })
 
       // Use ssh2's parser to extract OpenSSH-format public key for authorized_keys
-      const parsed = sshUtils.parseKey(privateKey)
+      const parsed = ssh2.utils.parseKey(privateKey)
       if (parsed instanceof Error) throw parsed
       const pubBlob = (parsed as { getPublicSSH: () => Buffer }).getPublicSSH()
       const opensshPubStr = `ssh-rsa ${pubBlob.toString('base64')} remarkable-templates`
