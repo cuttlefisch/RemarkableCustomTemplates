@@ -23,9 +23,16 @@ body {
 
 /* ── App shell ────────────────────────────────────────────────────────────── */
 
-.app {
+.app-shell {
   display: flex;
+  flex-direction: column;
   height: 100vh;
+  overflow: hidden;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
   overflow: hidden;
 }
 
@@ -76,15 +83,39 @@ body {
 
 .device-selector {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 12px;
   border-bottom: 1px solid #2c2c2e;
   flex-shrink: 0;
 }
 
+.device-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.device-group-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #636366;
+  font-family: ui-monospace, monospace;
+}
+
+.device-group-buttons {
+  display: flex;
+  gap: 4px;
+}
+
 .device-btn {
   flex: 1;
-  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 6px;
   background: #2c2c2e;
   border: 1px solid #3a3a3c;
   border-radius: 4px;
@@ -94,6 +125,11 @@ body {
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.device-btn-label {
+  font-size: 9px;
+  line-height: 1;
 }
 
 .device-btn:hover {
@@ -439,7 +475,7 @@ body {
   overflow: hidden;
 }
 
-.app.editing .preview {
+.app-content.editing .preview {
   flex: 0 0 400px;
   max-width: 400px;
 }
@@ -613,6 +649,10 @@ body {
   background: #0a3466;
   border-color: #0a84ff;
   color: #4da3ff;
+}
+
+.cat-chip.source-chip {
+  border-style: dashed;
 }
 
 .filter-clear {

@@ -34,13 +34,13 @@ interface TemplateCanvasProps {
   template: RemarkableTemplate
   /** Optional CSS class applied to the root <svg> element. */
   className?: string
-  /** Device to render for. Defaults to 'rm2'. */
+  /** Device to render for. Defaults to 'rm'. */
   deviceId?: DeviceId
 }
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export function TemplateCanvas({ template, className, deviceId = 'rm2' }: TemplateCanvasProps): ReactElement {
+export function TemplateCanvas({ template, className, deviceId = 'rm' }: TemplateCanvasProps): ReactElement {
   const builtins = deviceBuiltins(template.orientation, deviceId)
   const constants = resolveConstants(template.constants, builtins)
   const { templateWidth, templateHeight } = builtins

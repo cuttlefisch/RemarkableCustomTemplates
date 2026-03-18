@@ -3,15 +3,21 @@
     {
       "name": "Debug",
       "filename": "debug/P Debug",
-      "iconCode": "\ue9d8",
-      "categories": ["Debug"]
+      "iconCode": "",
+      "categories": [
+        "Debug"
+      ],
+      "rmMethodsId": "bf51a1af-d203-40bc-9955-2e20ea848479"
     },
     {
       "name": "Debug Landscape",
       "filename": "debug/LS Debug Landscape",
-      "iconCode": "\ue9d8",
+      "iconCode": "",
       "landscape": true,
-      "categories": ["Debug"]
+      "categories": [
+        "Debug"
+      ],
+      "rmMethodsId": "f5e133a6-a51f-4793-9285-c707e8db9d9b"
     }
   ]
 }

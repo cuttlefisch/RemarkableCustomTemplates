@@ -2,22 +2,45 @@ import { defineConfig } from 'vitest/config'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdirSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { resolveStringConstants } from './src/lib/customTemplates'
+import { generateTemplateIcon } from './src/lib/iconGenerator'
+import {
+  templateContentHash,
+  resolveTemplateVersion,
+  buildRmMethodsMetadata,
+  type ManifestEntry,
+  type RmMethodsManifest,
+} from './src/lib/rmMethods'
+import { parseTemplate } from './src/lib/parser'
+import { buildBackupManifest, validateBackupContents, computeMergeActions } from './src/lib/backup'
+import { parseRegistry } from './src/lib/registry'
 import { resolve, sep } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { zipSync, strToU8 } from 'fflate'
+import { zipSync, unzipSync, strToU8 } from 'fflate'
 
 const OFFICIAL_DIR = resolve(__dirname, 'remarkable_official_templates')
 const CUSTOM_DIR = resolve(__dirname, 'public/templates/custom')
 const CUSTOM_REGISTRY = resolve(CUSTOM_DIR, 'custom-registry.json')
 const DEBUG_DIR = resolve(__dirname, 'public/templates/debug')
 const DEBUG_REGISTRY = resolve(DEBUG_DIR, 'debug-registry.json')
+const METHODS_DIR = resolve(__dirname, 'public/templates/methods')
+const METHODS_REGISTRY = resolve(METHODS_DIR, 'methods-registry.json')
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((res, rej) => {
     let data = ''
     req.on('data', (chunk: Buffer) => { data += chunk.toString() })
     req.on('end', () => res(data))
+    req.on('error', rej)
+  })
+}
+
+function readBinaryBody(req: IncomingMessage): Promise<Buffer> {
+  return new Promise((res, rej) => {
+    const chunks: Buffer[] = []
+    req.on('data', (chunk: Buffer) => chunks.push(chunk))
+    req.on('end', () => res(Buffer.concat(chunks)))
     req.on('error', rej)
   })
 }
@@ -78,6 +101,30 @@ const customTemplatesPlugin: Plugin = {
             return
           }
 
+          // Serve methods templates from public/templates/methods/
+          const methodsMatch = filename.match(/^methods\/(.+)$/)
+          if (methodsMatch) {
+            const methodsFile = methodsMatch[1]
+            let methodsPath: string
+            try {
+              methodsPath = resolve(METHODS_DIR, methodsFile)
+              assertWithin(METHODS_DIR, methodsPath)
+            } catch {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Invalid path' }))
+              return
+            }
+            const ct = methodsFile.endsWith('.json') ? 'application/json' : 'application/octet-stream'
+            if (existsSync(methodsPath)) {
+              res.writeHead(200, { 'Content-Type': ct })
+              res.end(readFileSync(methodsPath))
+              return
+            }
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Not found' }))
+            return
+          }
+
           let filePath: string
           try {
             filePath = resolve(OFFICIAL_DIR, filename)
@@ -88,18 +135,22 @@ const customTemplatesPlugin: Plugin = {
             return
           }
 
-          // templates.json: serve debug entries even without official templates
+          // templates.json: serve debug + methods + official entries
           if (filename === 'templates.json') {
             const debugTemplates = existsSync(DEBUG_REGISTRY)
               ? (JSON.parse(readFileSync(DEBUG_REGISTRY, 'utf8')) as { templates: unknown[] }).templates
               : []
-            if (existsSync(filePath)) {
-              const officialReg = JSON.parse(readFileSync(filePath, 'utf8')) as { templates: unknown[] }
+            const methodsTemplates = existsSync(METHODS_REGISTRY)
+              ? (JSON.parse(readFileSync(METHODS_REGISTRY, 'utf8')) as { templates: unknown[] }).templates
+              : []
+            const hasOfficial = existsSync(filePath)
+            const officialTemplates = hasOfficial
+              ? (JSON.parse(readFileSync(filePath, 'utf8')) as { templates: unknown[] }).templates
+              : []
+            const allTemplates = [...debugTemplates, ...methodsTemplates, ...officialTemplates]
+            if (allTemplates.length > 0 || hasOfficial) {
               res.writeHead(200, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ templates: [...debugTemplates, ...officialReg.templates] }, null, 2))
-            } else if (debugTemplates.length > 0) {
-              res.writeHead(200, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ templates: debugTemplates }, null, 2))
+              res.end(JSON.stringify({ templates: allTemplates }, null, 2))
             } else {
               res.writeHead(404, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({ error: 'Not found' }))
@@ -257,6 +308,332 @@ const customTemplatesPlugin: Plugin = {
         return
       }
 
+      // GET /api/export-rm-methods — zip custom + debug templates in rm_methods UUID format
+      if (req.method === 'GET' && url === '/api/export-rm-methods') {
+        try {
+          // Load registries (no official templates required)
+          let customReg: { templates: Array<{ filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string }> } = { templates: [] }
+          let debugReg:  { templates: Array<{ filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string }> } = { templates: [] }
+          try { customReg = JSON.parse(readFileSync(CUSTOM_REGISTRY, 'utf8')) as typeof customReg } catch { /* no custom */ }
+          try { debugReg  = JSON.parse(readFileSync(DEBUG_REGISTRY,  'utf8')) as typeof debugReg  } catch { /* no debug  */ }
+
+          // Ensure every entry has a persisted UUID; write back registries if any were added
+          let customDirty = false
+          let debugDirty  = false
+          for (const entry of customReg.templates) {
+            if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); customDirty = true }
+          }
+          for (const entry of debugReg.templates) {
+            if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); debugDirty = true }
+          }
+          if (customDirty) writeFileSync(CUSTOM_REGISTRY, JSON.stringify(customReg, null, 2), 'utf8')
+          if (debugDirty)  writeFileSync(DEBUG_REGISTRY,  JSON.stringify(debugReg,  null, 2), 'utf8')
+
+          // Load previous manifest for version tracking
+          const MANIFEST_PATH = resolve(__dirname, 'rm-methods-dist/.manifest')
+          let prevManifest: RmMethodsManifest = { exportedAt: '', templates: {} }
+          try { prevManifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as RmMethodsManifest } catch { /* first export */ }
+
+          const nowMs = String(Date.now())
+          const fileMap: Record<string, Uint8Array> = {}
+          const manifestTemplates: Record<string, ManifestEntry> = {}
+
+          function addEntry(
+            entry: { filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string },
+            templateDir: string,
+            filePrefix: string,
+          ) {
+            const uuid = entry.rmMethodsId!
+            const shortName = entry.filename.replace(new RegExp(`^${filePrefix}/`), '')
+            const tplPath = resolve(templateDir, `${shortName}.template`)
+            if (!existsSync(tplPath)) return
+
+            const rawContent = readFileSync(tplPath, 'utf8')
+            const resolvedContent = resolveStringConstants(rawContent)
+
+            // Parse template to generate icon and read fields
+            let iconData: string | undefined
+            let labels: string[]
+            try {
+              const tplObj = JSON.parse(resolvedContent) as Record<string, unknown>
+              const tpl = parseTemplate(tplObj)
+              iconData = generateTemplateIcon(tpl)
+              labels = (tpl.labels ?? tpl.categories ?? ['Custom']).filter((l: string) => l.length > 0)
+              if (labels.length === 0) labels = ['Custom']
+
+              // Embed iconData and labels into the template file
+              const enriched: Record<string, unknown> = { ...tplObj, iconData, labels }
+
+              // Compute content hash and resolve version
+              const contentHash = templateContentHash(enriched)
+              const prevEntry = prevManifest.templates[uuid]
+              const sourceVersion = typeof tplObj.templateVersion === 'string' ? tplObj.templateVersion : '1.0.0'
+              const resolvedVersion = resolveTemplateVersion({ prevEntry, currentHash: contentHash, sourceVersion })
+              enriched.templateVersion = resolvedVersion
+
+              fileMap[`${uuid}.template`] = strToU8(JSON.stringify(enriched, null, 2))
+
+              // Collect manifest entry
+              manifestTemplates[uuid] = {
+                name: entry.name,
+                templateVersion: resolvedVersion,
+                contentHash,
+                createdTime: prevEntry?.createdTime ?? nowMs,
+              }
+            } catch {
+              // If parsing fails, include the raw resolved content without enrichment
+              fileMap[`${uuid}.template`] = strToU8(resolvedContent)
+              labels = (entry.categories ?? ['Custom']).filter((l: string) => l.length > 0)
+              if (labels.length === 0) labels = ['Custom']
+
+              manifestTemplates[uuid] = {
+                name: entry.name,
+                templateVersion: '1.0.0',
+                contentHash: 'sha256:unknown',
+                createdTime: prevManifest.templates[uuid]?.createdTime ?? nowMs,
+              }
+            }
+
+            // {uuid}.metadata — official xochitl TemplateType format
+            const metadata = buildRmMethodsMetadata({
+              visibleName: entry.name,
+              createdTime: prevManifest.templates[uuid]?.createdTime ?? manifestTemplates[uuid]?.createdTime,
+              nowMs,
+            })
+            fileMap[`${uuid}.metadata`] = strToU8(JSON.stringify(metadata, null, 2))
+
+            // {uuid}.content
+            fileMap[`${uuid}.content`] = strToU8('{}')
+          }
+
+          for (const entry of customReg.templates) addEntry(entry, CUSTOM_DIR, 'custom')
+          for (const entry of debugReg.templates)  addEntry(entry, DEBUG_DIR,  'debug')
+
+          // Write JSON manifest into ZIP
+          const manifest: RmMethodsManifest = { exportedAt: nowMs, templates: manifestTemplates }
+          fileMap['.manifest'] = strToU8(JSON.stringify(manifest, null, 2))
+
+          const zipped = zipSync(fileMap)
+          res.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': 'attachment; filename="remarkable-rm-methods.zip"',
+            'Content-Length': String(zipped.length),
+          })
+          res.end(Buffer.from(zipped))
+        } catch (e) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(e) }))
+        }
+        return
+      }
+
+      // GET /api/backup — export backup ZIP of custom + debug templates
+      if (req.method === 'GET' && url === '/api/backup') {
+        try {
+          let customReg: { templates: unknown[] } = { templates: [] }
+          let debugReg: { templates: unknown[] } = { templates: [] }
+          try { customReg = JSON.parse(readFileSync(CUSTOM_REGISTRY, 'utf8')) as typeof customReg } catch { /* empty */ }
+          try { debugReg = JSON.parse(readFileSync(DEBUG_REGISTRY, 'utf8')) as typeof debugReg } catch { /* empty */ }
+
+          const manifest = buildBackupManifest(customReg.templates.length, debugReg.templates.length)
+          const fileMap: Record<string, Uint8Array> = {}
+          fileMap['backup-manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
+
+          if (customReg.templates.length > 0) {
+            fileMap['custom/custom-registry.json'] = strToU8(JSON.stringify(customReg, null, 2))
+          }
+          if (debugReg.templates.length > 0) {
+            fileMap['debug/debug-registry.json'] = strToU8(JSON.stringify(debugReg, null, 2))
+          }
+
+          // Add custom template files, re-serialized to ensure valid JSON
+          if (existsSync(CUSTOM_DIR)) {
+            for (const file of readdirSync(CUSTOM_DIR)) {
+              if (file.endsWith('.template')) {
+                try {
+                  const raw = readFileSync(resolve(CUSTOM_DIR, file), 'utf8')
+                  const parsed = JSON.parse(raw)
+                  fileMap[`custom/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
+                } catch {
+                  // Skip files that aren't valid JSON — don't include broken templates in backups
+                }
+              }
+            }
+          }
+
+          // Add debug template files, re-serialized to ensure valid JSON
+          if (existsSync(DEBUG_DIR)) {
+            for (const file of readdirSync(DEBUG_DIR)) {
+              if (file.endsWith('.template')) {
+                try {
+                  const raw = readFileSync(resolve(DEBUG_DIR, file), 'utf8')
+                  const parsed = JSON.parse(raw)
+                  fileMap[`debug/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
+                } catch {
+                  // Skip files that aren't valid JSON — don't include broken templates in backups
+                }
+              }
+            }
+          }
+
+          const zipped = zipSync(fileMap)
+          const dateStr = new Date().toISOString().slice(0, 10)
+          res.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename="remarkable-backup-${dateStr}.zip"`,
+            'Content-Length': String(zipped.length),
+          })
+          res.end(Buffer.from(zipped))
+        } catch (e) {
+          sendJson(res, 500, { error: String(e) })
+        }
+        return
+      }
+
+      // POST /api/restore?mode=merge|replace — import backup ZIP
+      if (req.method === 'POST' && url.startsWith('/api/restore')) {
+        try {
+          const urlObj = new URL(url, 'http://localhost')
+          const mode = urlObj.searchParams.get('mode') ?? 'merge'
+          if (mode !== 'merge' && mode !== 'replace') {
+            sendJson(res, 400, { error: `Invalid mode: "${mode}" (expected "merge" or "replace")` })
+            return
+          }
+
+          const body = await readBinaryBody(req)
+          if (body.length > 50 * 1024 * 1024) {
+            sendJson(res, 400, { error: 'Backup file too large (max 50MB)' })
+            return
+          }
+
+          const unzipped = unzipSync(new Uint8Array(body))
+          const files: Record<string, Uint8Array> = {}
+          for (const [k, v] of Object.entries(unzipped)) {
+            files[k] = v
+          }
+
+          const validation = validateBackupContents(files)
+          if (!validation.valid) {
+            sendJson(res, 400, { error: 'Invalid backup', details: validation.errors })
+            return
+          }
+
+          const added: string[] = []
+          const skipped: string[] = []
+
+          if (mode === 'replace') {
+            // Save old registries for rollback on failure
+            let oldCustom: string | null = null
+            let oldDebug: string | null = null
+            try { oldCustom = readFileSync(CUSTOM_REGISTRY, 'utf8') } catch { /* empty */ }
+            try { oldDebug = readFileSync(DEBUG_REGISTRY, 'utf8') } catch { /* empty */ }
+
+            try {
+              // Write custom registry + templates
+              if (validation.customRegistry) {
+                mkdirSync(CUSTOM_DIR, { recursive: true })
+                writeFileSync(CUSTOM_REGISTRY, JSON.stringify({ templates: validation.customRegistry.templates }, null, 2), 'utf8')
+                for (const path of validation.customTemplateFiles) {
+                  const filename = path.replace('custom/', '')
+                  const outPath = resolve(CUSTOM_DIR, filename)
+                  assertWithin(CUSTOM_DIR, outPath)
+                  writeFileSync(outPath, Buffer.from(files[path]))
+                  added.push(path)
+                }
+              }
+
+              // Write debug registry + templates
+              if (validation.debugRegistry) {
+                mkdirSync(DEBUG_DIR, { recursive: true })
+                writeFileSync(DEBUG_REGISTRY, JSON.stringify({ templates: validation.debugRegistry.templates }, null, 2), 'utf8')
+                for (const path of validation.debugTemplateFiles) {
+                  const filename = path.replace('debug/', '')
+                  const outPath = resolve(DEBUG_DIR, filename)
+                  assertWithin(DEBUG_DIR, outPath)
+                  writeFileSync(outPath, Buffer.from(files[path]))
+                  added.push(path)
+                }
+              }
+            } catch (e) {
+              // Attempt rollback
+              try {
+                if (oldCustom !== null) writeFileSync(CUSTOM_REGISTRY, oldCustom, 'utf8')
+                if (oldDebug !== null) writeFileSync(DEBUG_REGISTRY, oldDebug, 'utf8')
+              } catch { /* best effort */ }
+              sendJson(res, 500, { error: `Restore failed: ${String(e)}` })
+              return
+            }
+          } else {
+            // Merge mode
+            let existingCustomReg: { templates: Array<{ filename: string; rmMethodsId?: string }> } = { templates: [] }
+            let existingDebugReg: { templates: Array<{ filename: string; rmMethodsId?: string }> } = { templates: [] }
+            try { existingCustomReg = JSON.parse(readFileSync(CUSTOM_REGISTRY, 'utf8')) as typeof existingCustomReg } catch { /* empty */ }
+            try { existingDebugReg = JSON.parse(readFileSync(DEBUG_REGISTRY, 'utf8')) as typeof existingDebugReg } catch { /* empty */ }
+
+            // Merge custom
+            if (validation.customRegistry) {
+              const existingParsed = existingCustomReg.templates.map(e => parseRegistry({ templates: [e] }).templates[0])
+              const actions = computeMergeActions(validation.customRegistry.templates, existingParsed)
+
+              for (const action of actions) {
+                if (action.action === 'add') {
+                  existingCustomReg.templates.push(action.entry)
+                  const shortName = action.entry.filename.replace(/^custom\//, '')
+                  const tplPath = `custom/${shortName}.template`
+                  if (files[tplPath]) {
+                    mkdirSync(CUSTOM_DIR, { recursive: true })
+                    const outPath = resolve(CUSTOM_DIR, `${shortName}.template`)
+                    assertWithin(CUSTOM_DIR, outPath)
+                    writeFileSync(outPath, Buffer.from(files[tplPath]))
+                  }
+                  added.push(action.entry.name)
+                } else {
+                  skipped.push(action.entry.name)
+                }
+              }
+
+              if (actions.some(a => a.action === 'add')) {
+                mkdirSync(CUSTOM_DIR, { recursive: true })
+                writeFileSync(CUSTOM_REGISTRY, JSON.stringify(existingCustomReg, null, 2), 'utf8')
+              }
+            }
+
+            // Merge debug
+            if (validation.debugRegistry) {
+              const existingParsed = existingDebugReg.templates.map(e => parseRegistry({ templates: [e] }).templates[0])
+              const actions = computeMergeActions(validation.debugRegistry.templates, existingParsed)
+
+              for (const action of actions) {
+                if (action.action === 'add') {
+                  existingDebugReg.templates.push(action.entry)
+                  const shortName = action.entry.filename.replace(/^debug\//, '')
+                  const tplPath = `debug/${shortName}.template`
+                  if (files[tplPath]) {
+                    mkdirSync(DEBUG_DIR, { recursive: true })
+                    const outPath = resolve(DEBUG_DIR, `${shortName}.template`)
+                    assertWithin(DEBUG_DIR, outPath)
+                    writeFileSync(outPath, Buffer.from(files[tplPath]))
+                  }
+                  added.push(action.entry.name)
+                } else {
+                  skipped.push(action.entry.name)
+                }
+              }
+
+              if (actions.some(a => a.action === 'add')) {
+                mkdirSync(DEBUG_DIR, { recursive: true })
+                writeFileSync(DEBUG_REGISTRY, JSON.stringify(existingDebugReg, null, 2), 'utf8')
+              }
+            }
+          }
+
+          sendJson(res, 200, { ok: true, added, skipped, warnings: validation.warnings })
+        } catch (e) {
+          sendJson(res, 400, { error: String(e) })
+        }
+        return
+      }
+
       // POST /api/custom-templates — create new template
       if (req.method === 'POST' && url === '/api/custom-templates') {
         try {
@@ -295,9 +672,15 @@ const customTemplatesPlugin: Plugin = {
 
           if (body.entry) {
             const registry = readRegistry()
-            registry.templates = (registry.templates as Array<{ filename: string }>).map(e =>
-              e.filename === `custom/${filename}` ? body.entry : e,
-            )
+            registry.templates = (registry.templates as Array<{ filename: string; rmMethodsId?: string }>).map(e => {
+              if (e.filename !== `custom/${filename}`) return e
+              const incoming = body.entry as Record<string, unknown>
+              // Preserve rmMethodsId from existing entry if not in incoming
+              if (e.rmMethodsId && !incoming.rmMethodsId) {
+                return { ...incoming, rmMethodsId: e.rmMethodsId }
+              }
+              return body.entry
+            })
             writeFileSync(CUSTOM_REGISTRY, JSON.stringify(registry, null, 2), 'utf8')
           }
 

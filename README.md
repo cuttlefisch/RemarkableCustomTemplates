@@ -5,7 +5,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen)](https://nodejs.org/)
 
-A browser-based editor and viewer for reMarkable tablet `.template` files.
+A browser-based tool for browsing, previewing, editing, and deploying custom page templates on reMarkable tablets. Create templates from scratch or fork existing ones, preview them across all device resolutions, and deploy to your device with cloud sync across paired tablets.
 
 **New here?** See the [Quickstart guide](docs/quickstart.md) to get up and running.
 
@@ -13,7 +13,12 @@ A browser-based editor and viewer for reMarkable tablet `.template` files.
 
 reMarkable templates are JSON files that describe page layouts using a tree of groups, paths, and text items. Values throughout the tree can be numeric literals or arithmetic expression strings that reference named constants (e.g. `"templateWidth / 2 - offsetX"`). The device evaluates these at render time, injecting built-in constants like `templateWidth` and `templateHeight`.
 
-This project lets you browse, preview, and edit those templates without a device.
+This project provides:
+
+- **Web editor** — browse, preview, and edit templates with a live SVG canvas and Monaco JSON editor, with multi-device resolution switching (RM 1&2, Paper Pro, Paper Pro Move)
+- **Deploy to device** — push templates via SSH in the rm_methods format so they sync across paired devices through the reMarkable cloud, with manifest-tracked deploys, automatic orphan cleanup, and one-command rollback
+- **Backup/restore** — export and import your custom templates as a ZIP, preserving UUIDs for deploy continuity
+- **Pull from device** — fetch official and custom rm_methods templates from your device to browse or fork into new designs
 
 ## Project structure
 
@@ -21,29 +26,65 @@ This project lets you browse, preview, and edit those templates without a device
 remarkable_templates/
 ├── src/
 │   ├── types/       ← template.ts, registry.ts
-│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts
-│   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx
+│   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts,
+│   │                   backup.ts, methodsTemplates.ts, rmMethods.ts, iconGenerator.ts
+│   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx, NavBar.tsx, CanvasErrorBoundary.tsx
+│   ├── pages/       ← TemplatesPage.tsx, DevicePage.tsx
+│   ├── hooks/       ← useRegistry.ts
 │   └── __tests__/   ← Vitest test suite
 ├── public/
 │   └── templates/
 │       ├── custom/  ← custom .template files + custom-registry.json (git-ignored)
 │       ├── debug/   ← debug templates served in dev mode only
+│       ├── methods/ ← rm_methods templates pulled from device (git-ignored)
 │       └── ...      ← official .template files (git-ignored)
 ├── scripts/
-│   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
+│   ├── merge-templates.mjs       ← merges official + custom into dist-deploy/
+│   ├── build-methods-registry.py ← processes pulled UUID triplets into methods registry
+│   └── manifest-uuids.py         ← manifest diffing helper
 ├── docs/
 │   ├── quickstart.md        ← clone-to-deploy walkthrough
 │   └── device-sync.md       ← SSH setup + deploy workflow
 ├── .github/
 │   ├── workflows/ci.yml     ← GitHub Actions: lint, type-check, test, build
 │   └── CONTRIBUTING.md
-├── dist-deploy/     ← staging dir for device deployment (git-ignored)
+├── dist-deploy/     ← staging dir for classic device deployment (git-ignored)
+├── rm-methods-dist/ ← staging dir for rm_methods deploy (git-ignored)
+├── rm-methods-backups/ ← device backups + deployed manifest (git-ignored)
 ├── remarkable_official_templates/ ← unmodified device originals (git-ignored)
 ├── LICENSE
 └── Makefile         ← pull / backup / deploy / rollback targets
 ```
 
 ## Device sync
+
+### rm_methods deploy (recommended — syncs across devices)
+
+Deploys templates in the same format as official reMarkable methods content, so xochitl syncs them across paired devices via the cloud:
+
+```bash
+pnpm dev                        # dev server must be running
+make build-rm-methods-dist      # export ZIP → rm-methods-dist/
+make deploy-rm-methods          # back up, deploy, restart xochitl
+make rollback-rm-methods        # revert to previous deploy
+make rollback-rm-methods-original  # remove all custom templates
+```
+
+Deploys are tracked with a manifest file — removed templates are automatically cleaned up from the device, and rollbacks precisely restore previous state.
+
+### Pull rm_methods templates from the device
+
+```bash
+make pull-rm-methods    # pull official + custom rm_methods templates to browse/fork
+```
+
+### Backup and restore
+
+Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all custom and debug templates (preserves `rmMethodsId` UUIDs). The filename includes a timestamp (e.g. `remarkable-backup-2026-03-17_143022.zip`). Click **↑ Restore** to merge a backup ZIP back in. See [docs/device-sync.md](docs/device-sync.md) for details.
+
+### Classic deploy (alternative — no sync)
+
+Pushes templates directly to `/usr/share/remarkable/templates/`. Simpler, but templates only exist on the device you push to:
 
 ```bash
 make pull         # fetch current templates from device → remarkable_official_templates/
@@ -53,7 +94,7 @@ make rollback     # restore most recent backup if something goes wrong
 make list-backups # see all backups stored on the device
 ```
 
-See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and caveats.
+See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and full details on both workflows.
 
 ## Web app
 
@@ -69,15 +110,15 @@ pnpm lint          # ESLint
 
 ### Features
 
-- **Template browser** — sidebar lists all templates, filterable by category
-- **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872) and Paper Pro (954×1696)
+- **Template browser** — sidebar lists all templates, filterable by category, orientation, source (Official/Methods), and name search
+- **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872), Paper Pro (1620×2160), and Paper Pro Move (954×1696)
 - **SVG canvas renderer** — faithfully renders groups, paths, and text items with full expression evaluation and tile repetition
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files
 - **Custom templates** — create from scratch or fork any existing template; saved as `.template` files via the dev server API
 - **Color defaults** — `foreground`/`background` sentinel constants set the canvas background color and default stroke color; the invert button swaps them (useful for previewing dark-paper or inverted themes)
 - **Expression validation** — catches undefined constant references at Apply time, before the canvas errors
 - **Delete custom templates** — remove custom templates from the UI, clearing the file and registry entry
-- **Debug templates** — `public/templates/debug/` contains responsive developer templates served in dev mode; included when deploying
+- **Debug templates** — `public/templates/debug/` contains responsive developer templates served in dev mode; included when deploying. Debug templates include orientation labels in the title and a filled pentagon icon for easy identification
 
 ### Architecture
 
@@ -122,8 +163,9 @@ templates.json (registry)
 
 | Device | Portrait W×H | Landscape W×H | `paperOriginX` (portrait) |
 |--------|-------------|---------------|--------------------------|
-| rm1, rm2 | 1404×1872 | 1872×1404 | −234 |
-| rmPP (Paper Pro) | 954×1696 | 1696×954 | −371 |
+| rm (RM 1 & 2) | 1404×1872 | 1872×1404 | −234 |
+| rmPP (Paper Pro) | 1620×2160 | 2160×1620 | −270 |
+| rmPPM (Paper Pro Move) | 954×1696 | 1696×954 | −371 |
 
 `paperOriginX = templateWidth/2 − templateHeight/2`
 

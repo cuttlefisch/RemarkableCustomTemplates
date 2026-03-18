@@ -22,17 +22,10 @@ export interface DeviceSpec {
 }
 
 export const DEVICES: Record<string, DeviceSpec> = {
-  rm1: {
-    id: 'rm1',
-    name: 'reMarkable 1',
-    shortName: 'RM1',
-    portraitWidth: 1404,
-    portraitHeight: 1872,
-  },
-  rm2: {
-    id: 'rm2',
-    name: 'reMarkable 2',
-    shortName: 'RM2',
+  rm: {
+    id: 'rm',
+    name: 'reMarkable 1 & 2',
+    shortName: 'RM 1 & 2',
     portraitWidth: 1404,
     portraitHeight: 1872,
   },
@@ -40,6 +33,13 @@ export const DEVICES: Record<string, DeviceSpec> = {
     id: 'rmPP',
     name: 'reMarkable Paper Pro',
     shortName: 'Paper Pro',
+    portraitWidth: 1620,
+    portraitHeight: 2160,
+  },
+  rmPPM: {
+    id: 'rmPPM',
+    name: 'reMarkable Paper Pro Move',
+    shortName: 'Move',
     portraitWidth: 954,
     portraitHeight: 1696,
   },
@@ -56,7 +56,7 @@ export type DeviceId = keyof typeof DEVICES
  */
 export function deviceBuiltins(
   orientation: 'portrait' | 'landscape',
-  deviceId: DeviceId = 'rm2',
+  deviceId: DeviceId = 'rm',
 ): ResolvedConstants {
   const spec = DEVICES[deviceId]
   const w = orientation === 'portrait' ? spec.portraitWidth : spec.portraitHeight
@@ -197,7 +197,7 @@ export const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
  */
 export function collectMissingConstants(
   template: RemarkableTemplate,
-  deviceId: DeviceId = 'rm2',
+  deviceId: DeviceId = 'rm',
 ): string[] {
   const builtins = deviceBuiltins(template.orientation, deviceId)
   const knownKeys = new Set(Object.keys(builtins))

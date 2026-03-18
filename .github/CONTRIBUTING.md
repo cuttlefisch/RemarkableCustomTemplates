@@ -46,15 +46,21 @@ Add tests to the appropriate file in `src/__tests__/`. Each test file mirrors a 
 | `color.test.ts` | `lib/color.ts` |
 | `customTemplates.test.ts` | `lib/customTemplates.ts` |
 | `debugTemplate.test.ts` | test-only helpers (no direct source counterpart) |
+| `backup.test.ts` | `lib/backup.ts` |
+| `rmMethods.test.ts` | `lib/rmMethods.ts` |
+| `methodsTemplates.test.ts` | `lib/methodsTemplates.ts` |
+| `iconGenerator.test.ts` | `lib/iconGenerator.ts` |
 | `TemplateCanvas.test.tsx` | `components/TemplateCanvas.tsx` |
 | `TemplateEditor.test.tsx` | `components/TemplateEditor.tsx` |
 
 ## Adding a Template File
 
-1. Place the `.template` JSON file in `public/templates/`
-2. Add an entry to `public/templates/templates.json` with `name`, `filename`, `iconCode`, `landscape`, and `categories`
-3. Verify it renders correctly in the dev server: `pnpm dev`
-   - Tip: use the **Import** button in the UI to load your `.template` file as a custom template and preview rendering before committing
+The easiest way is through the web UI (`pnpm dev`): click **New template** to create one from scratch, or select any existing template and click **Save as New Template** to fork it. The dev server handles file writes and registry updates automatically.
+
+To add a template manually (advanced):
+1. Place the `.template` JSON file in `public/templates/custom/`
+2. Add an entry to `public/templates/custom/custom-registry.json` with `"isCustom": true` and a `"custom/"` filename prefix
+3. Restart the dev server to pick up the new file
 
 ## Pull Request Checklist
 
