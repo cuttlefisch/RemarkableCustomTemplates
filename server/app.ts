@@ -7,7 +7,8 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import fastifyStatic from '@fastify/static'
 import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { ServerConfig } from './config.ts'
 import templateRoutes from './routes/templates.ts'
 import customTemplateRoutes from './routes/customTemplates.ts'
@@ -48,9 +49,10 @@ export async function createApp(config: ServerConfig) {
   deviceRollbackRoutes(app, config)
   deviceBackupRoutes(app, config)
 
-  // In production, serve the built frontend
+  // In production, serve the built frontend (dist/ is at the app root, not in dataDir)
   if (config.production) {
-    const distPath = resolve(config.dataDir, 'dist')
+    const __dirname = dirname(fileURLToPath(import.meta.url))
+    const distPath = resolve(__dirname, '..', 'dist')
     if (existsSync(distPath)) {
       await app.register(fastifyStatic, {
         root: distPath,

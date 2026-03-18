@@ -21,6 +21,8 @@ docker compose up --build -d
 
 Open `http://localhost:3000` in your browser. Navigate to the **Device & Sync** page (`/device`) — the setup wizard handles SSH key generation, connection testing, and device configuration in-browser.
 
+If port 3000 is in use, pick another: `PORT=3001 docker compose up --build -d`
+
 Stop with `docker compose down`.
 
 Skip to [Step 5: Pull rm_methods templates](#5-pull-rm_methods-templates-optional) (use the Device & Sync page instead of CLI commands).

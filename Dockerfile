@@ -48,6 +48,8 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Install tsx for runtime TypeScript execution
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 RUN pnpm add -g tsx
 
 CMD ["tsx", "server/index.ts"]
