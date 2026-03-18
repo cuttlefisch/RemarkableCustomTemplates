@@ -1,17 +1,13 @@
 # Quickstart
 
-This guide walks through the full workflow from a fresh clone to deploying custom templates on your reMarkable device and rolling back if needed.
+Get remarkable-templates running and deploy custom templates to your reMarkable device.
 
 ## Prerequisites
 
-- A reMarkable device on the same network as your machine
-- Git
-- **Option A (Docker):** [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- **Option B (Native):** Node.js 20+ and [pnpm](https://pnpm.io/installation) — `make setup` installs both if missing
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- A reMarkable device on the same network (for device sync)
 
----
-
-## Option A: Docker (simplest)
+## 1. Start the app
 
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
@@ -19,151 +15,79 @@ cd remarkable_templates
 docker compose up --build -d
 ```
 
-Open `http://localhost:3000` in your browser. Navigate to the **Device & Sync** page (`/device`) — the setup wizard handles SSH key generation, connection testing, and device configuration in-browser.
+Open `http://localhost:3000` in your browser.
 
-If port 3000 is in use, pick another: `PORT=3001 docker compose up --build -d`
+> **Port conflict?** Use a different port: `PORT=3001 docker compose up --build -d`
 
-Stop with `docker compose down`. Your data (templates, device config, SSH keys) persists in a Docker volume across restarts. To start completely fresh, use `docker compose down -v` to remove the volume.
+## 2. Browse templates
 
-Skip to [Step 5: Pull rm_methods templates](#5-pull-rm_methods-templates-optional) (use the Device & Sync page instead of CLI commands).
+The **Templates** page loads with a sidebar listing all available templates. Click any template to preview it on the SVG canvas. Use the filter chips to narrow by source (Classic / Methods), category, orientation, or name.
 
----
+![Template browser](images/template-browser.png)
 
-## Option B: Native development
+Toggle between device previews — **RM 1 & 2**, **Paper Pro**, and **Paper Pro Move** — to see how templates adapt to different screen sizes.
 
-### 1. Clone and install
+## 3. Connect your device
 
-```bash
-git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
-cd remarkable_templates
-make setup    # installs Node.js (via nvm) + pnpm + project dependencies
-```
+Navigate to the **Device & Sync** page. The setup wizard walks you through:
 
-If you already have Node.js and pnpm, `make install` (or `pnpm install`) is enough.
+1. **SSH key generation** — creates a key pair in-browser
+2. **Connection test** — verifies SSH access to your device
+3. **Device configuration** — saves connection settings
 
-### 2. Run the web app
+![Device & Sync page](images/device-sync-page.png)
 
-```bash
-make dev      # or: pnpm dev
-```
+> **SSH over WLAN** must be enabled on the device. On newer devices (Paper Pro, Move), developer mode is required first — note that enabling developer mode triggers a factory reset. Find your device IP and SSH password under **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**.
 
-Open `http://localhost:5173` in your browser. The template browser loads on the left; the SVG canvas preview is on the right.
+## 4. Pull templates from your device
 
-### 3. Set up device SSH access
+On the **Device & Sync** page, click **Pull Methods Templates** to fetch official and custom rm_methods templates from the device. These appear as read-only entries in the sidebar — select one and click **Save as New Template** to fork it into an editable custom template.
 
-Navigate to the **Device & Sync** page (`/device`). The setup wizard handles SSH key generation, connection testing, and device configuration.
+![Pulling templates from device](images/device-sync-pulling.png)
 
-> **CLI alternative:** For manual SSH setup, see [device-sync.md](device-sync.md).
+## 5. Create or edit templates
 
-### 4. Pull official templates from the device
+- Click **New template** in the sidebar to start from scratch
+- Or select any template and click **Save as New Template** to fork it
+- Edit the JSON in the Monaco editor — the canvas updates live as you apply changes
+- Click **Apply** to validate; any undefined constant references are reported before rendering
 
-Use the **Device & Sync** page to pull official templates, or via CLI:
+![Template editor with JSON](images/template-editor.png)
 
-```bash
-make pull
-```
+## 6. Deploy to your device
 
-This rsyncs the device's `/usr/share/remarkable/templates/` into `remarkable_official_templates/` locally. These files are git-ignored (originals only — do not edit them).
+On the **Device & Sync** page, click **Deploy**. Templates are deployed in the rm_methods format, which means they **sync across all paired devices** via the reMarkable cloud.
 
----
+Each deploy:
+- Backs up the previous state automatically
+- Cleans up any templates you've removed
+- Restarts the device UI
 
-## 5. Pull rm_methods templates (optional)
+## 7. Back up your templates
 
-Use the **Device & Sync** page, or via CLI:
+Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all your custom templates. This preserves UUIDs needed for device sync continuity.
 
-```bash
-make pull-rm-methods
-```
+To restore: click **↑ Restore** and select the backup ZIP. Existing templates are skipped; new ones are merged in.
 
-This pulls official and custom rm_methods templates from the device into `public/templates/methods/`. They appear as read-only entries in the sidebar — select one and click **Save as New Template** to fork it into a custom template.
+## 8. Rollback
 
----
+If something goes wrong, use the **Device & Sync** page to roll back:
 
-## 6. Add custom templates in the web app
-
-In the browser:
-
-1. Click **New template** in the sidebar to create a blank template, or select an existing one and click **Save as New Template** to start from a copy.
-2. Edit the JSON in the Monaco editor. The canvas updates live as you apply changes.
-3. Toggle between **RM 1 & 2**, **Paper Pro**, and **Move** previews using the device selector.
-4. Click **Apply** to validate and render. Any undefined constant references are reported before the canvas renders.
-
-Custom templates are saved to `public/templates/custom/` and registered in `public/templates/custom/custom-registry.json`. These files are git-ignored by default — add them to version control if you want to track your templates.
+- **Rollback** — revert to the previous deploy
+- **Rollback to original** — remove all custom templates (pristine state)
 
 ---
 
-## 7. Deploy to the device (rm_methods — recommended)
+## Managing the app
 
-The rm_methods workflow deploys templates in a format that **syncs across paired devices** via the reMarkable cloud.
+**Stop:** `docker compose down`
 
-Use the **Device & Sync** page for browser-based deploy, or via CLI:
+**Data persistence:** Templates, device config, and SSH keys are stored in a Docker volume and persist across restarts.
 
-```bash
-pnpm dev                        # dev server must be running
-make build-rm-methods-dist      # export ZIP → rm-methods-dist/
-make deploy-rm-methods          # back up, deploy, restart xochitl
-```
-
-On first deploy, a pristine baseline is captured automatically. Each subsequent deploy creates a timestamped backup of the previous state and cleans up any templates you've removed from the registry.
+**Start fresh:** `docker compose down -v` removes the volume and all data.
 
 ---
 
-## 8. Back up your templates
+## For developers
 
-Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all your custom and debug templates. This preserves `rmMethodsId` UUIDs — critical for device sync continuity.
-
-To restore: click **↑ Restore** on the same page and select the backup ZIP. Templates already present are skipped; new ones are merged in.
-
----
-
-## 9. Rollback
-
-If something goes wrong (blank picker, malformed template, etc.):
-
-Use the **Device & Sync** page, or via CLI:
-
-```bash
-make rollback-rm-methods            # revert to previous deploy
-make rollback-rm-methods-original   # remove all custom templates (pristine state)
-```
-
-To see all available backups:
-
-```bash
-make list-backups-rm-methods
-```
-
----
-
-## 10. Alternative: Classic deploy (no sync)
-
-The classic workflow pushes templates directly to `/usr/share/remarkable/templates/`. Templates deployed this way only exist on the device you push to — they do not sync.
-
-```bash
-make deploy       # backup → merge → rsync --delete → restart xochitl
-make rollback     # revert device to last backup if needed
-make list-backups # see available backups
-```
-
-See [device-sync.md](device-sync.md) for full details on both workflows.
-
----
-
-## Summary
-
-**Shortest path (Docker):**
-```bash
-git clone https://github.com/cuttlefisch/RemarkableCustomTemplates && cd remarkable_templates
-docker compose up --build -d      # open http://localhost:3000
-# use Device & Sync page for SSH setup, pull, deploy, and rollback
-```
-
-**Native development:**
-```bash
-git clone https://github.com/cuttlefisch/RemarkableCustomTemplates && cd remarkable_templates
-make setup                        # install toolchain + dependencies
-make dev                          # open http://localhost:5173
-# use Device & Sync page or CLI make targets for device operations
-```
-
-For full SSH setup details and caveats, see [device-sync.md](device-sync.md).
+To run natively without Docker (for contributing or development), see [CONTRIBUTING.md](../.github/CONTRIBUTING.md) and the [architecture docs](architecture.md).

@@ -1,5 +1,7 @@
 # Contributing to remarkable-templates
 
+For an overview of the codebase — project structure, data flow, key types, and registry system — see [docs/architecture.md](../docs/architecture.md).
+
 ## Prerequisites
 
 - Node.js 20+

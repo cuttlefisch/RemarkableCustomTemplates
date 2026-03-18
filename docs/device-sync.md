@@ -1,10 +1,12 @@
 # Device Sync
 
-This doc covers SSH setup and the two workflows for deploying custom templates to your reMarkable device.
+Most users can do everything from the **Device & Sync** page in the browser — SSH setup, pulling templates, deploying, rolling back, and backups all have browser-based equivalents. See the [quickstart](quickstart.md) for that workflow.
+
+This doc covers CLI workflows, manual SSH setup, troubleshooting, and format internals for power users and developers.
 
 ## Prerequisites
 
-> **Browser-based setup (recommended):** The **Device & Sync** page (`/device`) handles SSH key generation, connection testing, and device configuration in-browser — replacing steps 1–4 below for most users. The manual steps here are for CLI-only workflows.
+> **Browser-based setup (recommended):** The **Device & Sync** page (`/device`) handles SSH key generation, connection testing, and device configuration in-browser — replacing steps 1–4 below. The manual steps here are for CLI-only workflows.
 
 ### 1. Generate an SSH key (if you don't have one)
 
