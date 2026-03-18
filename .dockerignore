@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-server
+dist-deploy
+rm-methods-dist
+rm-methods-backups
+remarkable_official_templates
+public/templates/custom
+public/templates/methods
+data
+.git
+*.md
+!README.md

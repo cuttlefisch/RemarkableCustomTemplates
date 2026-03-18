@@ -20,10 +20,30 @@ This project provides:
 - **Backup/restore** — export and import your custom templates as a ZIP, preserving UUIDs for deploy continuity
 - **Pull from device** — fetch official and custom rm_methods templates from your device to browse or fork into new designs
 
+## Docker quickstart
+
+```bash
+git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
+cd remarkable_templates
+docker compose up --build -d
+```
+
+Open `http://localhost:3000` in your browser. To set up device sync, navigate to the **Device & Sync** page — the SSH setup wizard handles key generation, connection testing, and device configuration in-browser.
+
+Stop with `docker compose down`.
+
 ## Project structure
 
 ```
 remarkable_templates/
+├── server/
+│   ├── index.ts         ← entry point (listen on PORT)
+│   ├── app.ts           ← createApp() factory (testable via Fastify inject)
+│   ├── config.ts        ← DATA_DIR-based path resolution
+│   ├── routes/          ← API route handlers
+│   │   └── device/      ← SSH device operations (config, pull, deploy, rollback)
+│   ├── lib/             ← ssh.ts, sftp.ts, pathSecurity.ts, manifestUuids.ts, buildMethodsRegistry.ts
+│   └── __tests__/       ← server tests
 ├── src/
 │   ├── types/       ← template.ts, registry.ts
 │   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts,
@@ -39,15 +59,15 @@ remarkable_templates/
 │       ├── methods/ ← rm_methods templates pulled from device (git-ignored)
 │       └── ...      ← official .template files (git-ignored)
 ├── scripts/
-│   ├── merge-templates.mjs       ← merges official + custom into dist-deploy/
-│   ├── build-methods-registry.py ← processes pulled UUID triplets into methods registry
-│   └── manifest-uuids.py         ← manifest diffing helper
+│   └── merge-templates.mjs  ← merges official + custom into dist-deploy/
 ├── docs/
 │   ├── quickstart.md        ← clone-to-deploy walkthrough
 │   └── device-sync.md       ← SSH setup + deploy workflow
 ├── .github/
 │   ├── workflows/ci.yml     ← GitHub Actions: lint, type-check, test, build
 │   └── CONTRIBUTING.md
+├── Dockerfile       ← multi-stage build (production)
+├── docker-compose.yml ← single-service with volume mount
 ├── dist-deploy/     ← staging dir for classic device deployment (git-ignored)
 ├── rm-methods-dist/ ← staging dir for rm_methods deploy (git-ignored)
 ├── rm-methods-backups/ ← device backups + deployed manifest (git-ignored)
@@ -57,6 +77,8 @@ remarkable_templates/
 ```
 
 ## Device sync
+
+For browser-based device operations (recommended), see the **Device & Sync** page at `/device`. The make targets below are the CLI alternative.
 
 ### rm_methods deploy (recommended — syncs across devices)
 
@@ -101,11 +123,13 @@ See [docs/device-sync.md](docs/device-sync.md) for SSH setup, prerequisites, and
 ### Commands (run from project root)
 
 ```bash
-pnpm dev           # start dev server
+pnpm dev           # start Fastify + Vite dev servers (localhost:5173)
+pnpm server:dev    # Fastify API server only (localhost:3001)
 pnpm test          # run all tests once
 pnpm test:watch    # watch mode
 pnpm build         # tsc + vite build
 pnpm lint          # ESLint
+docker compose up  # production build (localhost:3000)
 ```
 
 ### Features

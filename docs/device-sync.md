@@ -4,6 +4,8 @@ This doc covers SSH setup and the two workflows for deploying custom templates t
 
 ## Prerequisites
 
+> **Browser-based setup (recommended):** The **Device & Sync** page (`/device`) handles SSH key generation, connection testing, and device configuration in-browser — replacing steps 1–4 below for most users. The manual steps here are for CLI-only workflows.
+
 ### 1. Generate an SSH key (if you don't have one)
 
 ```bash
@@ -38,7 +40,7 @@ ssh remarkable-wlan "echo connected"
 
 ## One-time device setup
 
-### Enable SSH over WLAN
+### Enable SSH over WLAN (required for both browser and CLI workflows)
 
 On the device, run from a terminal (or via existing SSH):
 
@@ -59,6 +61,8 @@ Go to **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**. Th
 ## Recommended workflow: rm_methods deploy
 
 The rm_methods workflow drops files into xochitl's user content directory using the same format as official reMarkable methods templates. This means xochitl treats them as native content and **syncs them across paired devices** via the reMarkable cloud.
+
+> **Browser-based alternative:** The **Device & Sync** page provides browser-based equivalents for pull, deploy, and rollback operations. The CLI targets below are for developer/scripting workflows.
 
 ### Happy path
 
@@ -225,7 +229,7 @@ make pull-rm-methods
 This does the following:
 1. SSHes into the device and scans for `TemplateType` metadata files in the xochitl directory
 2. Pulls each `.template` + `.metadata` pair to a temp directory
-3. Runs `scripts/build-methods-registry.py` to build `public/templates/methods/methods-registry.json` and copy template files
+3. Runs `server/lib/buildMethodsRegistry.ts` to build `public/templates/methods/methods-registry.json` and copy template files
 4. Tags each template's origin: UUIDs found in `rm-methods-dist/.manifest` or `rm-methods-backups/.deployed-manifest` are tagged `custom-methods`; all others are `official-methods`
 
 Pulled templates appear in the sidebar as read-only entries. Click **Save as New Template** to fork one into a custom template (applies `mapForegroundColors()` + `injectColorConstants()` for color invertibility).

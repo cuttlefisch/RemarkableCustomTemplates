@@ -1,0 +1,10 @@
+services:
+  remarkable-templates:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - remarkable-data:/data
+
+volumes:
+  remarkable-data:

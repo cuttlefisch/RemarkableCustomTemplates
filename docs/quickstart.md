@@ -6,11 +6,30 @@ This guide walks through the full workflow from a fresh clone to deploying custo
 
 - A reMarkable device on the same network as your machine
 - Git
-- (Optional) Node.js 20+ and [pnpm](https://pnpm.io/installation) — `make setup` installs both if missing
+- **Option A (Docker):** [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- **Option B (Native):** Node.js 20+ and [pnpm](https://pnpm.io/installation) — `make setup` installs both if missing
 
 ---
 
-## 1. Clone and install
+## Option A: Docker (simplest)
+
+```bash
+git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
+cd remarkable_templates
+docker compose up --build -d
+```
+
+Open `http://localhost:3000` in your browser. Navigate to the **Device & Sync** page (`/device`) — the setup wizard handles SSH key generation, connection testing, and device configuration in-browser.
+
+Stop with `docker compose down`.
+
+Skip to [Step 5: Pull rm_methods templates](#5-pull-rm_methods-templates-optional) (use the Device & Sync page instead of CLI commands).
+
+---
+
+## Option B: Native development
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
@@ -20,7 +39,7 @@ make setup    # installs Node.js (via nvm) + pnpm + project dependencies
 
 If you already have Node.js and pnpm, `make install` (or `pnpm install`) is enough.
 
-## 2. Run the web app
+### 2. Run the web app
 
 ```bash
 make dev      # or: pnpm dev
@@ -28,56 +47,15 @@ make dev      # or: pnpm dev
 
 Open `http://localhost:5173` in your browser. The template browser loads on the left; the SVG canvas preview is on the right.
 
----
+### 3. Set up device SSH access
 
-## 3. Set up device SSH access
+Navigate to the **Device & Sync** page (`/device`). The setup wizard handles SSH key generation, connection testing, and device configuration.
 
-You need passwordless SSH to the device before any `make` targets will work. Do this once.
+> **CLI alternative:** For manual SSH setup, see [device-sync.md](device-sync.md).
 
-### 3a. Enable SSH over WLAN on the device
+### 4. Pull official templates from the device
 
-From a terminal on the device (or via USB SSH):
-
-```bash
-rm-ssh-over-wlan on
-```
-
-> **Paper Pro / Move users:** Developer mode must be enabled first. Enabling it triggers a factory reset — do this before putting notes on the device.
-
-### 3b. Find your credentials
-
-Go to **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**. The root password and current device IP are shown there.
-
-### 3c. Generate an SSH key and copy it to the device
-
-```bash
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_remarkable
-ssh-copy-id -i ~/.ssh/id_rsa_remarkable.pub root@<device-ip>
-```
-
-### 3d. Add a `~/.ssh/config` block
-
-```
-Host remarkable-wlan
-    HostName <device-ip>
-    User root
-    IdentityFile ~/.ssh/id_rsa_remarkable
-    ServerAliveInterval 30
-```
-
-Replace `<device-ip>` with your device's current IP. After this, all `make` targets use `remarkable-wlan` as the host.
-
-### 3e. Test the connection
-
-```bash
-ssh remarkable-wlan "echo connected"
-```
-
-> **After firmware updates:** The device SSH password resets. Re-run `ssh-copy-id` with the new password to restore key-based auth.
-
----
-
-## 4. Pull official templates from the device
+Use the **Device & Sync** page to pull official templates, or via CLI:
 
 ```bash
 make pull
@@ -88,6 +66,8 @@ This rsyncs the device's `/usr/share/remarkable/templates/` into `remarkable_off
 ---
 
 ## 5. Pull rm_methods templates (optional)
+
+Use the **Device & Sync** page, or via CLI:
 
 ```bash
 make pull-rm-methods
@@ -114,6 +94,8 @@ Custom templates are saved to `public/templates/custom/` and registered in `publ
 
 The rm_methods workflow deploys templates in a format that **syncs across paired devices** via the reMarkable cloud.
 
+Use the **Device & Sync** page for browser-based deploy, or via CLI:
+
 ```bash
 pnpm dev                        # dev server must be running
 make build-rm-methods-dist      # export ZIP → rm-methods-dist/
@@ -135,6 +117,8 @@ To restore: click **↑ Restore** on the same page and select the backup ZIP. Te
 ## 9. Rollback
 
 If something goes wrong (blank picker, malformed template, etc.):
+
+Use the **Device & Sync** page, or via CLI:
 
 ```bash
 make rollback-rm-methods            # revert to previous deploy
@@ -165,17 +149,19 @@ See [device-sync.md](device-sync.md) for full details on both workflows.
 
 ## Summary
 
+**Shortest path (Docker):**
+```bash
+git clone https://github.com/cuttlefisch/RemarkableCustomTemplates && cd remarkable_templates
+docker compose up --build -d      # open http://localhost:3000
+# use Device & Sync page for SSH setup, pull, deploy, and rollback
+```
+
+**Native development:**
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates && cd remarkable_templates
 make setup                        # install toolchain + dependencies
 make dev                          # open http://localhost:5173
-make pull                         # pull official templates from device
-make pull-rm-methods              # pull rm_methods templates to browse/fork
-# create/edit templates in the web app
-# click ↓ Backup on the Device & Sync page to save a backup ZIP
-make build-rm-methods-dist        # export for cloud-sync deploy
-make deploy-rm-methods            # backup → deploy → restart
-make rollback-rm-methods          # revert to previous deploy if needed
+# use Device & Sync page or CLI make targets for device operations
 ```
 
 For full SSH setup details and caveats, see [device-sync.md](device-sync.md).

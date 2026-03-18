@@ -10,10 +10,12 @@ All commands run from project root:
 pnpm test              # run all tests once (Vitest)
 pnpm test:watch        # watch mode
 pnpm test:coverage     # with v8 coverage
-pnpm dev               # dev server
-pnpm build             # tsc + vite build
+pnpm dev               # Fastify server + Vite dev server (concurrently)
+pnpm server:dev        # Fastify server only (port 3001)
+pnpm build             # tsc + vite build (frontend)
 pnpm lint              # ESLint
 make pull-rm-methods   # pull rm_methods templates from device
+docker compose up      # run via Docker (port 3000)
 ```
 
 Run a single test file:
@@ -28,7 +30,36 @@ pnpm vitest run -t "test name pattern"
 
 ## Architecture
 
-This is a React 19 + TypeScript app. Workflow is TDD: write tests first, then implement.
+This is a React 19 + TypeScript app with a standalone Fastify API server. Workflow is TDD: write tests first, then implement.
+
+### Server (`server/`)
+
+API routes live in a standalone Fastify server (extracted from the former Vite plugin). In dev, Vite proxies `/api/*` and `/templates/*` to Fastify on port 3001. In production (Docker), Fastify serves both API and static frontend on port 3000.
+
+```
+server/
+  index.ts           — entry point (listen on PORT)
+  app.ts             — createApp() factory (testable via Fastify inject)
+  config.ts          — resolve paths from DATA_DIR env var
+  routes/
+    templates.ts     — GET /templates/* (merged registry)
+    customTemplates.ts — CRUD /api/custom-templates
+    officialTemplates.ts — POST /api/save-official-templates
+    export.ts        — GET /api/export-templates, /api/export-rm-methods
+    backup.ts        — GET /api/backup, POST /api/restore
+    device/
+      config.ts      — GET/POST /api/device/config, test-connection, setup-keys
+      pull.ts        — POST /api/device/pull-official, pull-methods
+      deploy.ts      — POST /api/device/deploy-methods, deploy-classic
+      rollback.ts    — POST /api/device/rollback-methods, rollback-original, rollback-classic
+      backups.ts     — GET /api/device/backups
+  lib/
+    pathSecurity.ts  — assertWithin() path traversal guard
+    ssh.ts           — programmatic SSH via ssh2 (no ~/.ssh/config needed)
+    sftp.ts          — SFTP file transfer helpers
+    manifestUuids.ts — manifest UUID utilities (replaces Python script)
+    buildMethodsRegistry.ts — build methods registry (replaces Python script)
+```
 
 ### Data flow
 
@@ -80,7 +111,7 @@ Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates 
 
 ### Template files
 
-`.template` files are served from `public/templates/`. The `vite-plugin-static-copy` plugin handles this. `remarkable_official_templates/` is for unmodified originals from the device and is not tracked in git (only the `.gitkeep` is tracked). `public/templates/methods/` stores rm_methods templates pulled from the device via `make pull-rm-methods` (git-ignored).
+`.template` files are served from `public/templates/`. In dev, Vite serves them from `public/` directly. The Fastify server handles `/templates/*` routes (merged registry, etc.). In production (Docker), Fastify serves both API routes and the static frontend build. `remarkable_official_templates/` is for unmodified originals from the device and is not tracked in git (only the `.gitkeep` is tracked). `public/templates/methods/` stores rm_methods templates pulled from the device via `make pull-rm-methods` (git-ignored).
 
 ### rm_methods deploy (preferred)
 

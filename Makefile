@@ -8,15 +8,15 @@ RM_METHODS_PATH := /home/root/.local/share/remarkable/xochitl
 RM_METHODS_DIR  := rm-methods-dist
 RM_METHODS_BACKUP_DIR := rm-methods-backups
 RM_METHODS_ZIP        := remarkable-rm-methods.zip
-DEV_SERVER_URL        := http://localhost:5173
+DEV_SERVER_URL        := http://localhost:3001
 RM_METHODS_DEPLOYED_MANIFEST := rm-methods-backups/.deployed-manifest
 RM_METHODS_ORIGINAL_BACKUP   := rm-methods-backups/.original
 METHODS_DIR := public/templates/methods
 
-MANIFEST_UUIDS := python3 scripts/manifest-uuids.py
-BUILD_METHODS_REGISTRY := python3 scripts/build-methods-registry.py
+MANIFEST_UUIDS := npx tsx server/lib/manifestUuids.ts
+BUILD_METHODS_REGISTRY := npx tsx server/lib/buildMethodsRegistry.ts
 
-.PHONY: help setup configure install dev test lint build clean pull pull-rm-methods backup build-deploy deploy rollback list-backups build-rm-methods-dist deploy-rm-methods backup-rm-methods rollback-rm-methods rollback-rm-methods-original list-backups-rm-methods
+.PHONY: help setup configure install dev test lint build clean docker-up docker-down docker-logs docker-clean pull pull-rm-methods backup build-deploy deploy rollback list-backups build-rm-methods-dist deploy-rm-methods backup-rm-methods rollback-rm-methods rollback-rm-methods-original list-backups-rm-methods
 
 help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -43,13 +43,14 @@ setup: ## Install Node.js (via nvm) and pnpm, then install project dependencies
 	pnpm install
 	@echo ""
 	@echo "Setup complete. Run 'make dev' or 'pnpm dev' to start the dev server."
+	@echo "Alternatively, run 'docker compose up --build -d' to start via Docker."
 
 configure: setup ## Alias for setup (install toolchain + dependencies)
 
 install: ## Install project dependencies (assumes Node.js and pnpm are present)
 	pnpm install
 
-dev: ## Start the Vite dev server
+dev: ## Start the Fastify API server + Vite dev server
 	pnpm dev
 
 test: ## Run all tests once
@@ -62,9 +63,23 @@ build: ## Type-check and build for production
 	pnpm build
 
 clean: ## Remove build artifacts and caches
-	rm -rf dist dist-deploy rm-methods-dist node_modules/.vite
+	rm -rf dist dist-server dist-deploy rm-methods-dist node_modules/.vite
 
-# ── Device sync ──────────────────────────────────────────────────────────────
+# ── Docker ───────────────────────────────────────────────────────────────────
+
+docker-up: ## Build and start the app via Docker Compose
+	docker compose up --build -d
+
+docker-down: ## Stop the Docker containers
+	docker compose down
+
+docker-logs: ## Follow Docker container logs
+	docker compose logs -f
+
+docker-clean: ## Stop containers and remove volumes
+	docker compose down -v
+
+# ── CLI device sync ──────────────────────────────────────────────────────────
 
 pull: ## Pull templates from the device into remarkable_official_templates/
 	rsync -avz --progress $(DEVICE):$(TEMPLATES_PATH)/ remarkable_official_templates/

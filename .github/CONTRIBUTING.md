@@ -11,6 +11,12 @@
 pnpm install
 ```
 
+## Development
+
+`pnpm dev` starts both the Fastify API server (port 3001) and Vite dev server (port 5173) concurrently. Vite proxies `/api/*` and `/templates/*` requests to Fastify.
+
+To test with Docker: `docker compose up --build -d` serves everything on port 3000.
+
 ## TDD Workflow
 
 This project follows test-driven development. Write tests first, then implement.
@@ -52,6 +58,11 @@ Add tests to the appropriate file in `src/__tests__/`. Each test file mirrors a 
 | `iconGenerator.test.ts` | `lib/iconGenerator.ts` |
 | `TemplateCanvas.test.tsx` | `components/TemplateCanvas.tsx` |
 | `TemplateEditor.test.tsx` | `components/TemplateEditor.tsx` |
+| `server/__tests__/routes.test.ts` | `server/routes/*.ts` |
+| `server/__tests__/config.test.ts` | `server/config.ts` |
+| `server/__tests__/pathSecurity.test.ts` | `server/lib/pathSecurity.ts` |
+| `server/__tests__/manifestUuids.test.ts` | `server/lib/manifestUuids.ts` |
+| `server/__tests__/buildMethodsRegistry.test.ts` | `server/lib/buildMethodsRegistry.ts` |
 
 ## Adding a Template File
 
