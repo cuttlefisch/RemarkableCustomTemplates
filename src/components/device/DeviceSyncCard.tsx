@@ -130,7 +130,7 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
               <p className="device-op-desc">Download templates from your device to browse or use as a starting point for custom templates.</p>
               <div className="device-card-btn-row">
                 <OpButton
-                  label="Pull Official Templates"
+                  label="Pull Classic Templates"
                   loadingLabel="Pulling..."
                   op={pullOfficial}
                   title="Download classic templates from /usr/share/remarkable/templates/"
