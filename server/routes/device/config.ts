@@ -14,6 +14,7 @@ import { generateKeyPairSync } from 'node:crypto'
 import ssh2 from 'ssh2'
 import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
+import { formatSshError } from '../../lib/sshErrors.ts'
 
 function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
   try {
@@ -96,7 +97,8 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
         lastConnected: now,
       })
     } catch (e) {
-      return reply.status(500).send({ error: `Connection failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Connection failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 
@@ -148,7 +150,8 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
 
       return reply.send({ ok: true, message: 'SSH keys generated and installed. Switched to key authentication.' })
     } catch (e) {
-      return reply.status(500).send({ error: `Key setup failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Key setup failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 }

@@ -136,7 +136,7 @@ docker compose up  # production build (localhost:3000)
 
 ### Features
 
-- **Template browser** — sidebar lists all templates, filterable by category, orientation, source (Official/Methods), and name search
+- **Template browser** — sidebar lists all templates, filterable by category, orientation, source (Classic/Methods), and name search
 - **Multi-device preview** — toggle between reMarkable 1/2 (1404×1872), Paper Pro (1620×2160), and Paper Pro Move (954×1696)
 - **SVG canvas renderer** — faithfully renders groups, paths, and text items with full expression evaluation and tile repetition
 - **Monaco editor** — full JSON editor with syntax highlighting for editing template files

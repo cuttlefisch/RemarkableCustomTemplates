@@ -13,6 +13,7 @@ import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pullDirectory, pullFile } from '../../lib/sftp.ts'
 import { buildMethodsRegistry } from '../../lib/buildMethodsRegistry.ts'
+import { formatSshError } from '../../lib/sshErrors.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
@@ -43,7 +44,8 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
 
       return reply.send({ ok: true, count: pulled.length, files: pulled })
     } catch (e) {
-      return reply.status(500).send({ error: `Pull failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Pull failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 
@@ -105,7 +107,8 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
 
       return reply.send({ ok: true, count: result2.count })
     } catch (e) {
-      return reply.status(500).send({ error: `Pull failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Pull failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 }

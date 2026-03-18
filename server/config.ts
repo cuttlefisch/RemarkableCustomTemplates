@@ -23,6 +23,7 @@ export interface ServerConfig {
   debugRegistry: string
   methodsDir: string
   methodsRegistry: string
+  classicDistDir: string
   rmMethodsDistDir: string
   rmMethodsBackupDir: string
   rmMethodsDeployedManifest: string
@@ -49,6 +50,7 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     debugRegistry: resolve(templatesDir, 'debug/debug-registry.json'),
     methodsDir: resolve(templatesDir, 'methods'),
     methodsRegistry: resolve(templatesDir, 'methods/methods-registry.json'),
+    classicDistDir: resolve(dataDir, 'dist-deploy'),
     rmMethodsDistDir: resolve(dataDir, 'rm-methods-dist'),
     rmMethodsBackupDir: resolve(dataDir, 'rm-methods-backups'),
     rmMethodsDeployedManifest: resolve(dataDir, 'rm-methods-backups/.deployed-manifest'),

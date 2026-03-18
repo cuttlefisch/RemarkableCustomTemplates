@@ -20,14 +20,14 @@ export interface UseDeviceConfig {
     sshPort: number
     authMethod: string
     sshPassword?: string
-  }) => Promise<{ ok: boolean; deviceModel?: string; error?: string }>
+  }) => Promise<{ ok: boolean; deviceModel?: string; error?: string; hint?: string }>
   saveConfig: (cfg: {
     deviceIp: string
     sshPort: number
     authMethod: string
     sshPassword?: string
   }) => Promise<boolean>
-  setupKeys: () => Promise<{ ok: boolean; error?: string }>
+  setupKeys: () => Promise<{ ok: boolean; error?: string; hint?: string }>
 }
 
 export function useDeviceConfig(): UseDeviceConfig {
@@ -79,10 +79,11 @@ export function useDeviceConfig(): UseDeviceConfig {
           deviceModel?: string
           lastConnected?: string
           error?: string
+          hint?: string
         }
         if (!res.ok) {
           setConnected(false)
-          return { ok: false, error: data.error ?? `HTTP ${res.status}` }
+          return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint }
         }
         setConnected(true)
         setDeviceModel(data.deviceModel ?? null)
@@ -132,9 +133,9 @@ export function useDeviceConfig(): UseDeviceConfig {
     try {
       setError(null)
       const res = await fetch('/api/device/setup-keys', { method: 'POST' })
-      const data = (await res.json()) as { ok?: boolean; error?: string; message?: string }
+      const data = (await res.json()) as { ok?: boolean; error?: string; hint?: string; message?: string }
       if (!res.ok) {
-        return { ok: false, error: data.error ?? `HTTP ${res.status}` }
+        return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint }
       }
       await refresh()
       return { ok: true }

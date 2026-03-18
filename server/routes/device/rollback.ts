@@ -13,6 +13,7 @@ import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids, diffManifestUuids } from '../../lib/manifestUuids.ts'
+import { formatSshError } from '../../lib/sshErrors.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 
@@ -81,7 +82,8 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
       return reply.send({ ok: true, steps })
     } catch (e) {
-      return reply.status(500).send({ error: `Rollback failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 
@@ -122,7 +124,8 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
       return reply.send({ ok: true, steps })
     } catch (e) {
-      return reply.status(500).send({ error: `Rollback failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 
@@ -148,7 +151,8 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
       return reply.send({ ok: true, restoredFrom: latestBackup })
     } catch (e) {
-      return reply.status(500).send({ error: `Rollback failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 }

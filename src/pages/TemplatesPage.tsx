@@ -411,7 +411,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             <button
               className={`cat-chip source-chip${filterSource === 'official' ? ' active' : ''}`}
               onClick={() => setFilterSource(filterSource === 'official' ? null : 'official')}
-            >Official</button>
+            >Classic</button>
             <button
               className={`cat-chip source-chip${filterSource === 'methods' ? ' active' : ''}`}
               onClick={() => setFilterSource(filterSource === 'methods' ? null : 'methods')}

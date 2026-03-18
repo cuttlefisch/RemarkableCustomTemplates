@@ -12,10 +12,10 @@ export function DeviceConnectionCard({ config }: Props) {
   const [formPort, setFormPort] = useState(22)
   const [formPassword, setFormPassword] = useState('')
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; deviceModel?: string; error?: string } | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; deviceModel?: string; error?: string; hint?: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [settingUpKeys, setSettingUpKeys] = useState(false)
-  const [keyResult, setKeyResult] = useState<{ ok: boolean; error?: string } | null>(null)
+  const [keyResult, setKeyResult] = useState<{ ok: boolean; error?: string; hint?: string } | null>(null)
 
   function openForm() {
     setFormIp(config.config?.deviceIp ?? '')
@@ -101,6 +101,25 @@ export function DeviceConnectionCard({ config }: Props) {
           {testResult && !testResult.ok && (
             <div className="device-error" style={{ marginTop: 8, marginBottom: 8 }}>
               {testResult.error}
+              {testResult.hint && (
+                <p className="device-error-hint">{testResult.hint}</p>
+              )}
+            </div>
+          )}
+
+          {config.config?.authMethod === 'password' && (
+            <div className="device-key-callout">
+              <strong>Recommended:</strong> Set up SSH keys for a more reliable connection.
+              The device password resets on every firmware update — SSH keys are permanent.
+              <div style={{ marginTop: 8 }}>
+                <button
+                  className="device-card-btn device-card-btn-secondary"
+                  onClick={handleSetupKeys}
+                  disabled={settingUpKeys}
+                >
+                  {settingUpKeys ? 'Setting up...' : 'Set Up SSH Keys'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -118,21 +137,15 @@ export function DeviceConnectionCard({ config }: Props) {
             >
               Edit Connection
             </button>
-            {config.config?.authMethod === 'password' && (
-              <button
-                className="device-card-btn device-card-btn-secondary"
-                onClick={handleSetupKeys}
-                disabled={settingUpKeys}
-              >
-                {settingUpKeys ? 'Setting up...' : 'Set Up SSH Keys'}
-              </button>
-            )}
           </div>
 
           {keyResult && (
-            <p className={keyResult.ok ? 'device-card-hint' : 'device-error'} style={{ marginTop: 8 }}>
+            <div className={keyResult.ok ? 'device-card-hint' : 'device-error'} style={{ marginTop: 8 }}>
               {keyResult.ok ? 'SSH keys installed. Switched to key authentication.' : keyResult.error}
-            </p>
+              {!keyResult.ok && keyResult.hint && (
+                <p className="device-error-hint">{keyResult.hint}</p>
+              )}
+            </div>
           )}
         </div>
       </section>
@@ -168,9 +181,8 @@ export function DeviceConnectionCard({ config }: Props) {
             {showHelp && (
               <div className="device-form-help">
                 <p>On your reMarkable, go to <strong>Settings &rarr; General &rarr; Help &rarr; Copyrights and licenses</strong>.</p>
-                <p>Your root password and IP address are shown at the bottom of the screen.</p>
-                <p>Username is always <code>root</code>.</p>
-                <p>USB connection: IP is typically <code>10.11.99.1</code>.</p>
+                <p>Your root password and IP address are shown at the bottom of the screen. Username is always <code>root</code>.</p>
+                <p>Over WiFi, the IP is assigned by your router (typically something like <code>192.168.1.x</code>). Over USB, the IP is <code>10.11.99.1</code>.</p>
               </div>
             )}
 
@@ -211,6 +223,9 @@ export function DeviceConnectionCard({ config }: Props) {
                 {testResult.ok
                   ? `Connected to ${testResult.deviceModel ?? 'device'}`
                   : testResult.error}
+                {!testResult.ok && testResult.hint && (
+                  <p className="device-error-hint">{testResult.hint}</p>
+                )}
               </div>
             )}
 
@@ -252,7 +267,7 @@ export function DeviceConnectionCard({ config }: Props) {
 
             {testResult?.ok && config.configured && (
               <p className="device-card-hint" style={{ marginTop: 8 }}>
-                After saving, you can set up SSH keys so the password isn't needed again.
+                Recommended: Set up SSH keys now. The device password resets on every firmware update — SSH keys are permanent.
               </p>
             )}
           </div>

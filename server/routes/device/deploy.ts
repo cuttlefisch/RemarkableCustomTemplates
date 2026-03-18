@@ -13,6 +13,8 @@ import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids, diffManifestUuids } from '../../lib/manifestUuids.ts'
 import { buildRmMethodsDist, writeRmMethodsDist } from '../../lib/buildRmMethodsDist.ts'
+import { buildClassicDist, writeClassicDist } from '../../lib/buildClassicDist.ts'
+import { formatSshError } from '../../lib/sshErrors.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
@@ -103,7 +105,8 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
 
       return reply.send({ ok: true, steps })
     } catch (e) {
-      return reply.status(500).send({ error: `Deploy failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Deploy failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 
@@ -115,20 +118,21 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
     }
 
     try {
+      const steps: string[] = []
+
+      // Auto-build dist-deploy from official + custom + debug templates
+      const buildResult = buildClassicDist(config)
+      writeClassicDist(config, buildResult)
+      steps.push(`Built ${buildResult.templateCount} templates`)
+
+      const distDir = config.classicDistDir
+
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
-      const steps: string[] = []
 
       // Backup on device
       await exec(client, `mount -o remount,rw / && mkdir -p /home/root/template-backups && timestamp=$(date +%Y%m%d_%H%M%S) && tar czf /home/root/template-backups/templates_\${timestamp}.tar.gz -C /usr/share/remarkable templates`)
       steps.push('Created backup on device')
-
-      // Push templates
-      const distDir = resolve(config.dataDir, 'dist-deploy')
-      if (!existsSync(distDir)) {
-        client.end()
-        return reply.status(400).send({ error: 'dist-deploy/ not found. Build first.' })
-      }
 
       const pushed = await pushDirectory(sftp, distDir, TEMPLATES_PATH)
       steps.push(`Pushed ${pushed.length} files`)
@@ -140,7 +144,8 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
 
       return reply.send({ ok: true, steps })
     } catch (e) {
-      return reply.status(500).send({ error: `Deploy failed: ${String(e)}` })
+      const formatted = formatSshError(e instanceof Error ? e : String(e))
+      return reply.status(500).send({ error: `Deploy failed: ${formatted.message}`, hint: formatted.hint })
     }
   })
 }

@@ -107,7 +107,7 @@ The dev server merges `debug-registry.json` + `methods-registry.json` + official
 
 ### UI structure
 
-Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a sidebar listing all templates with source filter chips (Official / Methods) that filter by `origin` / `isCustom`, plus category, orientation, and name search filters.
+Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a sidebar listing all templates with source filter chips (Classic / Methods) that filter by `origin` / `isCustom`, plus category, orientation, and name search filters.
 
 ### Template files
 

@@ -8,6 +8,7 @@ interface Props {
 
 export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, onError }: Props) {
   const [importing, setImporting] = useState(false)
+  const [showImportHelp, setShowImportHelp] = useState(false)
   const officialInputRef = useRef<HTMLInputElement>(null)
 
   async function handleImportOfficial(files: FileList) {
@@ -84,11 +85,25 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
       <h2 className="device-card-title">Import &amp; Export</h2>
       <div className="device-card-body">
         <div className="device-op-section">
-          <h3 className="device-op-section-title">Official Templates (USB)</h3>
+          <h3 className="device-op-section-title">Import Classic Templates</h3>
           <p className="device-card-desc">
-            Import the official <code>.template</code> files from your reMarkable device.
-            Connect via USB and select the templates folder.
+            Import <code>.template</code> files from your computer. These are single-file classic templates.
+            On the device, they're stored at <code>/usr/share/remarkable/templates/</code> alongside <code>templates.json</code>.
           </p>
+          <button
+            className="device-form-help-toggle"
+            onClick={() => setShowImportHelp(!showImportHelp)}
+            style={{ marginBottom: 8 }}
+          >
+            {showImportHelp ? 'Hide details' : 'What are classic templates?'}
+          </button>
+          {showImportHelp && (
+            <div className="device-form-help" style={{ marginBottom: 12 }}>
+              <p>Classic templates are single <code>.template</code> files registered in <code>templates.json</code> on the device's system partition.</p>
+              <p>They do not sync across devices and are wiped during firmware updates.</p>
+              <p>For templates that sync across paired devices, use <strong>Deploy via rm_methods</strong> in the Sync card instead.</p>
+            </div>
+          )}
           <p className="device-card-status">
             Status: {officialTemplatesAvailable === true ? 'Loaded' : officialTemplatesAvailable === false ? 'Not loaded' : 'Checking...'}
           </p>
@@ -97,7 +112,7 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
             onClick={() => officialInputRef.current?.click()}
             disabled={importing}
           >
-            {importing ? 'Importing...' : 'Import from USB'}
+            {importing ? 'Importing...' : 'Select Template Folder'}
           </button>
           <input
             ref={officialInputRef}
@@ -114,28 +129,35 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
         </div>
 
         <div className="device-op-section">
-          <h3 className="device-op-section-title">Export for Device</h3>
-          <p className="device-card-desc">
-            Download a merged ZIP of official + custom templates with an updated registry.
-            Copy contents to your device via USB.
-          </p>
+          <h3 className="device-op-section-title">Export Templates</h3>
           <div className="device-card-btn-row">
-            <button
-              className="device-card-btn"
-              onClick={handleExportForDevice}
-              disabled={officialTemplatesAvailable !== true}
-            >
-              Download ZIP
-            </button>
-            <button
-              className="device-card-btn device-card-btn-secondary"
-              onClick={handleExportRmMethods}
-            >
-              Download rm_methods ZIP
-            </button>
+            <div>
+              <button
+                className="device-card-btn"
+                onClick={handleExportForDevice}
+                disabled={officialTemplatesAvailable !== true}
+              >
+                Download ZIP
+              </button>
+              <p className="device-card-hint">
+                Classic format — single-file templates with merged <code>templates.json</code>.
+                Transfer to <code>/usr/share/remarkable/templates/</code> via USB or use Deploy Classic.
+              </p>
+            </div>
+            <div>
+              <button
+                className="device-card-btn device-card-btn-secondary"
+                onClick={handleExportRmMethods}
+              >
+                Download rm_methods ZIP
+              </button>
+              <p className="device-card-hint">
+                Methods format — multi-file templates with metadata for cloud sync across paired devices.
+              </p>
+            </div>
           </div>
           {officialTemplatesAvailable !== true && (
-            <p className="device-card-hint">Import official templates first to enable ZIP export.</p>
+            <p className="device-card-hint">Import classic templates first to enable ZIP export.</p>
           )}
         </div>
       </div>
