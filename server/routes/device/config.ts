@@ -134,9 +134,10 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       const client = await connect(deviceConfig)
       const escapedPubKey = opensshPubStr.replace(/'/g, "'\\''")
 
-      await exec(client, `mkdir -p /root/.ssh && chmod 700 /root/.ssh`)
-      await exec(client, `grep -qF '${escapedPubKey}' /root/.ssh/authorized_keys 2>/dev/null || echo '${escapedPubKey}' >> /root/.ssh/authorized_keys`)
-      await exec(client, `chmod 600 /root/.ssh/authorized_keys`)
+      // reMarkable uses /home/root as root's home directory, not /root
+      await exec(client, `mkdir -p /home/root/.ssh && chmod 700 /home/root/.ssh`)
+      await exec(client, `grep -qF '${escapedPubKey}' /home/root/.ssh/authorized_keys 2>/dev/null || echo '${escapedPubKey}' >> /home/root/.ssh/authorized_keys`)
+      await exec(client, `chmod 600 /home/root/.ssh/authorized_keys`)
       client.end()
 
       // Update config to use key auth
