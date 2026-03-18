@@ -47,6 +47,7 @@ export function useRegistry(): RegistryState {
       .then(data => {
         try { return parseRegistry(data) } catch { return { templates: [] } }
       })
+      .catch(() => ({ templates: [] } as TemplateRegistry))
 
     Promise.all([mainFetch, customFetch])
       .then(([main, custom]) => {
