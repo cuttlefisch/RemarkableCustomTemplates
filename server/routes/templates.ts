@@ -18,9 +18,22 @@ export default function templateRoutes(app: FastifyInstance, config: ServerConfi
 
     const filename = decodeURIComponent(wildcard)
 
-    // Skip custom/ — served by Vite's static middleware in dev, @fastify/static in prod
-    if (filename.startsWith('custom/')) {
-      return reply.status(404).send({ error: 'Not found' })
+    // Custom templates
+    const customMatch = filename.match(/^custom\/(.+)$/)
+    if (customMatch) {
+      const customFile = customMatch[1]
+      let customPath: string
+      try {
+        customPath = resolve(config.customDir, customFile)
+        assertWithin(config.customDir, customPath)
+      } catch {
+        return reply.status(400).send({ error: 'Invalid path' })
+      }
+      if (!existsSync(customPath)) {
+        return reply.status(404).send({ error: 'Not found' })
+      }
+      const ct = customFile.endsWith('.json') ? 'application/json' : 'application/octet-stream'
+      return reply.type(ct).send(readFileSync(customPath))
     }
 
     // Debug templates
