@@ -12,6 +12,7 @@ import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids, diffManifestUuids } from '../../lib/manifestUuids.ts'
+import { buildRmMethodsDist, writeRmMethodsDist } from '../../lib/buildRmMethodsDist.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
@@ -32,14 +33,16 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
-    const distDir = config.rmMethodsDistDir
-    const manifestPath = resolve(distDir, '.manifest')
-    if (!existsSync(distDir) || !existsSync(manifestPath)) {
-      return reply.status(400).send({ error: 'rm-methods-dist/ not found. Build first.' })
-    }
-
     try {
       const steps: string[] = []
+
+      // Auto-build rm-methods-dist from custom + debug templates
+      const buildResult = buildRmMethodsDist(config)
+      writeRmMethodsDist(config, buildResult)
+      steps.push(`Built ${buildResult.templateCount} templates`)
+
+      const distDir = config.rmMethodsDistDir
+      const manifestPath = resolve(distDir, '.manifest')
 
       // Backup current deployment
       mkdirSync(config.rmMethodsBackupDir, { recursive: true })

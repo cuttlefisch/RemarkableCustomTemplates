@@ -8,7 +8,7 @@ import { DeviceBackupsCard } from '../components/device/DeviceBackupsCard'
 import './DevicePage.css'
 
 export function DevicePage() {
-  const { officialTemplatesAvailable } = useRegistryContext()
+  const { officialTemplatesAvailable, refreshRegistry } = useRegistryContext()
   const deviceConfig = useDeviceConfig()
 
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -29,7 +29,7 @@ export function DevicePage() {
         {errorMessage && <div className="device-error">{errorMessage}</div>}
 
         <DeviceConnectionCard config={deviceConfig} />
-        <DeviceSyncCard configured={deviceConfig.configured} />
+        <DeviceSyncCard configured={deviceConfig.configured} onSyncComplete={refreshRegistry} />
         <DeviceImportExportCard
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}

@@ -2,16 +2,17 @@ import { useState } from 'react'
 
 interface Props {
   configured: boolean
+  onSyncComplete?: () => void
 }
 
 type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string }
 
-function useDeviceOp(url: string, confirmMsg?: string) {
+function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<OpResult | null>(null)
 
   async function run() {
-    if (confirmMsg && !window.confirm(confirmMsg)) return
+    if (options?.confirmMsg && !window.confirm(options.confirmMsg)) return
     setLoading(true)
     setResult(null)
     try {
@@ -26,10 +27,11 @@ function useDeviceOp(url: string, confirmMsg?: string) {
         const restoredFrom = data.restoredFrom as string | undefined
         const msg =
           message ??
-          ((steps ? steps.join(' → ') : '') ||
+          ((steps ? steps.join(' \u2192 ') : '') ||
           (count !== undefined ? `Pulled ${count} templates` : '') ||
           (restoredFrom ? `Restored from ${restoredFrom}` : 'Done'))
         setResult({ ok: true, message: msg, steps })
+        options?.onSuccess?.()
       }
     } catch (e) {
       setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
@@ -74,22 +76,22 @@ function OpButton({
   )
 }
 
-export function DeviceSyncCard({ configured }: Props) {
-  const pullOfficial = useDeviceOp('/api/device/pull-official')
-  const pullMethods = useDeviceOp('/api/device/pull-methods')
+export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
+  const pullOfficial = useDeviceOp('/api/device/pull-official', { onSuccess: onSyncComplete })
+  const pullMethods = useDeviceOp('/api/device/pull-methods', { onSuccess: onSyncComplete })
   const deployMethods = useDeviceOp('/api/device/deploy-methods')
   const deployClassic = useDeviceOp('/api/device/deploy-classic')
   const rollbackMethods = useDeviceOp(
     '/api/device/rollback-methods',
-    'Rollback to the most recent backup? This will restart the device UI.',
+    { confirmMsg: 'Rollback to the most recent backup? This will restart the device UI.' },
   )
   const rollbackOriginal = useDeviceOp(
     '/api/device/rollback-original',
-    'Remove all custom templates from device? This will restart the device UI.',
+    { confirmMsg: 'Remove all custom templates from device? This will restart the device UI.' },
   )
   const rollbackClassic = useDeviceOp(
     '/api/device/rollback-classic',
-    'Restore from the latest classic backup on device? This will restart the device UI.',
+    { confirmMsg: 'Restore from the latest classic backup on device? This will restart the device UI.' },
   )
 
   return (
