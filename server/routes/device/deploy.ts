@@ -6,7 +6,7 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { ServerConfig } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
@@ -96,6 +96,26 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
         const filesToRemove = orphans.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
         await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
         steps.push(`Removed ${orphans.length} orphaned templates`)
+
+        // Clean up local methods-registry.json and methods template files for orphaned UUIDs
+        const orphanSet = new Set(orphans)
+        if (existsSync(config.methodsRegistry)) {
+          try {
+            const registry = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as Array<{ rmMethodsId?: string }>
+            const filtered = registry.filter(entry => !entry.rmMethodsId || !orphanSet.has(entry.rmMethodsId))
+            const removed = registry.length - filtered.length
+            if (removed > 0) {
+              writeFileSync(config.methodsRegistry, JSON.stringify(filtered, null, 2), 'utf8')
+              steps.push(`Cleaned up ${removed} stale methods entries`)
+            }
+          } catch { /* methods-registry.json may be malformed — skip */ }
+        }
+        for (const uuid of orphans) {
+          const templateFile = resolve(config.methodsDir, `${uuid}.template`)
+          if (existsSync(templateFile)) {
+            unlinkSync(templateFile)
+          }
+        }
       }
 
       // Push new templates
