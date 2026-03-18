@@ -16,6 +16,7 @@ import { getSftp, removeFiles, readRemoteFile } from '../../lib/sftp.ts'
 import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { assertWithin } from '../../lib/pathSecurity.ts'
+import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
 import {
   RM_METHODS_PATH,
   readDeviceManifest,
@@ -109,9 +110,12 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    const stream = createNdjsonStream(reply)
+
     try {
       const steps: string[] = []
 
+      stream.progress('Connecting to device...')
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
@@ -123,19 +127,24 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
 
       if (allUuids.length === 0) {
         client.end()
-        return reply.status(400).send({ error: 'No deploy history found. Cannot determine which templates are custom.' })
+        stream.error('No deploy history found. Cannot determine which templates are custom.')
+        return
       }
 
       steps.push(`Found ${allUuids.length} custom templates`)
 
       // Pull all file triplets from device into ZIP
       const fileMap: Record<string, Uint8Array> = {}
+      const totalBackupFiles = allUuids.length * 3
+      let backupCount = 0
       for (const uuid of allUuids) {
         for (const ext of ['.template', '.metadata', '.content']) {
           try {
             const content = await readRemoteFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`)
             fileMap[`${uuid}${ext}`] = strToU8(content)
           } catch { /* file may not exist */ }
+          backupCount++
+          stream.progress('Backing up templates', backupCount, totalBackupFiles)
         }
       }
 
@@ -145,6 +154,7 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       }
 
       // Create backup ZIP
+      stream.progress('Saving backup ZIP...')
       const zipped = zipSync(fileMap)
       const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '_').slice(0, 15)
       const backupFilename = `remove-all-backup-${ts}.zip`
@@ -156,12 +166,15 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       // Verify ZIP was written
       if (!existsSync(backupPath)) {
         client.end()
-        return reply.status(500).send({ error: 'Backup verification failed — ZIP was not saved' })
+        stream.error('Backup verification failed — ZIP was not saved')
+        return
       }
 
       // Remove file triplets from device
       const filesToRemove = allUuids.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
-      const removed = await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
+      const removed = await removeFiles(sftp, RM_METHODS_PATH, filesToRemove, (cur, tot) => {
+        stream.progress('Removing files from device', cur, tot)
+      })
       steps.push(`Removed ${removed.length} files from device`)
 
       // Remove device manifest
@@ -177,14 +190,15 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       }
 
       // Restart xochitl
+      stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
       client.end()
       steps.push('Restarted xochitl')
 
-      return reply.send({ ok: true, steps, backupFilename })
+      stream.done({ steps, backupFilename })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Remove all failed: ${formatted.message}`, hint: formatted.hint })
+      stream.error(`Remove all failed: ${formatted.message}`, formatted.hint)
     }
   })
 }

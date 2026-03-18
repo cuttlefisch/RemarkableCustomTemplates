@@ -14,6 +14,7 @@ import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
+import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
 import {
   RM_METHODS_PATH,
   readDeviceManifest,
@@ -39,28 +40,31 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    // Validate backup existence before starting stream
+    const backupDirs = existsSync(config.rmMethodsBackupDir)
+      ? readdirSync(config.rmMethodsBackupDir)
+        .filter(d => d.startsWith('rm-methods_'))
+        .map(d => resolve(config.rmMethodsBackupDir, d))
+        .filter(d => statSync(d).isDirectory())
+        .sort()
+        .reverse()
+      : []
+
+    if (backupDirs.length === 0) {
+      return reply.status(400).send({ error: 'No timestamped backups found. Use rollback-original to revert to pristine state.' })
+    }
+
+    const latest = backupDirs[0]
+    const latestManifest = resolve(latest, '.manifest')
+    if (!existsSync(latestManifest)) {
+      return reply.status(400).send({ error: `Backup ${latest} has no manifest.` })
+    }
+
+    const stream = createNdjsonStream(reply)
+
     try {
-      // Find latest timestamped backup
-      const backupDirs = existsSync(config.rmMethodsBackupDir)
-        ? readdirSync(config.rmMethodsBackupDir)
-          .filter(d => d.startsWith('rm-methods_'))
-          .map(d => resolve(config.rmMethodsBackupDir, d))
-          .filter(d => statSync(d).isDirectory())
-          .sort()
-          .reverse()
-        : []
-
-      if (backupDirs.length === 0) {
-        return reply.status(400).send({ error: 'No timestamped backups found. Use rollback-original to revert to pristine state.' })
-      }
-
-      const latest = backupDirs[0]
-      const latestManifest = resolve(latest, '.manifest')
-      if (!existsSync(latestManifest)) {
-        return reply.status(400).send({ error: `Backup ${latest} has no manifest.` })
-      }
-
       const steps: string[] = []
+      stream.progress('Connecting to device...')
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
@@ -77,12 +81,16 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       const orphans = allCurrentUuids.filter(uuid => !backupUuids.has(uuid))
       if (orphans.length > 0) {
         const filesToRemove = orphans.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
-        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
+        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove, (cur, tot) => {
+          stream.progress('Removing orphaned templates', cur, tot)
+        })
         steps.push(`Removed ${orphans.length} templates added since backup`)
       }
 
       // Push backup files
-      const pushed = await pushDirectory(sftp, latest, RM_METHODS_PATH, f => f !== '.manifest')
+      const pushed = await pushDirectory(sftp, latest, RM_METHODS_PATH, f => f !== '.manifest', (cur, tot) => {
+        stream.progress('Restoring backup files', cur, tot)
+      })
       steps.push(`Restored ${pushed.length} files from backup`)
 
       // Update deployed manifest (local + device)
@@ -91,14 +99,15 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       await writeDeviceManifest(sftp, backupManifestContent)
 
       // Restart
+      stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
       client.end()
       steps.push('Restarted xochitl')
 
-      return reply.send({ ok: true, steps })
+      stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint })
+      stream.error(`Rollback failed: ${formatted.message}`, formatted.hint)
     }
   })
 
@@ -113,8 +122,11 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       return reply.status(400).send({ error: 'No original backup found. Deploy at least once first.' })
     }
 
+    const stream = createNdjsonStream(reply)
+
     try {
       const steps: string[] = []
+      stream.progress('Connecting to device...')
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
@@ -128,7 +140,9 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
       if (allUuids.length > 0) {
         const filesToRemove = allUuids.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
-        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove)
+        await removeFiles(sftp, RM_METHODS_PATH, filesToRemove, (cur, tot) => {
+          stream.progress('Removing deployed templates', cur, tot)
+        })
         steps.push(`Removed ${allUuids.length} deployed templates`)
       }
 
@@ -142,14 +156,15 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       copyFileSync(originalManifest, config.rmMethodsDeployedManifest)
 
       // Restart
+      stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
       client.end()
       steps.push('Restarted xochitl')
 
-      return reply.send({ ok: true, steps })
+      stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint })
+      stream.error(`Rollback failed: ${formatted.message}`, formatted.hint)
     }
   })
 

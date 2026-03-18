@@ -15,6 +15,7 @@ import { getSftp, pullDirectory, pullFile } from '../../lib/sftp.ts'
 import { buildMethodsRegistry } from '../../lib/buildMethodsRegistry.ts'
 import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
+import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
@@ -107,18 +108,23 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    const stream = createNdjsonStream(reply)
+
     try {
+      stream.progress('Connecting to device...')
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
       mkdirSync(config.officialDir, { recursive: true })
 
-      const pulled = await pullDirectory(sftp, TEMPLATES_PATH, config.officialDir)
+      const pulled = await pullDirectory(sftp, TEMPLATES_PATH, config.officialDir, undefined, (cur, tot) => {
+        stream.progress('Pulling templates', cur, tot)
+      })
       client.end()
 
-      return reply.send({ ok: true, count: pulled.length, files: pulled })
+      stream.done({ count: pulled.length, files: pulled })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Pull failed: ${formatted.message}`, hint: formatted.hint })
+      stream.error(`Pull failed: ${formatted.message}`, formatted.hint)
     }
   })
 
@@ -129,7 +135,10 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    const stream = createNdjsonStream(reply)
+
     try {
+      stream.progress('Scanning device for templates...')
       const client = await connect(deviceConfig)
 
       // Find TemplateType metadata files
@@ -138,7 +147,8 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
 
       if (metadataFiles.length === 0) {
         client.end()
-        return reply.send({ ok: true, count: 0, message: 'No rm_methods templates found on device.' })
+        stream.done({ count: 0, message: 'No rm_methods templates found on device.' })
+        return
       }
 
       // Pull metadata + template pairs to temp dir
@@ -146,17 +156,24 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       mkdirSync(tmpDir, { recursive: true })
       const sftp = await getSftp(client)
 
+      const totalFiles = metadataFiles.length * 2
+      let pulledCount = 0
       for (const metaPath of metadataFiles) {
         const uuid = basename(metaPath, '.metadata')
         await pullFile(sftp, metaPath, resolve(tmpDir, `${uuid}.metadata`))
+        pulledCount++
+        stream.progress('Pulling template files', pulledCount, totalFiles)
         try {
           await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}.template`, resolve(tmpDir, `${uuid}.template`))
         } catch {
           // Template file may not exist
         }
+        pulledCount++
+        stream.progress('Pulling template files', pulledCount, totalFiles)
       }
 
       // Read device manifest for custom UUID detection before closing connection
+      stream.progress('Reading device manifest...')
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceManifestUuids = deviceManifest
         ? parseManifestUuids(JSON.stringify(deviceManifest))
@@ -164,6 +181,7 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       client.end()
 
       // Build methods registry from pulled files
+      stream.progress('Building methods registry...')
       const manifestPath = existsSync(resolve(config.rmMethodsDistDir, '.manifest'))
         ? resolve(config.rmMethodsDistDir, '.manifest')
         : undefined
@@ -188,10 +206,10 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         rmdirSync(tmpDir)
       } catch { /* best effort cleanup */ }
 
-      return reply.send({ ok: true, count: result2.count, imported })
+      stream.done({ count: result2.count, imported })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Pull failed: ${formatted.message}`, hint: formatted.hint })
+      stream.error(`Pull failed: ${formatted.message}`, formatted.hint)
     }
   })
 }

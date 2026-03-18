@@ -72,3 +72,60 @@ export function computeSyncStatus(
 
   return { summary, templates }
 }
+
+// ---------------------------------------------------------------------------
+// Classic sync status (filename-based comparison, no content hashing)
+// ---------------------------------------------------------------------------
+
+export type ClassicSyncState = 'synced' | 'local-only' | 'device-only'
+
+export interface ClassicSyncEntry {
+  filename: string
+  name: string
+  state: ClassicSyncState
+}
+
+export interface ClassicSyncResult {
+  summary: { synced: number; localOnly: number; deviceOnly: number; total: number }
+  templates: ClassicSyncEntry[]
+}
+
+export function computeClassicSyncStatus(
+  localRegistry: { templates: { filename: string; name?: string }[] },
+  deviceRegistry: { templates: { filename: string; name?: string }[] },
+): ClassicSyncResult {
+  const localByFilename = new Map(localRegistry.templates.map(t => [t.filename, t.name ?? t.filename]))
+  const deviceByFilename = new Map(deviceRegistry.templates.map(t => [t.filename, t.name ?? t.filename]))
+
+  const allFilenames = new Set([...localByFilename.keys(), ...deviceByFilename.keys()])
+  const templates: ClassicSyncEntry[] = []
+
+  for (const filename of allFilenames) {
+    const inLocal = localByFilename.has(filename)
+    const inDevice = deviceByFilename.has(filename)
+
+    let state: ClassicSyncState
+    if (inLocal && inDevice) {
+      state = 'synced'
+    } else if (inLocal) {
+      state = 'local-only'
+    } else {
+      state = 'device-only'
+    }
+
+    const name = localByFilename.get(filename) ?? deviceByFilename.get(filename) ?? filename
+    templates.push({ filename, name, state })
+  }
+
+  templates.sort((a, b) => a.name.localeCompare(b.name))
+
+  return {
+    summary: {
+      synced: templates.filter(t => t.state === 'synced').length,
+      localOnly: templates.filter(t => t.state === 'local-only').length,
+      deviceOnly: templates.filter(t => t.state === 'device-only').length,
+      total: templates.length,
+    },
+    templates,
+  }
+}

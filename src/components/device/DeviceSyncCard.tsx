@@ -7,6 +7,12 @@ interface Props {
 
 type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string; hint?: string }
 
+interface ProgressState {
+  phase: string
+  current?: number
+  total?: number
+}
+
 // ---------------------------------------------------------------------------
 // Sync status types & hook
 // ---------------------------------------------------------------------------
@@ -29,9 +35,23 @@ interface SyncStatusSummary {
   total: number
 }
 
+type ClassicSyncState = 'synced' | 'local-only' | 'device-only'
+
+interface ClassicSyncEntry {
+  filename: string
+  name: string
+  state: ClassicSyncState
+}
+
+interface ClassicSyncStatus {
+  summary: { synced: number; localOnly: number; deviceOnly: number; total: number }
+  templates: ClassicSyncEntry[]
+}
+
 interface SyncStatusResponse {
   summary: SyncStatusSummary
   templates: TemplateSyncEntry[]
+  classic: ClassicSyncStatus | null
   checkedAt: string
 }
 
@@ -72,41 +92,121 @@ type RemoveAllPhase = 'idle' | 'loading-preview' | 'preview' | 'executing' | 'do
 interface RemoveAllPreview { count: number; templates: { uuid: string; name: string }[]; error?: string }
 interface RemoveAllResult { ok: boolean; steps?: string[]; backupFilename?: string; error?: string; hint?: string }
 
+async function readNdjsonStream(
+  response: Response,
+  onProgress: (p: ProgressState) => void,
+): Promise<Record<string, unknown>> {
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let finalData: Record<string, unknown> = {}
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    const lines = buffer.split('\n')
+    buffer = lines.pop()! // keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.trim()) continue
+      const event = JSON.parse(line) as Record<string, unknown>
+      if (event.type === 'progress') {
+        onProgress({
+          phase: event.phase as string,
+          current: event.current as number | undefined,
+          total: event.total as number | undefined,
+        })
+      } else if (event.type === 'done') {
+        finalData = event
+      } else if (event.type === 'error') {
+        throw { error: event.error as string, hint: event.hint as string | undefined }
+      }
+    }
+  }
+
+  return finalData
+}
+
 function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<OpResult | null>(null)
+  const [progress, setProgress] = useState<ProgressState | null>(null)
 
   async function run() {
     if (options?.confirmMsg && !window.confirm(options.confirmMsg)) return
     setLoading(true)
     setResult(null)
+    setProgress(null)
     try {
       const res = await fetch(url, { method: 'POST' })
-      const data = (await res.json()) as Record<string, unknown>
-      if (!res.ok) {
-        const hint = data.hint as string | undefined
-        setResult({ ok: false, error: (data.error as string) ?? `HTTP ${res.status}`, hint })
+      const contentType = res.headers.get('content-type') ?? ''
+
+      let data: Record<string, unknown>
+      if (contentType.includes('application/x-ndjson')) {
+        data = await readNdjsonStream(res, setProgress)
       } else {
-        const steps = data.steps as string[] | undefined
-        const count = data.count as number | undefined
-        const message = data.message as string | undefined
-        const restoredFrom = data.restoredFrom as string | undefined
-        const msg =
-          message ??
-          ((steps ? steps.join(' \u2192 ') : '') ||
-          (count !== undefined ? `Pulled ${count} templates` : '') ||
-          (restoredFrom ? `Restored from ${restoredFrom}` : 'Done'))
-        setResult({ ok: true, message: msg, steps })
-        options?.onSuccess?.()
+        data = (await res.json()) as Record<string, unknown>
+        if (!res.ok) {
+          const hint = data.hint as string | undefined
+          setResult({ ok: false, error: (data.error as string) ?? `HTTP ${res.status}`, hint })
+          return
+        }
       }
+
+      const steps = data.steps as string[] | undefined
+      const count = data.count as number | undefined
+      const message = data.message as string | undefined
+      const restoredFrom = data.restoredFrom as string | undefined
+      const msg =
+        message ??
+        ((steps ? steps.join(' \u2192 ') : '') ||
+        (count !== undefined ? `Pulled ${count} templates` : '') ||
+        (restoredFrom ? `Restored from ${restoredFrom}` : 'Done'))
+      setResult({ ok: true, message: msg, steps })
+      options?.onSuccess?.()
     } catch (e) {
-      setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
+      if (e && typeof e === 'object' && 'error' in e) {
+        const streamErr = e as { error: string; hint?: string }
+        setResult({ ok: false, error: streamErr.error, hint: streamErr.hint })
+      } else {
+        setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
+      }
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
-  return { loading, result, run }
+  return { loading, result, progress, run }
+}
+
+function ProgressBar({ progress, label }: { progress: ProgressState | null; label?: string }) {
+  const phase = progress?.phase ?? label
+  const pct = progress?.current != null && progress?.total
+    ? Math.round((progress.current / progress.total) * 100)
+    : null
+
+  return (
+    <div className="device-progress">
+      <div className="device-progress-label">
+        {phase}
+        {pct != null && ` ${progress!.current}/${progress!.total}`}
+      </div>
+      <div className="device-progress-bar">
+        <div
+          className={`device-progress-fill${pct == null ? ' indeterminate' : ''}`}
+          style={pct != null ? { width: `${pct}%` } : undefined}
+        />
+      </div>
+      {progress && (
+        <p className="device-progress-tip">
+          Tip: Swipe or tap on your reMarkable screen to keep it awake — transfers go faster when the device isn't dozing.
+        </p>
+      )}
+    </div>
+  )
 }
 
 function OpButton({
@@ -135,6 +235,9 @@ function OpButton({
       <button className={cls} onClick={op.run} disabled={op.loading || disabled} title={title}>
         {op.loading ? loadingLabel : label}
       </button>
+      {op.loading && (
+        <ProgressBar progress={op.progress} label={loadingLabel} />
+      )}
       {op.result && (
         <div className={`device-op-result ${op.result.ok ? '' : 'error'}`}>
           <p style={{ margin: 0 }}>{op.result.ok ? op.result.message : op.result.error}</p>
@@ -152,6 +255,7 @@ function useRemoveAll() {
   const [preview, setPreview] = useState<RemoveAllPreview | null>(null)
   const [result, setResult] = useState<RemoveAllResult | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const [progress, setProgress] = useState<ProgressState | null>(null)
 
   const loadPreview = useCallback(async () => {
     setPhase('loading-preview')
@@ -180,19 +284,34 @@ function useRemoveAll() {
   const execute = useCallback(async () => {
     setPhase('executing')
     setErrorMsg('')
+    setProgress(null)
     try {
       const res = await fetch('/api/device/remove-all-execute', { method: 'POST' })
-      const data = await res.json() as RemoveAllResult
-      if (!res.ok) {
-        setErrorMsg(data.error ?? `HTTP ${res.status}`)
-        setPhase('error')
-        return
+      const contentType = res.headers.get('content-type') ?? ''
+
+      let data: Record<string, unknown>
+      if (contentType.includes('application/x-ndjson')) {
+        data = await readNdjsonStream(res, setProgress)
+      } else {
+        data = (await res.json()) as Record<string, unknown>
+        if (!res.ok) {
+          setErrorMsg((data.error as string) ?? `HTTP ${res.status}`)
+          setPhase('error')
+          return
+        }
       }
-      setResult(data)
+
+      setResult(data as unknown as RemoveAllResult)
       setPhase('done')
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e))
+      if (e && typeof e === 'object' && 'error' in e) {
+        setErrorMsg((e as { error: string }).error)
+      } else {
+        setErrorMsg(e instanceof Error ? e.message : String(e))
+      }
       setPhase('error')
+    } finally {
+      setProgress(null)
     }
   }, [])
 
@@ -201,9 +320,10 @@ function useRemoveAll() {
     setPreview(null)
     setResult(null)
     setErrorMsg('')
+    setProgress(null)
   }, [])
 
-  return { phase, preview, result, errorMsg, loadPreview, execute, reset }
+  return { phase, preview, result, errorMsg, progress, loadPreview, execute, reset }
 }
 
 const SYNC_BADGE_LABELS: Record<SyncState, string> = {
@@ -215,6 +335,58 @@ const SYNC_BADGE_LABELS: Record<SyncState, string> = {
 
 function SyncBadge({ state }: { state: SyncState }) {
   return <span className={`sync-badge sync-badge-${state}`}>{SYNC_BADGE_LABELS[state]}</span>
+}
+
+function ClassicSyncStatusSection({ classic }: { classic: ClassicSyncStatus | null }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (classic === null) {
+    return (
+      <p className="device-card-hint" style={{ marginTop: 10 }}>
+        Pull classic templates first to check classic sync status.
+      </p>
+    )
+  }
+
+  const allSynced = classic.summary.total > 0 && classic.summary.synced === classic.summary.total
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button
+        className="sync-section-toggle"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? '▾' : '▸'} Classic templates ({classic.summary.total} total)
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 8 }}>
+          {allSynced ? (
+            <div className="sync-status-all-synced">
+              All {classic.summary.total} classic templates are in sync with your device.
+            </div>
+          ) : (
+            <div className="sync-status-summary">
+              {classic.summary.synced > 0 && <span className="sync-count-synced">{classic.summary.synced} synced</span>}
+              {classic.summary.localOnly > 0 && <span className="sync-count-local-only">{classic.summary.localOnly} local only</span>}
+              {classic.summary.deviceOnly > 0 && <span className="sync-count-device-only">{classic.summary.deviceOnly} device only</span>}
+            </div>
+          )}
+
+          {classic.templates.length > 0 && (
+            <div className="sync-status-list">
+              {classic.templates.map(t => (
+                <div key={t.filename} className="sync-status-entry">
+                  <span className="sync-status-name">{t.name}</span>
+                  <SyncBadge state={t.state} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSyncStatus> }) {
@@ -243,6 +415,7 @@ function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSy
 
       {status && (
         <div style={{ marginTop: 12 }}>
+          <h4 className="sync-subsection-title">Methods templates</h4>
           {allSynced ? (
             <div className="sync-status-all-synced">
               All {status.summary.total} templates are in sync with your device.
@@ -277,6 +450,8 @@ function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSy
           {status.summary.total === 0 && (
             <p className="device-card-hint" style={{ marginTop: 8 }}>No templates found locally or on the device.</p>
           )}
+
+          <ClassicSyncStatusSection classic={status.classic} />
 
           <p className="device-card-hint">Checked {new Date(status.checkedAt).toLocaleTimeString()}</p>
         </div>
@@ -353,17 +528,17 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
               )}
               <div className="device-card-btn-row">
                 <OpButton
-                  label="Pull Classic Templates"
-                  loadingLabel="Pulling..."
-                  op={pullOfficial}
-                  title="Download classic templates from /usr/share/remarkable/templates/"
-                />
-                <OpButton
                   label="Pull Methods Templates"
                   loadingLabel="Pulling..."
                   op={pullMethods}
-                  variant="secondary"
                   title="Download methods templates (official + custom) from the device"
+                />
+                <OpButton
+                  label="Pull Classic Templates"
+                  loadingLabel="Pulling..."
+                  op={pullOfficial}
+                  variant="secondary"
+                  title="Download classic templates from /usr/share/remarkable/templates/"
                 />
               </div>
             </div>
@@ -389,7 +564,7 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
               <p className="device-card-hint">
                 rm_methods (recommended) syncs across paired devices and survives firmware updates. Classic deploys to the system partition — no cloud sync, wiped on updates.
               </p>
-              <p className="device-card-hint">
+              <p className="device-card-warning">
                 Deploying via rm_methods will remove any custom templates from the device that are no longer in your local collection. Official reMarkable methods templates are always preserved.
               </p>
             </div>
@@ -469,9 +644,12 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
               )}
 
               {removeAll.phase === 'executing' && (
-                <button className="device-card-btn device-card-btn-danger" disabled>
-                  Removing templates...
-                </button>
+                <div>
+                  <button className="device-card-btn device-card-btn-danger" disabled>
+                    Removing templates...
+                  </button>
+                  <ProgressBar progress={removeAll.progress} label="Removing templates..." />
+                </div>
               )}
 
               {removeAll.phase === 'done' && removeAll.result && (

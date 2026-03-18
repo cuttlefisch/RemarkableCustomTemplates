@@ -8,8 +8,10 @@ import type { ServerConfig } from '../../config.ts'
 import { connect, type DeviceConfig } from '../../lib/ssh.ts'
 import { getSftp } from '../../lib/sftp.ts'
 import { buildRmMethodsDist } from '../../lib/buildRmMethodsDist.ts'
+import { buildClassicDist } from '../../lib/buildClassicDist.ts'
 import { readDeviceManifest } from '../../lib/deviceManifest.ts'
-import { computeSyncStatus } from '../../lib/syncStatus.ts'
+import { readRemoteFile } from '../../lib/sftp.ts'
+import { computeSyncStatus, computeClassicSyncStatus, type ClassicSyncResult } from '../../lib/syncStatus.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 
 function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
@@ -31,12 +33,25 @@ export default function deviceSyncStatusRoutes(app: FastifyInstance, config: Ser
       // Build local manifest (fresh content hashes, no disk write)
       const buildResult = buildRmMethodsDist(config)
 
-      // Read device manifest via SSH
+      // Read device manifest + classic registry via SSH
       const conn = await connect(deviceConfig)
       let deviceManifest
+      let classic: ClassicSyncResult | null = null
       try {
         const sftp = await getSftp(conn)
         deviceManifest = await readDeviceManifest(sftp)
+
+        // Classic sync status — read device registry and compare with local build
+        try {
+          const deviceClassicJson = await readRemoteFile(sftp, '/usr/share/remarkable/templates/templates.json')
+          const deviceClassicRegistry = JSON.parse(deviceClassicJson) as { templates: { filename: string; name?: string }[] }
+          const classicBuild = buildClassicDist(config)
+          const localClassicRegistry = JSON.parse(classicBuild.files['templates.json'] as string) as { templates: { filename: string; name?: string }[] }
+          classic = computeClassicSyncStatus(localClassicRegistry, deviceClassicRegistry)
+        } catch {
+          // Classic templates not available (not pulled yet, or device file missing)
+          classic = null
+        }
       } finally {
         conn.end()
       }
@@ -47,6 +62,7 @@ export default function deviceSyncStatusRoutes(app: FastifyInstance, config: Ser
         ok: true,
         summary,
         templates,
+        classic,
         checkedAt: new Date().toISOString(),
       })
     } catch (err) {

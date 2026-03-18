@@ -139,6 +139,17 @@ export function DeviceConnectionCard({ config }: Props) {
             </button>
           </div>
 
+          {(testing || settingUpKeys) && (
+            <div className="device-progress" style={{ marginTop: 8 }}>
+              <div className="device-progress-label">
+                {testing ? 'Testing connection...' : 'Setting up SSH keys...'}
+              </div>
+              <div className="device-progress-bar">
+                <div className="device-progress-fill indeterminate" />
+              </div>
+            </div>
+          )}
+
           {keyResult && (
             <div className={keyResult.ok ? 'device-card-hint' : 'device-error'} style={{ marginTop: 8 }}>
               {keyResult.ok ? 'SSH keys installed. Switched to key authentication.' : keyResult.error}
@@ -264,6 +275,17 @@ export function DeviceConnectionCard({ config }: Props) {
                 </>
               )}
             </div>
+
+            {(testing || saving) && (
+              <div className="device-progress" style={{ marginTop: 8 }}>
+                <div className="device-progress-label">
+                  {testing ? 'Testing connection...' : 'Saving configuration...'}
+                </div>
+                <div className="device-progress-bar">
+                  <div className="device-progress-fill indeterminate" />
+                </div>
+              </div>
+            )}
 
             {testResult?.ok && config.configured && (
               <p className="device-card-hint" style={{ marginTop: 8 }}>

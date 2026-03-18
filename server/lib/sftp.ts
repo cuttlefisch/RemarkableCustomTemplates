@@ -6,6 +6,8 @@ import type { Client, SFTPWrapper } from 'ssh2'
 import { mkdirSync, readdirSync, statSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 
+export type ProgressCallback = (current: number, total: number) => void
+
 /** Get an SFTP session from an SSH client. */
 export function getSftp(client: Client): Promise<SFTPWrapper> {
   return new Promise((resolve, reject) => {
@@ -53,17 +55,19 @@ export async function pullDirectory(
   remotePath: string,
   localPath: string,
   filter?: (filename: string) => boolean,
+  onProgress?: ProgressCallback,
 ): Promise<string[]> {
   mkdirSync(localPath, { recursive: true })
   const files = await listRemoteDir(sftp, remotePath)
+  const filtered = filter ? files.filter(filter) : files
   const pulled: string[] = []
 
-  for (const file of files) {
-    if (filter && !filter(file)) continue
+  for (const file of filtered) {
     const remoteFile = `${remotePath}/${file}`
     const localFile = resolve(localPath, file)
     await pullFile(sftp, remoteFile, localFile)
     pulled.push(file)
+    onProgress?.(pulled.length, filtered.length)
   }
 
   return pulled
@@ -75,18 +79,22 @@ export async function pushDirectory(
   localPath: string,
   remotePath: string,
   filter?: (filename: string) => boolean,
+  onProgress?: ProgressCallback,
 ): Promise<string[]> {
   const files = readdirSync(localPath)
+  const eligible = files.filter(file => {
+    if (filter && !filter(file)) return false
+    const localFile = resolve(localPath, file)
+    return statSync(localFile).isFile()
+  })
   const pushed: string[] = []
 
-  for (const file of files) {
-    if (filter && !filter(file)) continue
+  for (const file of eligible) {
     const localFile = resolve(localPath, file)
-    const stat = statSync(localFile)
-    if (!stat.isFile()) continue
     const remoteFile = `${remotePath}/${file}`
     await pushFile(sftp, localFile, remoteFile)
     pushed.push(file)
+    onProgress?.(pushed.length, eligible.length)
   }
 
   return pushed
@@ -98,9 +106,11 @@ export async function pullFiles(
   remoteDir: string,
   filenames: string[],
   localDir: string,
+  onProgress?: ProgressCallback,
 ): Promise<string[]> {
   mkdirSync(localDir, { recursive: true })
   const pulled: string[] = []
+  let processed = 0
 
   for (const filename of filenames) {
     try {
@@ -109,6 +119,8 @@ export async function pullFiles(
     } catch {
       // Skip files that don't exist
     }
+    processed++
+    onProgress?.(processed, filenames.length)
   }
 
   return pulled
@@ -119,8 +131,10 @@ export async function removeFiles(
   sftp: SFTPWrapper,
   remoteDir: string,
   filenames: string[],
+  onProgress?: ProgressCallback,
 ): Promise<string[]> {
   const removed: string[] = []
+  let processed = 0
 
   for (const filename of filenames) {
     try {
@@ -134,6 +148,8 @@ export async function removeFiles(
     } catch {
       // Skip files that don't exist
     }
+    processed++
+    onProgress?.(processed, filenames.length)
   }
 
   return removed
