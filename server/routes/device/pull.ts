@@ -6,7 +6,7 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { readFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { ServerConfig } from '../../config.ts'
@@ -18,6 +18,78 @@ import { formatSshError } from '../../lib/sshErrors.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
+
+interface MethodsRegistryEntry {
+  name: string
+  filename: string
+  iconCode: string
+  landscape?: boolean
+  categories: string[]
+  rmMethodsId?: string
+  origin?: string
+}
+
+/**
+ * After building the methods registry, auto-import any custom-methods entries
+ * into the custom collection so they appear as editable templates.
+ * Skips entries already present in custom-registry.json (matched by rmMethodsId).
+ */
+function importCustomMethodsEntries(config: ServerConfig): number {
+  // Read methods registry
+  let methodsEntries: MethodsRegistryEntry[]
+  try {
+    const raw = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as { templates: MethodsRegistryEntry[] }
+    methodsEntries = raw.templates.filter(e => e.origin === 'custom-methods')
+  } catch {
+    return 0
+  }
+
+  if (methodsEntries.length === 0) return 0
+
+  // Read existing custom registry
+  let customRegistry: { templates: Array<{ filename: string; rmMethodsId?: string; [k: string]: unknown }> }
+  try {
+    customRegistry = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as typeof customRegistry
+  } catch {
+    customRegistry = { templates: [] }
+  }
+
+  const existingIds = new Set(customRegistry.templates.map(e => e.rmMethodsId).filter(Boolean))
+  let imported = 0
+
+  mkdirSync(config.customDir, { recursive: true })
+
+  for (const entry of methodsEntries) {
+    if (!entry.rmMethodsId || existingIds.has(entry.rmMethodsId)) continue
+
+    // Copy template file from methods/ to custom/
+    const srcPath = resolve(config.methodsDir, `${entry.rmMethodsId}.template`)
+    if (!existsSync(srcPath)) continue
+
+    const prefix = entry.landscape ? 'LS' : 'P'
+    const customSlug = `${prefix} ${entry.name}`
+    const destPath = resolve(config.customDir, `${customSlug}.template`)
+    copyFileSync(srcPath, destPath)
+
+    // Add to custom registry
+    customRegistry.templates.push({
+      name: entry.name,
+      filename: `custom/${customSlug}`,
+      iconCode: entry.iconCode,
+      landscape: entry.landscape ?? false,
+      categories: entry.categories,
+      isCustom: true,
+      rmMethodsId: entry.rmMethodsId,
+    })
+    imported++
+  }
+
+  if (imported > 0) {
+    writeFileSync(config.customRegistry, JSON.stringify(customRegistry, null, 2) + '\n', 'utf8')
+  }
+
+  return imported
+}
 
 function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
   try {
@@ -107,13 +179,16 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         deviceManifestUuids,
       })
 
+      // Auto-import custom-methods entries into the custom collection
+      const imported = importCustomMethodsEntries(config)
+
       // Cleanup temp dir
       try {
         for (const f of readdirSync(tmpDir)) unlinkSync(resolve(tmpDir, f))
         rmdirSync(tmpDir)
       } catch { /* best effort cleanup */ }
 
-      return reply.send({ ok: true, count: result2.count })
+      return reply.send({ ok: true, count: result2.count, imported })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       return reply.status(500).send({ error: `Pull failed: ${formatted.message}`, hint: formatted.hint })
