@@ -32,7 +32,7 @@ Open `http://localhost:3000` in your browser. To set up device sync, navigate to
 
 To use a different port (e.g. if 3000 is taken): `PORT=3001 docker compose up --build -d`
 
-Stop with `docker compose down`.
+Stop with `docker compose down`. Data (templates, device config, SSH keys) is stored in a Docker volume and persists across restarts. To start fresh, use `docker compose down -v` to remove the volume.
 
 ## Project structure
 

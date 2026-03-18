@@ -23,7 +23,7 @@ Open `http://localhost:3000` in your browser. Navigate to the **Device & Sync** 
 
 If port 3000 is in use, pick another: `PORT=3001 docker compose up --build -d`
 
-Stop with `docker compose down`.
+Stop with `docker compose down`. Your data (templates, device config, SSH keys) persists in a Docker volume across restarts. To start completely fresh, use `docker compose down -v` to remove the volume.
 
 Skip to [Step 5: Pull rm_methods templates](#5-pull-rm_methods-templates-optional) (use the Device & Sync page instead of CLI commands).
 

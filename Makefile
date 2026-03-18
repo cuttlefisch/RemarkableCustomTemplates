@@ -76,7 +76,7 @@ docker-down: ## Stop the Docker containers
 docker-logs: ## Follow Docker container logs
 	docker compose logs -f
 
-docker-clean: ## Stop containers and remove volumes
+docker-clean: ## Stop containers and remove volumes (resets all data)
 	docker compose down -v
 
 # ── CLI device sync ──────────────────────────────────────────────────────────

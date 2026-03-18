@@ -8,7 +8,7 @@ export function NavBar() {
         Templates
       </NavLink>
       <NavLink to="/device" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-        Device &amp; Sync
+        Device
       </NavLink>
     </nav>
   )
