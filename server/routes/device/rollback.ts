@@ -1,20 +1,22 @@
 /**
  * Device rollback operations.
  *
- * POST /api/device/rollback-methods    — revert to most recent rm_methods backup
- * POST /api/device/rollback-original   — remove all custom templates from device
- * POST /api/device/rollback-classic    — restore tar backup on device
+ * POST /api/devices/:id/rollback-methods    — revert to most recent rm_methods backup
+ * POST /api/devices/:id/rollback-original   — remove all custom templates from device
+ * POST /api/devices/:id/rollback-classic    — restore tar backup on device
  */
 
 import type { FastifyInstance } from 'fastify'
 import { readFileSync, copyFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { ServerConfig } from '../../config.ts'
-import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
+import { resolveDevicePaths } from '../../config.ts'
+import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { readDevice } from '../../lib/deviceStore.ts'
 import {
   RM_METHODS_PATH,
   readDeviceManifest,
@@ -24,27 +26,22 @@ import {
   mergeDeployedUuids,
 } from '../../lib/deviceManifest.ts'
 
-function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
-  try {
-    return JSON.parse(readFileSync(config.deviceConfigPath, 'utf8')) as DeviceConfig
-  } catch {
-    return null
-  }
-}
-
 export default function deviceRollbackRoutes(app: FastifyInstance, config: ServerConfig) {
-  // POST /api/device/rollback-methods
-  app.post('/api/device/rollback-methods', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/rollback-methods
+  app.post<{ Params: { id: string } }>('/api/devices/:id/rollback-methods', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    const devicePaths = resolveDevicePaths(config, id)
+
     // Validate backup existence before starting stream
-    const backupDirs = existsSync(config.rmMethodsBackupDir)
-      ? readdirSync(config.rmMethodsBackupDir)
+    const backupDirs = existsSync(devicePaths.backupDir)
+      ? readdirSync(devicePaths.backupDir)
         .filter(d => d.startsWith('rm-methods_'))
-        .map(d => resolve(config.rmMethodsBackupDir, d))
+        .map(d => resolve(devicePaths.backupDir, d))
         .filter(d => statSync(d).isDirectory())
         .sort()
         .reverse()
@@ -68,15 +65,13 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
-      // Read device manifest for merged orphan tracking
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
-      const localUuids = existsSync(config.rmMethodsDeployedManifest)
-        ? readManifestUuids(config.rmMethodsDeployedManifest)
+      const localUuids = existsSync(devicePaths.deployedManifest)
+        ? readManifestUuids(devicePaths.deployedManifest)
         : []
       const allCurrentUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
-      // Remove templates added since backup
       const backupUuids = new Set(readManifestUuids(latestManifest))
       const orphans = allCurrentUuids.filter(uuid => !backupUuids.has(uuid))
       if (orphans.length > 0) {
@@ -87,18 +82,15 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
         steps.push(`Removed ${orphans.length} templates added since backup`)
       }
 
-      // Push backup files
       const pushed = await pushDirectory(sftp, latest, RM_METHODS_PATH, f => f !== '.manifest', (cur, tot) => {
         stream.progress('Restoring backup files', cur, tot)
       })
       steps.push(`Restored ${pushed.length} files from backup`)
 
-      // Update deployed manifest (local + device)
-      copyFileSync(latestManifest, config.rmMethodsDeployedManifest)
+      copyFileSync(latestManifest, devicePaths.deployedManifest)
       const backupManifestContent = JSON.parse(readFileSync(latestManifest, 'utf8'))
       await writeDeviceManifest(sftp, backupManifestContent)
 
-      // Restart
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
       client.end()
@@ -111,14 +103,17 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
     }
   })
 
-  // POST /api/device/rollback-original
-  app.post('/api/device/rollback-original', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/rollback-original
+  app.post<{ Params: { id: string } }>('/api/devices/:id/rollback-original', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
-    if (!existsSync(config.rmMethodsOriginalBackup)) {
+    const devicePaths = resolveDevicePaths(config, id)
+
+    if (!existsSync(devicePaths.originalBackup)) {
       return reply.status(400).send({ error: 'No original backup found. Deploy at least once first.' })
     }
 
@@ -130,11 +125,10 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
-      // Merge local + device manifest UUIDs for complete removal
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
-      const localUuids = existsSync(config.rmMethodsDeployedManifest)
-        ? readManifestUuids(config.rmMethodsDeployedManifest)
+      const localUuids = existsSync(devicePaths.deployedManifest)
+        ? readManifestUuids(devicePaths.deployedManifest)
         : []
       const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
@@ -146,16 +140,13 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
         steps.push(`Removed ${allUuids.length} deployed templates`)
       }
 
-      // Remove device manifest
       try {
         await removeDeviceManifest(sftp)
       } catch { /* may not exist */ }
 
-      // Copy original manifest to deployed
-      const originalManifest = resolve(config.rmMethodsOriginalBackup, '.manifest')
-      copyFileSync(originalManifest, config.rmMethodsDeployedManifest)
+      const originalManifest = resolve(devicePaths.originalBackup, '.manifest')
+      copyFileSync(originalManifest, devicePaths.deployedManifest)
 
-      // Restart
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
       client.end()
@@ -168,9 +159,10 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
     }
   })
 
-  // POST /api/device/rollback-classic
-  app.post('/api/device/rollback-classic', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/rollback-classic
+  app.post<{ Params: { id: string } }>('/api/devices/:id/rollback-classic', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }

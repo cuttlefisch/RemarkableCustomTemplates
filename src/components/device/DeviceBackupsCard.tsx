@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 interface Props {
+  deviceId: string | null
   configured: boolean
   onStatus: (msg: string) => void
   onError: (msg: string) => void
@@ -12,7 +13,7 @@ interface BackupEntry {
   templateCount: number
 }
 
-export function DeviceBackupsCard({ configured, onStatus, onError }: Props) {
+export function DeviceBackupsCard({ deviceId, configured, onStatus, onError }: Props) {
   const [restoring, setRestoring] = useState(false)
   const restoreInputRef = useRef<HTMLInputElement>(null)
   const [deviceBackups, setDeviceBackups] = useState<BackupEntry[]>([])
@@ -25,7 +26,8 @@ export function DeviceBackupsCard({ configured, onStatus, onError }: Props) {
 
     async function load() {
       try {
-        const r = await fetch('/api/device/backups')
+        if (!deviceId) return
+        const r = await fetch(`/api/devices/${deviceId}/backups`)
         const data = (await r.json()) as { backups: BackupEntry[] }
         if (!cancelled) setDeviceBackups(data.backups)
       } catch {
@@ -36,7 +38,7 @@ export function DeviceBackupsCard({ configured, onStatus, onError }: Props) {
     }
     load()
     return () => { cancelled = true }
-  }, [configured])
+  }, [configured, deviceId])
 
   async function handleBackup() {
     try {

@@ -58,10 +58,14 @@ On the **Device & Sync** page, click **Pull Methods Templates** to fetch officia
 
 On the **Device & Sync** page, click **Deploy**. Templates are deployed in the rm_methods format, which means they **sync across all paired devices** via the reMarkable cloud.
 
+> **No Connect subscription required.** rm_methods sync uses the built-in cloud mechanism that ships with every reMarkable — it works with or without a Connect subscription.
+
 Each deploy:
 - Backs up the previous state automatically
 - Cleans up any templates you've removed
 - Restarts the device UI
+
+> **Native vs PDF templates:** This app creates native `.template` files — vector-based pages that render instantly, use minimal battery, and zoom infinitely. PDF templates have their advantages (inter-page links, complex layouts) but are rasterized at fixed resolution and use more memory.
 
 ## 7. Back up your templates
 

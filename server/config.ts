@@ -7,6 +7,24 @@
 
 import { resolve } from 'node:path'
 
+export interface DevicePaths {
+  backupDir: string           // rm-methods-backups/<deviceId>/
+  deployedManifest: string    // rm-methods-backups/<deviceId>/.deployed-manifest
+  originalBackup: string      // rm-methods-backups/<deviceId>/.original
+  sshDir: string              // data/ssh/<deviceId>/
+}
+
+/** Resolve per-device paths for backups, manifests, and SSH keys. */
+export function resolveDevicePaths(config: ServerConfig, deviceId: string): DevicePaths {
+  const backupDir = resolve(config.rmMethodsBackupDir, deviceId)
+  return {
+    backupDir,
+    deployedManifest: resolve(backupDir, '.deployed-manifest'),
+    originalBackup: resolve(backupDir, '.original'),
+    sshDir: resolve(config.sshDir, deviceId),
+  }
+}
+
 export interface ServerConfig {
   /** Root directory for all data files */
   dataDir: string

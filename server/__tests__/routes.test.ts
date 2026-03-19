@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createApp } from '../app.ts'
 import { resolveConfig, type ServerConfig } from '../config.ts'
+import { writeDeviceStore } from '../lib/deviceStore.ts'
 
 function makeConfig(): ServerConfig {
   const base = resolve(tmpdir(), `server-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
@@ -145,66 +146,89 @@ describe('server routes', () => {
     })
   })
 
-  describe('GET /api/device/config', () => {
-    it('returns configured: false when no config exists', async () => {
+  describe('GET /api/devices', () => {
+    it('returns empty list when no devices exist', async () => {
       const app = await createApp(config)
-      const res = await app.inject({ method: 'GET', url: '/api/device/config' })
+      const res = await app.inject({ method: 'GET', url: '/api/devices' })
       expect(res.statusCode).toBe(200)
-      expect(JSON.parse(res.body)).toEqual({ configured: false })
+      const body = JSON.parse(res.body)
+      expect(body.devices).toEqual([])
+      expect(body.activeDeviceId).toBeNull()
       await app.close()
     })
 
-    it('returns config with redacted password', async () => {
-      writeFileSync(config.deviceConfigPath, JSON.stringify({
-        deviceIp: '10.11.99.1',
-        sshPort: 22,
-        authMethod: 'password',
-        sshPassword: 'secret123',
-      }))
+    it('returns devices with redacted passwords', async () => {
+      writeDeviceStore(config.deviceConfigPath, {
+        version: 2,
+        devices: [{
+          id: 'dev-1',
+          nickname: 'My RM',
+          deviceIp: '10.11.99.1',
+          sshPort: 22,
+          authMethod: 'password',
+          sshPassword: 'secret123',
+        }],
+        activeDeviceId: 'dev-1',
+      })
 
       const app = await createApp(config)
-      const res = await app.inject({ method: 'GET', url: '/api/device/config' })
+      const res = await app.inject({ method: 'GET', url: '/api/devices' })
       expect(res.statusCode).toBe(200)
       const body = JSON.parse(res.body)
-      expect(body.configured).toBe(true)
-      expect(body.config.deviceIp).toBe('10.11.99.1')
-      expect(body.config.sshPassword).toBe('***')
+      expect(body.devices).toHaveLength(1)
+      expect(body.devices[0].deviceIp).toBe('10.11.99.1')
+      expect(body.devices[0].sshPassword).toBe('***')
       await app.close()
     })
   })
 
-  describe('POST /api/device/config', () => {
-    it('saves device configuration', async () => {
+  describe('POST /api/devices', () => {
+    it('creates a new device', async () => {
       const app = await createApp(config)
       const res = await app.inject({
         method: 'POST',
-        url: '/api/device/config',
-        payload: { deviceIp: '10.11.99.1', authMethod: 'password', sshPassword: 'test' },
+        url: '/api/devices',
+        payload: { nickname: 'Test RM', deviceIp: '10.11.99.1', authMethod: 'password', sshPassword: 'test' },
       })
-      expect(res.statusCode).toBe(200)
+      expect(res.statusCode).toBe(201)
+      const body = JSON.parse(res.body)
+      expect(body.id).toBeTruthy()
+      expect(body.nickname).toBe('Test RM')
       const saved = JSON.parse(readFileSync(config.deviceConfigPath, 'utf8'))
-      expect(saved.deviceIp).toBe('10.11.99.1')
-      expect(saved.sshPort).toBe(22)
+      expect(saved.devices[0].deviceIp).toBe('10.11.99.1')
+      expect(saved.devices[0].sshPort).toBe(22)
       await app.close()
     })
   })
 
-  describe('GET /api/device/backups', () => {
+  describe('GET /api/devices/:id/backups', () => {
     it('returns empty list when no backups exist', async () => {
+      writeDeviceStore(config.deviceConfigPath, {
+        version: 2,
+        devices: [{ id: 'bk-1', nickname: 'BK', deviceIp: '1.1.1.1', sshPort: 22, authMethod: 'password' }],
+        activeDeviceId: 'bk-1',
+      })
+
       const app = await createApp(config)
-      const res = await app.inject({ method: 'GET', url: '/api/device/backups' })
+      const res = await app.inject({ method: 'GET', url: '/api/devices/bk-1/backups' })
       expect(res.statusCode).toBe(200)
       expect(JSON.parse(res.body)).toEqual({ backups: [] })
       await app.close()
     })
 
     it('lists available backups', async () => {
-      const backupDir = resolve(config.rmMethodsBackupDir, 'rm-methods_20260318_120000')
+      writeDeviceStore(config.deviceConfigPath, {
+        version: 2,
+        devices: [{ id: 'bk-2', nickname: 'BK2', deviceIp: '1.1.1.1', sshPort: 22, authMethod: 'password' }],
+        activeDeviceId: 'bk-2',
+      })
+
+      const backupDir = resolve(config.rmMethodsBackupDir, 'bk-2', 'rm-methods_20260318_120000')
       mkdirSync(backupDir, { recursive: true })
       writeFileSync(resolve(backupDir, '.manifest'), JSON.stringify({ exportedAt: '1', templates: { a: {} } }))
 
       const app = await createApp(config)
-      const res = await app.inject({ method: 'GET', url: '/api/device/backups' })
+      const res = await app.inject({ method: 'GET', url: '/api/devices/bk-2/backups' })
       expect(res.statusCode).toBe(200)
       const body = JSON.parse(res.body)
       expect(body.backups).toHaveLength(1)

@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import type { UseDeviceConfig } from '../../hooks/useDeviceConfig'
+import type { UseDevices } from '../../hooks/useDevices'
 
 interface Props {
-  config: UseDeviceConfig
+  devicesState: UseDevices
 }
 
-export function DeviceConnectionCard({ config }: Props) {
+export function DeviceConnectionCard({ devicesState }: Props) {
+  const { devices, activeDevice, addDevice, updateDevice, removeDevice, testConnection, setupKeys } = devicesState
+
   const [showForm, setShowForm] = useState(false)
+  const [isAddingNew, setIsAddingNew] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [formNickname, setFormNickname] = useState('')
   const [formIp, setFormIp] = useState('')
   const [formPort, setFormPort] = useState(22)
   const [formPassword, setFormPassword] = useState('')
@@ -16,85 +20,164 @@ export function DeviceConnectionCard({ config }: Props) {
   const [saving, setSaving] = useState(false)
   const [settingUpKeys, setSettingUpKeys] = useState(false)
   const [keyResult, setKeyResult] = useState<{ ok: boolean; error?: string; hint?: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [connected, setConnected] = useState<boolean | null>(null)
+  // Track the device ID we just created during the add flow, so we can test-connection with override
+  const [pendingDeviceId, setPendingDeviceId] = useState<string | null>(null)
 
-  function openForm() {
-    setFormIp(config.config?.deviceIp ?? '')
-    setFormPort(config.config?.sshPort ?? 22)
+  function openAddForm() {
+    setFormNickname('')
+    setFormIp('')
+    setFormPort(22)
     setFormPassword('')
     setTestResult(null)
     setKeyResult(null)
+    setIsAddingNew(true)
+    setPendingDeviceId(null)
+    setShowForm(true)
+  }
+
+  function openEditForm() {
+    if (!activeDevice) return
+    setFormNickname(activeDevice.nickname)
+    setFormIp(activeDevice.deviceIp)
+    setFormPort(activeDevice.sshPort)
+    setFormPassword('')
+    setTestResult(null)
+    setKeyResult(null)
+    setIsAddingNew(false)
+    setPendingDeviceId(null)
     setShowForm(true)
   }
 
   async function handleTest() {
     setTesting(true)
     setTestResult(null)
-    const result = await config.testConnection({
-      deviceIp: formIp,
-      sshPort: formPort,
-      authMethod: 'password',
-      sshPassword: formPassword,
-    })
-    setTestResult(result)
+    // If we're adding a new device and don't have a device ID yet, we need to create first
+    if (isAddingNew && !pendingDeviceId) {
+      // Create the device first, then test
+      const device = await addDevice({
+        nickname: formNickname || 'My reMarkable',
+        deviceIp: formIp,
+        sshPort: formPort,
+        authMethod: 'password',
+        sshPassword: formPassword,
+      })
+      if (!device) {
+        setTestResult({ ok: false, error: 'Failed to create device' })
+        setTesting(false)
+        return
+      }
+      setPendingDeviceId(device.id)
+      const result = await testConnection(device.id)
+      setTestResult(result)
+      setConnected(result.ok)
+    } else {
+      const id = pendingDeviceId ?? activeDevice?.id
+      if (!id) { setTesting(false); return }
+      const result = await testConnection(id, {
+        deviceIp: formIp,
+        sshPort: formPort,
+        authMethod: 'password',
+        sshPassword: formPassword,
+      })
+      setTestResult(result)
+      setConnected(result.ok)
+    }
     setTesting(false)
   }
 
   async function handleSave() {
     setSaving(true)
-    const ok = await config.saveConfig({
-      deviceIp: formIp,
-      sshPort: formPort,
-      authMethod: 'password',
-      sshPassword: formPassword,
-    })
-    setSaving(false)
-    if (ok) {
-      setShowForm(false)
+    if (isAddingNew) {
+      if (pendingDeviceId) {
+        // Device already created during test, just update with final values
+        await updateDevice(pendingDeviceId, {
+          nickname: formNickname || 'My reMarkable',
+          deviceIp: formIp,
+          sshPort: formPort,
+          authMethod: 'password',
+          sshPassword: formPassword,
+        })
+      } else {
+        await addDevice({
+          nickname: formNickname || 'My reMarkable',
+          deviceIp: formIp,
+          sshPort: formPort,
+          authMethod: 'password',
+          sshPassword: formPassword,
+        })
+      }
+    } else if (activeDevice) {
+      await updateDevice(activeDevice.id, {
+        nickname: formNickname,
+        deviceIp: formIp,
+        sshPort: formPort,
+        authMethod: 'password',
+        sshPassword: formPassword,
+      })
     }
+    setSaving(false)
+    setShowForm(false)
+    setPendingDeviceId(null)
   }
 
   async function handleSetupKeys() {
+    if (!activeDevice) return
     setSettingUpKeys(true)
     setKeyResult(null)
-    const result = await config.setupKeys()
+    const result = await setupKeys(activeDevice.id)
     setKeyResult(result)
     setSettingUpKeys(false)
   }
 
   async function handleTestExisting() {
+    if (!activeDevice) return
     setTesting(true)
     setTestResult(null)
-    const result = await config.testConnection()
+    const result = await testConnection(activeDevice.id)
     setTestResult(result)
+    setConnected(result.ok)
     setTesting(false)
   }
 
-  // Connected state
-  if (config.configured && !showForm) {
+  async function handleRemove() {
+    if (!activeDevice) return
+    await removeDevice(activeDevice.id)
+    setConfirmRemove(false)
+  }
+
+  // Active device configured state
+  if (activeDevice && !showForm) {
     return (
       <section className="device-card">
-        <h2 className="device-card-title">Connection</h2>
+        <h2 className="device-card-title">
+          Connection
+          {activeDevice.nickname && (
+            <span className="device-card-title-nickname"> — {activeDevice.nickname}</span>
+          )}
+        </h2>
         <div className="device-card-body">
           <div className="device-connection-status">
-            <span className={`device-connection-dot ${config.connected === true ? 'connected' : config.connected === false ? 'error' : 'unknown'}`} />
+            <span className={`device-connection-dot ${connected === true ? 'connected' : connected === false ? 'error' : 'unknown'}`} />
             <span>
-              {config.connected === true
+              {connected === true
                 ? 'Connected'
-                : config.connected === false
+                : connected === false
                   ? 'Connection failed'
                   : 'Not tested'}
             </span>
-            {config.deviceModel && (
-              <span className="device-connection-detail">{config.deviceModel}</span>
+            {activeDevice.deviceModel && (
+              <span className="device-connection-detail">{activeDevice.deviceModel}</span>
             )}
             <span className="device-connection-badge">
-              {config.config?.authMethod === 'key' ? 'SSH Key' : 'Password'}
+              {activeDevice.authMethod === 'key' ? 'SSH Key' : 'Password'}
             </span>
           </div>
 
-          {config.config?.lastConnected && (
+          {activeDevice.lastConnected && (
             <p className="device-connection-detail" style={{ marginTop: 4 }}>
-              Last connected: {new Date(config.config.lastConnected).toLocaleString()}
+              Last connected: {new Date(activeDevice.lastConnected).toLocaleString()}
             </p>
           )}
 
@@ -107,7 +190,7 @@ export function DeviceConnectionCard({ config }: Props) {
             </div>
           )}
 
-          {config.config?.authMethod === 'password' && (
+          {activeDevice.authMethod === 'password' && (
             <div className="device-key-callout">
               <strong>Recommended:</strong> Set up SSH keys for a more reliable connection.
               The device password resets on every firmware update — SSH keys are permanent.
@@ -133,10 +216,41 @@ export function DeviceConnectionCard({ config }: Props) {
             </button>
             <button
               className="device-card-btn device-card-btn-secondary"
-              onClick={openForm}
+              onClick={openEditForm}
             >
               Edit Connection
             </button>
+            <button
+              className="device-card-btn device-card-btn-secondary"
+              onClick={openAddForm}
+            >
+              Add Device
+            </button>
+            {devices.length > 1 && (
+              confirmRemove ? (
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    className="device-card-btn device-card-btn-danger"
+                    onClick={handleRemove}
+                  >
+                    Confirm Remove
+                  </button>
+                  <button
+                    className="device-card-btn device-card-btn-secondary"
+                    onClick={() => setConfirmRemove(false)}
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  className="device-card-btn device-card-btn-danger"
+                  onClick={() => setConfirmRemove(true)}
+                >
+                  Remove Device
+                </button>
+              )
+            )}
           </div>
 
           {(testing || settingUpKeys) && (
@@ -166,19 +280,21 @@ export function DeviceConnectionCard({ config }: Props) {
   // Not configured / form state
   return (
     <section className="device-card">
-      <h2 className="device-card-title">Connection</h2>
+      <h2 className="device-card-title">
+        {isAddingNew ? 'Add Device' : 'Connection'}
+      </h2>
       <div className="device-card-body">
         {!showForm ? (
           <>
             <div className="device-connection-status">
               <span className="device-connection-dot unknown" />
-              <span>Not connected</span>
+              <span>No devices configured</span>
             </div>
             <p className="device-card-desc" style={{ marginTop: 8 }}>
               Connect to your reMarkable to pull and deploy templates over SSH.
             </p>
-            <button className="device-card-btn" onClick={openForm}>
-              Set Up Connection
+            <button className="device-card-btn" onClick={openAddForm}>
+              Add Device
             </button>
           </>
         ) : (
@@ -196,6 +312,17 @@ export function DeviceConnectionCard({ config }: Props) {
                 <p>Over WiFi, the IP is assigned by your router (typically something like <code>192.168.1.x</code>). Over USB, the IP is <code>10.11.99.1</code>.</p>
               </div>
             )}
+
+            <div className="device-form-field">
+              <label className="device-form-label">Device Nickname</label>
+              <input
+                className="device-form-input"
+                type="text"
+                placeholder="My reMarkable"
+                value={formNickname}
+                onChange={e => setFormNickname(e.target.value)}
+              />
+            </div>
 
             <div className="device-form-field">
               <label className="device-form-label">Device IP</label>
@@ -252,7 +379,7 @@ export function DeviceConnectionCard({ config }: Props) {
                   </button>
                   <button
                     className="device-card-btn device-card-btn-secondary"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => { setShowForm(false); setPendingDeviceId(null) }}
                   >
                     Cancel
                   </button>
@@ -268,7 +395,7 @@ export function DeviceConnectionCard({ config }: Props) {
                   </button>
                   <button
                     className="device-card-btn device-card-btn-secondary"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => { setShowForm(false); setPendingDeviceId(null) }}
                   >
                     Cancel
                   </button>
@@ -287,7 +414,7 @@ export function DeviceConnectionCard({ config }: Props) {
               </div>
             )}
 
-            {testResult?.ok && config.configured && (
+            {testResult?.ok && !isAddingNew && activeDevice && (
               <p className="device-card-hint" style={{ marginTop: 8 }}>
                 Recommended: Set up SSH keys now. The device password resets on every firmware update — SSH keys are permanent.
               </p>

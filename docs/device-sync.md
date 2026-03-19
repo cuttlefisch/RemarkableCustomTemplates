@@ -64,6 +64,8 @@ Go to **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**. Th
 
 The rm_methods workflow drops files into xochitl's user content directory using the same format as official reMarkable methods templates. This means xochitl treats them as native content and **syncs them across paired devices** via the reMarkable cloud.
 
+> **No Connect subscription required.** The cloud sync mechanism used by rm_methods templates is built into every reMarkable device. It works regardless of whether you have a Connect subscription — the sync happens through the same channel that official reMarkable methods templates use.
+
 > **Browser-based alternative:** The **Device & Sync** page provides browser-based equivalents for pull, deploy, and rollback operations. The CLI targets below are for developer/scripting workflows.
 
 ### Happy path
@@ -150,7 +152,9 @@ On the very first `make deploy-rm-methods`, the backup step captures `rm-methods
 
 ## How rm_methods sync works
 
-The rm_methods format enables cloud sync by mimicking the exact file structure and metadata that official reMarkable methods templates use. Four format choices make this work:
+The rm_methods format enables cloud sync by mimicking the exact file structure and metadata that official reMarkable methods templates use. **No Connect subscription is needed** — the sync mechanism is part of xochitl's built-in cloud infrastructure, the same one that syncs notebooks and official methods templates. Your custom templates sync to all paired devices automatically, just like the ones reMarkable ships.
+
+Four format choices make this work:
 
 1. **UUID filenames** — xochitl identifies content items by UUID. The three-file triplet (`<uuid>.template`, `.metadata`, `.content`) is how xochitl stores all user content (notebooks, PDFs, templates). Without UUID naming, xochitl ignores the files entirely.
 

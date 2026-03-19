@@ -1,8 +1,8 @@
 /**
- * Device pull operations — replaces `make pull` and `make pull-rm-methods`.
+ * Device pull operations.
  *
- * POST /api/device/pull-official  — pull official templates from device
- * POST /api/device/pull-methods   — pull rm_methods templates from device
+ * POST /api/devices/:id/pull-official  — pull official templates from device
+ * POST /api/devices/:id/pull-methods   — pull rm_methods templates from device
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -10,12 +10,14 @@ import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmdirSync, exists
 import { resolve, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { ServerConfig } from '../../config.ts'
-import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
+import { resolveDevicePaths } from '../../config.ts'
+import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, pullDirectory, pullFile } from '../../lib/sftp.ts'
 import { buildMethodsRegistry } from '../../lib/buildMethodsRegistry.ts'
 import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { readDevice } from '../../lib/deviceStore.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
@@ -36,7 +38,6 @@ interface MethodsRegistryEntry {
  * Skips entries already present in custom-registry.json (matched by rmMethodsId).
  */
 function importCustomMethodsEntries(config: ServerConfig): number {
-  // Read methods registry
   let methodsEntries: MethodsRegistryEntry[]
   try {
     const raw = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as { templates: MethodsRegistryEntry[] }
@@ -47,7 +48,6 @@ function importCustomMethodsEntries(config: ServerConfig): number {
 
   if (methodsEntries.length === 0) return 0
 
-  // Read existing custom registry
   let customRegistry: { templates: Array<{ filename: string; rmMethodsId?: string; [k: string]: unknown }> }
   try {
     customRegistry = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as typeof customRegistry
@@ -63,7 +63,6 @@ function importCustomMethodsEntries(config: ServerConfig): number {
   for (const entry of methodsEntries) {
     if (!entry.rmMethodsId || existingIds.has(entry.rmMethodsId)) continue
 
-    // Copy template file from methods/ to custom/
     const srcPath = resolve(config.methodsDir, `${entry.rmMethodsId}.template`)
     if (!existsSync(srcPath)) continue
 
@@ -72,7 +71,6 @@ function importCustomMethodsEntries(config: ServerConfig): number {
     const destPath = resolve(config.customDir, `${customSlug}.template`)
     copyFileSync(srcPath, destPath)
 
-    // Add to custom registry
     customRegistry.templates.push({
       name: entry.name,
       filename: `custom/${customSlug}`,
@@ -92,18 +90,11 @@ function importCustomMethodsEntries(config: ServerConfig): number {
   return imported
 }
 
-function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
-  try {
-    return JSON.parse(readFileSync(config.deviceConfigPath, 'utf8')) as DeviceConfig
-  } catch {
-    return null
-  }
-}
-
 export default function devicePullRoutes(app: FastifyInstance, config: ServerConfig) {
-  // POST /api/device/pull-official
-  app.post('/api/device/pull-official', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/pull-official
+  app.post<{ Params: { id: string } }>('/api/devices/:id/pull-official', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
@@ -128,20 +119,21 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
     }
   })
 
-  // POST /api/device/pull-methods
-  app.post('/api/device/pull-methods', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/pull-methods
+  app.post<{ Params: { id: string } }>('/api/devices/:id/pull-methods', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    const devicePaths = resolveDevicePaths(config, id)
     const stream = createNdjsonStream(reply)
 
     try {
       stream.progress('Scanning device for templates...')
       const client = await connect(deviceConfig)
 
-      // Find TemplateType metadata files
       const result = await exec(client, `grep -rl '"type": *"TemplateType"' ${RM_METHODS_PATH}/*.metadata 2>/dev/null || true`)
       const metadataFiles = result.stdout.trim().split('\n').filter(Boolean)
 
@@ -151,7 +143,6 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         return
       }
 
-      // Pull metadata + template pairs to temp dir
       const tmpDir = resolve(tmpdir(), `rm-methods-pull-${Date.now()}`)
       mkdirSync(tmpDir, { recursive: true })
       const sftp = await getSftp(client)
@@ -172,7 +163,6 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         stream.progress('Pulling template files', pulledCount, totalFiles)
       }
 
-      // Read device manifest for custom UUID detection before closing connection
       stream.progress('Reading device manifest...')
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceManifestUuids = deviceManifest
@@ -180,13 +170,12 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         : []
       client.end()
 
-      // Build methods registry from pulled files
       stream.progress('Building methods registry...')
       const manifestPath = existsSync(resolve(config.rmMethodsDistDir, '.manifest'))
         ? resolve(config.rmMethodsDistDir, '.manifest')
         : undefined
-      const deployedManifestPath = existsSync(config.rmMethodsDeployedManifest)
-        ? config.rmMethodsDeployedManifest
+      const deployedManifestPath = existsSync(devicePaths.deployedManifest)
+        ? devicePaths.deployedManifest
         : undefined
 
       const result2 = await buildMethodsRegistry({
@@ -197,10 +186,8 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         deviceManifestUuids,
       })
 
-      // Auto-import custom-methods entries into the custom collection
       const imported = importCustomMethodsEntries(config)
 
-      // Cleanup temp dir
       try {
         for (const f of readdirSync(tmpDir)) unlinkSync(resolve(tmpDir, f))
         rmdirSync(tmpDir)

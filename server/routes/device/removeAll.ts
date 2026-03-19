@@ -1,9 +1,9 @@
 /**
  * Remove all custom templates from the device.
  *
- * POST /api/device/remove-all-preview   — list templates that would be removed
- * POST /api/device/remove-all-execute   — backup + remove + restart
- * GET  /api/device/remove-all-backup/:filename — download backup ZIP
+ * POST /api/devices/:id/remove-all-preview          — list templates that would be removed
+ * POST /api/devices/:id/remove-all-execute           — backup + remove + restart
+ * GET  /api/devices/:id/remove-all-backup/:filename  — download backup ZIP
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -11,12 +11,14 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from '
 import { resolve } from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
 import type { ServerConfig } from '../../config.ts'
-import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
+import { resolveDevicePaths } from '../../config.ts'
+import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, removeFiles, readRemoteFile } from '../../lib/sftp.ts'
 import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { assertWithin } from '../../lib/pathSecurity.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { readDevice } from '../../lib/deviceStore.ts'
 import {
   RM_METHODS_PATH,
   readDeviceManifest,
@@ -25,22 +27,15 @@ import {
   mergeDeployedUuids,
 } from '../../lib/deviceManifest.ts'
 
-function readDeviceConfig(config: ServerConfig): DeviceConfig | null {
-  try {
-    return JSON.parse(readFileSync(config.deviceConfigPath, 'utf8')) as DeviceConfig
-  } catch {
-    return null
-  }
-}
-
 export default function deviceRemoveAllRoutes(app: FastifyInstance, config: ServerConfig) {
-  // GET /api/device/remove-all-backup/:filename
-  app.get('/api/device/remove-all-backup/:filename', async (request, reply) => {
-    const { filename } = request.params as { filename: string }
-    const filepath = resolve(config.rmMethodsBackupDir, filename)
+  // GET /api/devices/:id/remove-all-backup/:filename
+  app.get<{ Params: { id: string; filename: string } }>('/api/devices/:id/remove-all-backup/:filename', async (request, reply) => {
+    const { id, filename } = request.params
+    const devicePaths = resolveDevicePaths(config, id)
+    const filepath = resolve(devicePaths.backupDir, filename)
 
     try {
-      assertWithin(config.rmMethodsBackupDir, filepath)
+      assertWithin(devicePaths.backupDir, filepath)
     } catch {
       return reply.status(400).send({ error: 'Invalid filename' })
     }
@@ -56,21 +51,23 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       .send(data)
   })
 
-  // POST /api/device/remove-all-preview
-  app.post('/api/device/remove-all-preview', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/remove-all-preview
+  app.post<{ Params: { id: string } }>('/api/devices/:id/remove-all-preview', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
+
+    const devicePaths = resolveDevicePaths(config, id)
 
     try {
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
-      // Read device manifest
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
-      const localUuids = readManifestUuids(config.rmMethodsDeployedManifest)
+      const localUuids = readManifestUuids(devicePaths.deployedManifest)
       const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
       if (allUuids.length === 0) {
@@ -78,12 +75,11 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
         return reply.send({ count: 0, error: 'No deploy history found. Cannot determine which templates are custom.' })
       }
 
-      // Build template list with names from manifests
       const templates: { uuid: string; name: string }[] = []
       const deviceTemplates = deviceManifest?.templates ?? {}
       let localManifestTemplates: Record<string, { name?: string }> = {}
       try {
-        const localData = JSON.parse(readFileSync(config.rmMethodsDeployedManifest, 'utf8'))
+        const localData = JSON.parse(readFileSync(devicePaths.deployedManifest, 'utf8'))
         localManifestTemplates = localData.templates ?? {}
       } catch { /* no local manifest */ }
 
@@ -103,13 +99,15 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
     }
   })
 
-  // POST /api/device/remove-all-execute
-  app.post('/api/device/remove-all-execute', async (_request, reply) => {
-    const deviceConfig = readDeviceConfig(config)
+  // POST /api/devices/:id/remove-all-execute
+  app.post<{ Params: { id: string } }>('/api/devices/:id/remove-all-execute', async (request, reply) => {
+    const { id } = request.params
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    const devicePaths = resolveDevicePaths(config, id)
     const stream = createNdjsonStream(reply)
 
     try {
@@ -119,10 +117,9 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
-      // Read device manifest + merge with local
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
-      const localUuids = readManifestUuids(config.rmMethodsDeployedManifest)
+      const localUuids = readManifestUuids(devicePaths.deployedManifest)
       const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
       if (allUuids.length === 0) {
@@ -133,7 +130,6 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
 
       steps.push(`Found ${allUuids.length} custom templates`)
 
-      // Pull all file triplets from device into ZIP
       const fileMap: Record<string, Uint8Array> = {}
       const totalBackupFiles = allUuids.length * 3
       let backupCount = 0
@@ -148,48 +144,41 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
         }
       }
 
-      // Include the device manifest in the backup
       if (deviceManifest) {
         fileMap['.remarkable-templates-deployed'] = strToU8(JSON.stringify(deviceManifest, null, 2))
       }
 
-      // Create backup ZIP
       stream.progress('Saving backup ZIP...')
       const zipped = zipSync(fileMap)
       const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '_').slice(0, 15)
       const backupFilename = `remove-all-backup-${ts}.zip`
-      mkdirSync(config.rmMethodsBackupDir, { recursive: true })
-      const backupPath = resolve(config.rmMethodsBackupDir, backupFilename)
+      mkdirSync(devicePaths.backupDir, { recursive: true })
+      const backupPath = resolve(devicePaths.backupDir, backupFilename)
       writeFileSync(backupPath, zipped)
       steps.push(`Saved backup: ${backupFilename} (${Object.keys(fileMap).length} files)`)
 
-      // Verify ZIP was written
       if (!existsSync(backupPath)) {
         client.end()
         stream.error('Backup verification failed — ZIP was not saved')
         return
       }
 
-      // Remove file triplets from device
       const filesToRemove = allUuids.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
       const removed = await removeFiles(sftp, RM_METHODS_PATH, filesToRemove, (cur, tot) => {
         stream.progress('Removing files from device', cur, tot)
       })
       steps.push(`Removed ${removed.length} files from device`)
 
-      // Remove device manifest
       try {
         await removeDeviceManifest(sftp)
         steps.push('Removed device manifest')
       } catch { /* may not exist */ }
 
-      // Clear local deployed manifest
-      if (existsSync(config.rmMethodsDeployedManifest)) {
-        unlinkSync(config.rmMethodsDeployedManifest)
+      if (existsSync(devicePaths.deployedManifest)) {
+        unlinkSync(devicePaths.deployedManifest)
         steps.push('Cleared local deploy tracking')
       }
 
-      // Restart xochitl
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
       client.end()

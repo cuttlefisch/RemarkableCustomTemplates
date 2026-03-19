@@ -31,6 +31,26 @@ Open **http://localhost:3000** in your browser. That's it.
 - **Back up & restore** your entire template collection as a ZIP
 - **One-click rollback** to the previous deploy or to pristine device state
 
+> **No reMarkable Connect subscription required.** rm_methods templates sync via the built-in cloud mechanism that ships with every reMarkable device. This works with or without a Connect subscription.
+
+## Why Native Templates?
+
+reMarkable supports two ways to add page templates: **native `.template` files** and **PDF templates**.
+
+| | Native `.template` | PDF template |
+|---|---|---|
+| **Rendering** | Vector — drawn by xochitl's native renderer | Rasterized at fixed resolution |
+| **Zoom** | Infinite, crisp at any level | Pixelates when zoomed in |
+| **Battery** | Minimal — lightweight vector paths | Higher — full-page bitmap in memory |
+| **Startup** | Instant | Slower for complex pages |
+| **Sync** | Via rm_methods (cloud sync across devices) | Manual file transfer |
+| **Layout** | JSON-based with expressions and constants | Any layout tool that exports PDF |
+| **Inter-page links** | Not supported | Supported |
+
+Native templates are ideal for grids, lined paper, planners, and any repeating geometric pattern. PDF templates are better for complex, non-repeating layouts or when you need clickable links between pages.
+
+This app focuses on native `.template` files — the format that gives you the best performance and cloud sync on reMarkable devices.
+
 ![Template editor with JSON](docs/images/template-editor.png)
 
 ## Device Setup
