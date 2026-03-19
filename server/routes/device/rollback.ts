@@ -2,7 +2,7 @@
  * Device rollback operations.
  *
  * POST /api/devices/:id/rollback-methods    — revert to most recent rm_methods backup
- * POST /api/devices/:id/rollback-original   — remove all custom templates from device
+ * POST /api/devices/:id/rollback-original   — restore device to pre-app state
  * POST /api/devices/:id/rollback-classic    — restore tar backup on device
  */
 
@@ -117,6 +117,11 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       return reply.status(400).send({ error: 'No original backup found. Deploy at least once first.' })
     }
 
+    const originalManifestPath = resolve(devicePaths.originalBackup, '.manifest')
+    if (!existsSync(originalManifestPath)) {
+      return reply.status(400).send({ error: 'Original backup manifest is missing.' })
+    }
+
     const stream = createNdjsonStream(reply)
 
     try {
@@ -125,27 +130,45 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       const client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
+      // Determine what's currently on the device
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
       const localUuids = existsSync(devicePaths.deployedManifest)
         ? readManifestUuids(devicePaths.deployedManifest)
         : []
-      const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
+      const allCurrentUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
-      if (allUuids.length > 0) {
-        const filesToRemove = allUuids.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
+      // Determine what was in the original state
+      const originalUuids = new Set(readManifestUuids(originalManifestPath))
+
+      // Remove templates that weren't in the original state (orphans)
+      const orphans = allCurrentUuids.filter(uuid => !originalUuids.has(uuid))
+      if (orphans.length > 0) {
+        const filesToRemove = orphans.flatMap(uuid => [`${uuid}.template`, `${uuid}.metadata`, `${uuid}.content`])
         await removeFiles(sftp, RM_METHODS_PATH, filesToRemove, (cur, tot) => {
-          stream.progress('Removing deployed templates', cur, tot)
+          stream.progress('Removing templates added since original state', cur, tot)
         })
-        steps.push(`Removed ${allUuids.length} deployed templates`)
+        steps.push(`Removed ${orphans.length} templates added since original state`)
       }
 
-      try {
-        await removeDeviceManifest(sftp)
-      } catch { /* may not exist */ }
+      // Restore original files if any existed
+      if (originalUuids.size > 0) {
+        const pushed = await pushDirectory(sftp, devicePaths.originalBackup, RM_METHODS_PATH, f => f !== '.manifest', (cur, tot) => {
+          stream.progress('Restoring original templates', cur, tot)
+        })
+        steps.push(`Restored ${pushed.length} original template files`)
+      }
 
-      const originalManifest = resolve(devicePaths.originalBackup, '.manifest')
-      copyFileSync(originalManifest, devicePaths.deployedManifest)
+      // Update manifest to match original state
+      copyFileSync(originalManifestPath, devicePaths.deployedManifest)
+      if (originalUuids.size > 0) {
+        const originalManifestContent = JSON.parse(readFileSync(originalManifestPath, 'utf8'))
+        await writeDeviceManifest(sftp, originalManifestContent)
+      } else {
+        try {
+          await removeDeviceManifest(sftp)
+        } catch { /* may not exist */ }
+      }
 
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')

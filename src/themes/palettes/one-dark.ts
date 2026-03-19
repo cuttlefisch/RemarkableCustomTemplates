@@ -128,7 +128,7 @@ export const oneDark: Theme = {
     '--color-error-text': '#e06c75',
     '--color-warning-text': '#e5c07b',
     '--color-error-hint-text': '#e06c75',
-    '--color-connected-dot': '#98c379',
+    '--color-connected-dot': '#4ade80',
     '--color-error-dot': '#e06c75',
     '--color-unknown-dot': '#636d83',
 

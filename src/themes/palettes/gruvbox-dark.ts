@@ -128,7 +128,7 @@ export const gruvboxDark: Theme = {
     '--color-error-text': '#fb4934',
     '--color-warning-text': '#fabd2f',
     '--color-error-hint-text': '#fb4934',
-    '--color-connected-dot': '#b8bb26',
+    '--color-connected-dot': '#4ade80',
     '--color-error-dot': '#fb4934',
     '--color-unknown-dot': '#a89984',
 

@@ -128,7 +128,7 @@ export const dracula: Theme = {
     '--color-error-text': '#ff5555',
     '--color-warning-text': '#f1fa8c',
     '--color-error-hint-text': '#ff6e6e',
-    '--color-connected-dot': '#50fa7b',
+    '--color-connected-dot': '#4ade80',
     '--color-error-dot': '#ff5555',
     '--color-unknown-dot': '#6272a4',
 

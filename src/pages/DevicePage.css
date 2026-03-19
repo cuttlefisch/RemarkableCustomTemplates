@@ -177,6 +177,7 @@
 
 .device-connection-dot.connected {
   background: var(--color-connected-dot);
+  box-shadow: 0 0 6px var(--color-connected-dot);
 }
 
 .device-connection-dot.error {

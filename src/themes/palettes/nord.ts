@@ -128,7 +128,7 @@ export const nord: Theme = {
     '--color-error-text': '#bf616a',
     '--color-warning-text': '#ebcb8b',
     '--color-error-hint-text': '#bf616a',
-    '--color-connected-dot': '#a3be8c',
+    '--color-connected-dot': '#4ade80',
     '--color-error-dot': '#bf616a',
     '--color-unknown-dot': '#7b88a1',
 

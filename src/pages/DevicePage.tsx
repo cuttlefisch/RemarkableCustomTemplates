@@ -50,7 +50,7 @@ export function DevicePage() {
         )}
 
         <DeviceConnectionCard devicesState={devicesState} />
-        <DeviceSyncCard deviceId={deviceId} configured={configured} onSyncComplete={refreshRegistry} />
+        <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} onSyncComplete={refreshRegistry} />
         <DeviceImportExportCard
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}
@@ -58,6 +58,7 @@ export function DevicePage() {
         />
         <DeviceBackupsCard
           deviceId={deviceId}
+          deviceName={activeDevice?.nickname ?? 'Device'}
           configured={configured}
           onStatus={setStatus}
           onError={setError}

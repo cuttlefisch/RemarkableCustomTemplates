@@ -128,7 +128,7 @@ export const oneLight: Theme = {
     '--color-error-text': '#c62828',
     '--color-warning-text': '#986801',
     '--color-error-hint-text': '#8b3a3a',
-    '--color-connected-dot': '#50a14f',
+    '--color-connected-dot': '#16a34a',
     '--color-error-dot': '#e45649',
     '--color-unknown-dot': '#a0a1a7',
 

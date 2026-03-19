@@ -128,7 +128,7 @@ export const solarizedLight: Theme = {
     '--color-error-text': '#dc322f',
     '--color-warning-text': '#b58900',
     '--color-error-hint-text': '#b5282a',
-    '--color-connected-dot': '#859900',
+    '--color-connected-dot': '#16a34a',
     '--color-error-dot': '#dc322f',
     '--color-unknown-dot': '#93a1a1',
 

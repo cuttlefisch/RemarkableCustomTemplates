@@ -128,7 +128,7 @@ export const tokyoNight: Theme = {
     '--color-error-text': '#f7768e',
     '--color-warning-text': '#e0af68',
     '--color-error-hint-text': '#f7768e',
-    '--color-connected-dot': '#9ece6a',
+    '--color-connected-dot': '#4ade80',
     '--color-error-dot': '#f7768e',
     '--color-unknown-dot': '#565f89',
 

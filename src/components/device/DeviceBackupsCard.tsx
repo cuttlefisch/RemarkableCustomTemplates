@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 
 interface Props {
   deviceId: string | null
+  deviceName: string
   configured: boolean
   onStatus: (msg: string) => void
   onError: (msg: string) => void
@@ -13,7 +14,7 @@ interface BackupEntry {
   templateCount: number
 }
 
-export function DeviceBackupsCard({ deviceId, configured, onStatus, onError }: Props) {
+export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus, onError }: Props) {
   const [restoring, setRestoring] = useState(false)
   const restoreInputRef = useRef<HTMLInputElement>(null)
   const [deviceBackups, setDeviceBackups] = useState<BackupEntry[]>([])
@@ -143,9 +144,9 @@ export function DeviceBackupsCard({ deviceId, configured, onStatus, onError }: P
         </div>
 
         <div className="device-op-section">
-          <h3 className="device-op-section-title">Device Backups</h3>
+          <h3 className="device-op-section-title">{deviceName} Backups</h3>
           {!configured ? (
-            <p className="device-card-hint">Connect to your device to view device backups.</p>
+            <p className="device-card-hint">Connect to a device to view device backups.</p>
           ) : loadingBackups ? (
             <p className="device-card-hint">Loading...</p>
           ) : deviceBackups.length === 0 ? (

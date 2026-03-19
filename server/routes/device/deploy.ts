@@ -69,9 +69,34 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       // Backup current deployment
       mkdirSync(devicePaths.backupDir, { recursive: true })
       if (!existsSync(devicePaths.originalBackup)) {
+        // First deploy: snapshot the device's actual current state (pre-app)
         mkdirSync(devicePaths.originalBackup, { recursive: true })
-        writeFileSync(resolve(devicePaths.originalBackup, '.manifest'), '{"exportedAt":"0","templates":{}}', 'utf8')
-        steps.push('Captured pristine device state')
+        if (deviceUuids.length > 0) {
+          // Device has existing templates — pull them into .original/
+          const totalOrigFiles = deviceUuids.length * 3
+          let origCount = 0
+          stream.progress('Capturing original device state', 0, totalOrigFiles)
+          for (const uuid of deviceUuids) {
+            for (const ext of ['.template', '.metadata', '.content']) {
+              try {
+                await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(devicePaths.originalBackup, `${uuid}${ext}`))
+              } catch { /* file may not exist */ }
+              origCount++
+              stream.progress('Capturing original device state', origCount, totalOrigFiles)
+            }
+          }
+          // Save the device manifest as the original manifest
+          writeFileSync(
+            resolve(devicePaths.originalBackup, '.manifest'),
+            deviceManifest ? JSON.stringify(deviceManifest, null, 2) : '{"exportedAt":"0","templates":{}}',
+            'utf8',
+          )
+          steps.push(`Captured pristine device state (${deviceUuids.length} existing templates)`)
+        } else {
+          // Device is clean — empty manifest
+          writeFileSync(resolve(devicePaths.originalBackup, '.manifest'), '{"exportedAt":"0","templates":{}}', 'utf8')
+          steps.push('Captured pristine device state (clean)')
+        }
       }
 
       if (existsSync(devicePaths.deployedManifest)) {

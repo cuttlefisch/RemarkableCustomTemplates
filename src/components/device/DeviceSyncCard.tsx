@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 
 interface Props {
   deviceId: string | null
+  deviceName: string
   configured: boolean
   onSyncComplete?: () => void
 }
@@ -603,7 +604,7 @@ function SelectiveDeploySection({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function DeviceSyncCard({ deviceId, configured, onSyncComplete }: Props) {
+export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
   const [showPullHelp, setShowPullHelp] = useState(false)
   const syncStatus = useSyncStatus(deviceId)
@@ -629,15 +630,15 @@ export function DeviceSyncCard({ deviceId, configured, onSyncComplete }: Props) 
   )
   const rollbackMethods = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/rollback-methods` : '',
-    { confirmMsg: 'Rollback to the most recent backup? This will restart the device UI.' },
+    { confirmMsg: `Rollback ${deviceName} to the most recent backup? This will restart the device UI.` },
   )
   const rollbackOriginal = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/rollback-original` : '',
-    { confirmMsg: 'Remove all custom templates from device? This will restart the device UI.' },
+    { confirmMsg: `Restore ${deviceName} to its original state? This will restart the device UI.` },
   )
   const rollbackClassic = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/rollback-classic` : '',
-    { confirmMsg: 'Restore from the latest classic backup on device? This will restart the device UI.' },
+    { confirmMsg: `Restore ${deviceName} from the latest classic backup? This will restart the device UI.` },
   )
   const removeAll = useRemoveAll(deviceId)
 
@@ -668,8 +669,8 @@ export function DeviceSyncCard({ deviceId, configured, onSyncComplete }: Props) 
             <SyncStatusSection syncStatus={syncStatus} />
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title">Pull from Device</h3>
-              <p className="device-op-desc">Download templates from your device to browse or use as a starting point for custom templates.</p>
+              <h3 className="device-op-section-title">Pull from {deviceName}</h3>
+              <p className="device-op-desc">Download templates from {deviceName} to browse or use as a starting point for custom templates.</p>
               <button
                 className="device-form-help-toggle"
                 onClick={() => setShowPullHelp(!showPullHelp)}
@@ -687,24 +688,24 @@ export function DeviceSyncCard({ deviceId, configured, onSyncComplete }: Props) 
               )}
               <div className="device-card-btn-row">
                 <OpButton
-                  label="Pull Methods Templates"
-                  loadingLabel="Pulling..."
+                  label={`Pull Methods from ${deviceName}`}
+                  loadingLabel={`Pulling from ${deviceName}...`}
                   op={pullMethods}
-                  title="Download methods templates (official + custom) from the device"
+                  title={`Download methods templates (official + custom) from ${deviceName}`}
                 />
                 <OpButton
-                  label="Pull Classic Templates"
-                  loadingLabel="Pulling..."
+                  label={`Pull Classic from ${deviceName}`}
+                  loadingLabel={`Pulling from ${deviceName}...`}
                   op={pullOfficial}
                   variant="secondary"
-                  title="Download classic templates from /usr/share/remarkable/templates/"
+                  title={`Download classic templates from ${deviceName}`}
                 />
               </div>
             </div>
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title">Deploy to Device</h3>
-              <p className="device-op-desc">Push your custom templates to the device. The device UI will restart.</p>
+              <h3 className="device-op-section-title">Deploy to {deviceName}</h3>
+              <p className="device-op-desc">Push your custom templates to {deviceName}. The device UI will restart.</p>
 
               {syncStatus.status && (
                 <SelectiveDeploySection syncStatus={syncStatus} selective={selective} />
@@ -713,18 +714,18 @@ export function DeviceSyncCard({ deviceId, configured, onSyncComplete }: Props) 
               <div className="device-card-btn-row" style={{ marginTop: 8 }}>
                 <OpButton
                   label={selective.showSelector && selective.selectedIds.size > 0
-                    ? `Deploy ${selective.selectedIds.size} template${selective.selectedIds.size !== 1 ? 's' : ''}`
-                    : 'Deploy via rm_methods'}
-                  loadingLabel="Deploying..."
+                    ? `Deploy ${selective.selectedIds.size} template${selective.selectedIds.size !== 1 ? 's' : ''} to ${deviceName}`
+                    : `Deploy to ${deviceName}`}
+                  loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployMethods}
-                  title="Build and push templates in methods format — syncs across paired devices"
+                  title={`Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
                 />
                 <OpButton
-                  label="Deploy Classic"
-                  loadingLabel="Deploying..."
+                  label={`Classic Deploy to ${deviceName}`}
+                  loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployClassic}
                   variant="secondary"
-                  title="Push classic templates to /usr/share/remarkable/templates/ — single device only, wiped on firmware updates"
+                  title={`Push classic templates to ${deviceName} — single device only, wiped on firmware updates`}
                 />
               </div>
               <p className="device-card-hint">
@@ -736,49 +737,49 @@ export function DeviceSyncCard({ deviceId, configured, onSyncComplete }: Props) 
             </div>
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title">Rollback</h3>
-              <p className="device-op-desc">Revert to a previous deployment if something goes wrong.</p>
+              <h3 className="device-op-section-title">Rollback {deviceName}</h3>
+              <p className="device-op-desc">Revert {deviceName} to a previous deployment if something goes wrong.</p>
               <div className="device-card-btn-row">
                 <OpButton
                   label="Rollback to Previous"
-                  loadingLabel="Rolling back..."
+                  loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackMethods}
                   variant="danger"
-                  title="Revert to the state before your last rm_methods deploy"
+                  title={`Revert ${deviceName} to the state before your last deploy`}
                 />
                 <OpButton
                   label="Rollback to Original"
-                  loadingLabel="Rolling back..."
+                  loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackOriginal}
                   variant="danger"
-                  title="Remove all custom methods templates from the device"
+                  title={`Restore ${deviceName} to its pre-app state`}
                 />
                 <OpButton
                   label="Rollback Classic"
-                  loadingLabel="Rolling back..."
+                  loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackClassic}
                   variant="danger"
-                  title="Restore the most recent classic template backup on the device"
+                  title={`Restore ${deviceName} from the most recent classic template backup`}
                 />
               </div>
             </div>
 
             <div className="device-op-section">
               <h3 className="device-op-section-title" style={{ color: 'var(--color-error-text)' }}>Danger Zone</h3>
-              <p className="device-op-desc">Remove all custom templates deployed via this app. Official reMarkable templates are preserved. A backup is created automatically before removal.</p>
+              <p className="device-op-desc">Remove all custom templates from {deviceName} deployed via this app. Official reMarkable templates are preserved. A backup is created automatically before removal.</p>
 
               {removeAll.phase === 'idle' && (
                 <button
                   className="device-card-btn device-card-btn-danger"
                   onClick={removeAll.loadPreview}
                 >
-                  Remove All Custom Templates from Device
+                  Remove All Custom Templates from {deviceName}
                 </button>
               )}
 
               {removeAll.phase === 'loading-preview' && (
                 <button className="device-card-btn device-card-btn-danger" disabled>
-                  Scanning device...
+                  Scanning {deviceName}...
                 </button>
               )}
 
