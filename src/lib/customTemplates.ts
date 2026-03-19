@@ -226,34 +226,54 @@ export function injectColorConstants(json: string): string {
 }
 
 /**
- * Replaces #000000 strokeColor/fillColor values with the 'foreground' sentinel
- * throughout the item tree (recursively). Applied when forking official templates
- * so color inversion works out of the box.
+ * Replaces hardcoded hex strokeColor/fillColor values with 'foreground' /
+ * 'background' sentinel constants throughout the item tree (recursively).
+ *
+ * Detects the color scheme from the bg item when present: if the bg item's
+ * fill is #000000 the template is inverted (dark mode) so #ffffff = foreground
+ * and #000000 = background. Otherwise uses the standard light-mode mapping.
  */
 export function mapForegroundColors(json: string): string {
   const parsed = JSON.parse(json) as Record<string, unknown>
   const items = Array.isArray(parsed.items) ? (parsed.items as unknown[]) : []
 
+  // Detect color scheme from bg item — its fillColor IS the background color
+  let fgColor = DARK_BG_COLOR   // '#000000'
+  let bgColor = LIGHT_BG_COLOR  // '#ffffff'
+
+  const bgItem = items.find((item: unknown) =>
+    typeof item === 'object' && item !== null && (item as Record<string, unknown>).id === 'bg',
+  )
+  if (bgItem) {
+    const bgGroup = bgItem as Record<string, unknown>
+    const bgChildren = Array.isArray(bgGroup.children) ? bgGroup.children : []
+    for (const child of bgChildren) {
+      if (typeof child === 'object' && child !== null) {
+        const bgPath = child as Record<string, unknown>
+        if (bgPath.fillColor === DARK_BG_COLOR) {
+          // Inverted template — black background means white foreground
+          fgColor = LIGHT_BG_COLOR
+          bgColor = DARK_BG_COLOR
+        }
+        break
+      }
+    }
+  }
+
   function mapItem(item: unknown): unknown {
     if (typeof item !== 'object' || item === null) return item
     const result = { ...(item as Record<string, unknown>) }
     if (result.type === 'path') {
-      // strokeColor undefined → device defaults to black → map to foreground
-      // strokeColor #000000 → explicitly black → map to foreground
-      if (result.strokeColor === '#000000' || result.strokeColor === undefined) {
+      // strokeColor undefined → device defaults to drawing color → map to foreground
+      if (result.strokeColor === fgColor || result.strokeColor === undefined) {
         result.strokeColor = FOREGROUND_CONST
-      }
-      // strokeColor #ffffff → white stroke → map to background
-      if (result.strokeColor === '#ffffff') {
+      } else if (result.strokeColor === bgColor) {
         result.strokeColor = BACKGROUND_CONST
       }
-      // fillColor #000000 → explicitly black fill → map to foreground
       // fillColor undefined → no fill (transparent) → leave as-is
-      if (result.fillColor === '#000000') {
+      if (result.fillColor === fgColor) {
         result.fillColor = FOREGROUND_CONST
-      }
-      // fillColor #ffffff → white fill → map to background
-      if (result.fillColor === '#ffffff') {
+      } else if (result.fillColor === bgColor) {
         result.fillColor = BACKGROUND_CONST
       }
     }

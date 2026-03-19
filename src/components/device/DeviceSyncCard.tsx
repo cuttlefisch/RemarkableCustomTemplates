@@ -586,8 +586,8 @@ function SelectiveDeploySection({
   if (syncStatus.loading && deployableTemplates.length === 0) {
     return (
       <div className="selective-deploy" style={{ marginTop: 8 }}>
-        <p className="device-card-hint">Loading template list...</p>
-        <button className="device-form-help-toggle" onClick={selective.reset}>Cancel</button>
+        <ProgressBar progress={null} label="Checking sync status..." />
+        <button className="device-form-help-toggle" onClick={selective.reset} style={{ marginTop: 4 }}>Cancel</button>
       </div>
     )
   }
