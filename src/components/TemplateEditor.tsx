@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import MonacoEditor from '@monaco-editor/react'
+import type { Monaco } from '@monaco-editor/react'
 import { parseTemplate } from '../lib/parser'
 import { validateCustomName, invertColors, syncBgItemColor } from '../lib/customTemplates'
 import { collectMissingConstants } from '../lib/renderer'
+import { useTheme } from '../hooks/useTheme'
+import { themes } from '../themes/themes'
 
 export interface TemplateEditorProps {
   json: string
@@ -36,6 +39,13 @@ export function TemplateEditor({
   // Track whether localJson was modified by the user (vs. initialized from prop).
   // Only sync pendingName from JSON content after user edits, not on initial load.
   const userEditedRef = useRef(false)
+  const { theme } = useTheme()
+
+  const handleBeforeMount = useCallback((monaco: Monaco) => {
+    for (const t of themes) {
+      monaco.editor.defineTheme(t.id, t.monacoTheme)
+    }
+  }, [])
 
   // Derive orientation from current JSON (best-effort)
   let isLandscape = false
@@ -162,7 +172,8 @@ export function TemplateEditor({
       <div className="editor-monaco">
         <MonacoEditor
           language="json"
-          theme="vs-dark"
+          theme={theme.id}
+          beforeMount={handleBeforeMount}
           value={localJson}
           onChange={v => { userEditedRef.current = true; setLocalJson(v ?? '') }}
           options={{
