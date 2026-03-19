@@ -32,6 +32,29 @@
   background: var(--color-navbar-active-bg);
 }
 
+.nav-link.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto; /* keep click handler to preventDefault */
+}
+
+.nav-link.disabled:hover {
+  background: none;
+  color: var(--color-text-navbar);
+}
+
+.nav-busy-hint {
+  font-size: 11px;
+  color: var(--color-warning, #d29922);
+  margin-left: 8px;
+  animation: pulse-hint 2s ease-in-out infinite;
+}
+
+@keyframes pulse-hint {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* ── Theme switcher ─────────────────────────────────────────────────────── */
 
 .theme-switcher {

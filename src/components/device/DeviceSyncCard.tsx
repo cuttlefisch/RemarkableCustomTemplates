@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ErrorDetails } from './ErrorDetails'
+import { useBusy } from '../../hooks/useBusy'
 
 interface Props {
   deviceId: string | null
@@ -710,6 +711,13 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
     deployMethods.loading || deployClassic.loading ||
     rollbackMethods.loading || rollbackOriginal.loading || rollbackClassic.loading ||
     removeAll.phase === 'executing' || removeAll.phase === 'loading-preview'
+
+  // Block page navigation while an operation is in flight
+  const { setBusy } = useBusy()
+  useEffect(() => {
+    setBusy(anyOpRunning)
+    return () => setBusy(false)
+  }, [anyOpRunning, setBusy])
 
   // Auto-refresh sync status when removeAll completes
   const prevRemovePhase = useRef(removeAll.phase)
