@@ -243,10 +243,18 @@ export function mapForegroundColors(json: string): string {
       if (result.strokeColor === '#000000' || result.strokeColor === undefined) {
         result.strokeColor = FOREGROUND_CONST
       }
+      // strokeColor #ffffff → white stroke → map to background
+      if (result.strokeColor === '#ffffff') {
+        result.strokeColor = BACKGROUND_CONST
+      }
       // fillColor #000000 → explicitly black fill → map to foreground
       // fillColor undefined → no fill (transparent) → leave as-is
       if (result.fillColor === '#000000') {
         result.fillColor = FOREGROUND_CONST
+      }
+      // fillColor #ffffff → white fill → map to background
+      if (result.fillColor === '#ffffff') {
+        result.fillColor = BACKGROUND_CONST
       }
     }
     if (Array.isArray(result.children)) {

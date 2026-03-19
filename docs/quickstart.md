@@ -47,7 +47,7 @@ After connecting, you'll see your device info with connection status:
 
 On the **Device & Sync** page, click **Pull Methods Templates** to fetch official and custom rm_methods templates from the device. These appear as read-only entries in the sidebar — select one and click **Save as New Template** to fork it into an editable custom template.
 
-![Deploy progress](images/deploy-progress.png)
+![Pulling templates from device](images/deploy-progress.png)
 
 ## 5. Create or edit templates
 

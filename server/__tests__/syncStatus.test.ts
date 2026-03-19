@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { computeSyncStatus } from '../lib/syncStatus.ts'
+import { computeSyncStatus, computeClassicSyncStatus } from '../lib/syncStatus.ts'
 import type { RmMethodsManifest } from '../../src/lib/rmMethods.ts'
 
 function makeManifest(entries: Record<string, { name: string; contentHash: string; templateVersion?: string }>): RmMethodsManifest {
@@ -101,5 +101,49 @@ describe('computeSyncStatus', () => {
     const device = makeManifest({ 'uuid-1': { name: 'Device Name', contentHash: 'sha256:bbb' } })
     const result = computeSyncStatus(local, device)
     expect(result.templates[0].name).toBe('Device Name')
+  })
+})
+
+describe('computeClassicSyncStatus', () => {
+  const makeRegistry = (entries: { filename: string; name?: string }[]) => ({ templates: entries })
+
+  it('returns empty results when both registries are empty', () => {
+    const result = computeClassicSyncStatus(makeRegistry([]), makeRegistry([]))
+    expect(result.summary).toEqual({ synced: 0, localOnly: 0, deviceOnly: 0, total: 0 })
+    expect(result.templates).toEqual([])
+  })
+
+  it('marks matching filenames as synced', () => {
+    const local = makeRegistry([{ filename: 'Grid', name: 'Grid' }])
+    const device = makeRegistry([{ filename: 'Grid', name: 'Grid' }])
+    const result = computeClassicSyncStatus(local, device)
+    expect(result.summary.synced).toBe(1)
+    expect(result.templates[0].state).toBe('synced')
+  })
+
+  it('marks local-only and device-only correctly', () => {
+    const local = makeRegistry([{ filename: 'LocalOnly', name: 'Local' }])
+    const device = makeRegistry([{ filename: 'DeviceOnly', name: 'Device' }])
+    const result = computeClassicSyncStatus(local, device)
+    expect(result.summary).toEqual({ synced: 0, localOnly: 1, deviceOnly: 1, total: 2 })
+    const byFilename = Object.fromEntries(result.templates.map(t => [t.filename, t]))
+    expect(byFilename['LocalOnly'].state).toBe('local-only')
+    expect(byFilename['DeviceOnly'].state).toBe('device-only')
+  })
+
+  it('uses filename as fallback name when name is missing', () => {
+    const local = makeRegistry([{ filename: 'MyTemplate' }])
+    const result = computeClassicSyncStatus(local, makeRegistry([]))
+    expect(result.templates[0].name).toBe('MyTemplate')
+  })
+
+  it('sorts templates by name', () => {
+    const local = makeRegistry([
+      { filename: 'c', name: 'Charlie' },
+      { filename: 'a', name: 'Alpha' },
+      { filename: 'b', name: 'Bravo' },
+    ])
+    const result = computeClassicSyncStatus(local, makeRegistry([]))
+    expect(result.templates.map(t => t.name)).toEqual(['Alpha', 'Bravo', 'Charlie'])
   })
 })
