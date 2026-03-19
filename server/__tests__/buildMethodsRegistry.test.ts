@@ -43,7 +43,7 @@ describe('buildMethodsRegistry', () => {
     expect(registry.templates[0].landscape).toBe(false)
     expect(registry.templates[0].categories).toEqual(['Custom', 'Grid'])
     expect(registry.templates[0].rmMethodsId).toBe(uuid)
-    expect(registry.templates[0].origin).toBe('official-methods')
+    expect(registry.templates[0].origin).toBe('custom-methods')
 
     // Template file should be copied to output
     expect(existsSync(resolve(outputDir, `${uuid}.template`))).toBe(true)
@@ -82,6 +82,75 @@ describe('buildMethodsRegistry', () => {
     const registry = JSON.parse(readFileSync(resolve(outputDir, 'methods-registry.json'), 'utf8'))
     expect(registry.templates[0].origin).toBe('custom-methods')
     expect(registry.templates[0].landscape).toBe(true)
+  })
+
+  it('classifies template with "Custom" label as custom-methods', async () => {
+    const uuid = 'custom-label-uuid'
+    writeFileSync(resolve(tmpDir, `${uuid}.metadata`), JSON.stringify({
+      type: 'TemplateType',
+      visibleName: 'Custom Label Tpl',
+    }))
+    writeFileSync(resolve(tmpDir, `${uuid}.template`), JSON.stringify({
+      name: 'Custom Label Tpl',
+      orientation: 'portrait',
+      labels: ['Custom'],
+    }))
+
+    const result = await buildMethodsRegistry({ tempDir: tmpDir, outputDir })
+    expect(result.count).toBe(1)
+
+    const registry = JSON.parse(readFileSync(resolve(outputDir, 'methods-registry.json'), 'utf8'))
+    expect(registry.templates[0].origin).toBe('custom-methods')
+  })
+
+  it('classifies template with UUID in debugUuids as official-methods', async () => {
+    const uuid = 'debug-uuid-9999'
+    writeFileSync(resolve(tmpDir, `${uuid}.metadata`), JSON.stringify({
+      type: 'TemplateType',
+      visibleName: 'Debug Template',
+    }))
+    writeFileSync(resolve(tmpDir, `${uuid}.template`), JSON.stringify({
+      name: 'Debug Template',
+      orientation: 'portrait',
+      labels: ['Custom'],
+    }))
+
+    // Even with "Custom" label AND manifest match, debugUuids should override
+    const manifestPath = resolve(tmpDir, '.manifest')
+    writeFileSync(manifestPath, JSON.stringify({
+      exportedAt: '123',
+      templates: { [uuid]: { name: 'Debug Template' } },
+    }))
+
+    const result = await buildMethodsRegistry({
+      tempDir: tmpDir,
+      outputDir,
+      manifestPath,
+      debugUuids: [uuid],
+    })
+    expect(result.count).toBe(1)
+
+    const registry = JSON.parse(readFileSync(resolve(outputDir, 'methods-registry.json'), 'utf8'))
+    expect(registry.templates[0].origin).toBe('official-methods')
+  })
+
+  it('classifies template with no custom signals as official-methods', async () => {
+    const uuid = 'official-uuid-1111'
+    writeFileSync(resolve(tmpDir, `${uuid}.metadata`), JSON.stringify({
+      type: 'TemplateType',
+      visibleName: 'Official Template',
+    }))
+    writeFileSync(resolve(tmpDir, `${uuid}.template`), JSON.stringify({
+      name: 'Official Template',
+      orientation: 'portrait',
+      labels: ['Lines'],
+    }))
+
+    const result = await buildMethodsRegistry({ tempDir: tmpDir, outputDir })
+    expect(result.count).toBe(1)
+
+    const registry = JSON.parse(readFileSync(resolve(outputDir, 'methods-registry.json'), 'utf8'))
+    expect(registry.templates[0].origin).toBe('official-methods')
   })
 
   it('defaults labels to Uncategorized when absent', async () => {

@@ -11,7 +11,7 @@ import { buildRmMethodsDist } from '../../lib/buildRmMethodsDist.ts'
 import { buildClassicDist } from '../../lib/buildClassicDist.ts'
 import { readDeviceManifest } from '../../lib/deviceManifest.ts'
 import { readRemoteFile } from '../../lib/sftp.ts'
-import { computeSyncStatus, computeClassicSyncStatus, type ClassicSyncResult } from '../../lib/syncStatus.ts'
+import { computeSyncStatus, computeClassicSyncStatus, addMethodsOverlay, type ClassicSyncResult } from '../../lib/syncStatus.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 
@@ -48,25 +48,14 @@ export default function deviceSyncStatusRoutes(app: FastifyInstance, config: Ser
 
       const { summary, templates } = computeSyncStatus(buildResult.manifest, deviceManifest)
 
-      // Include pulled methods templates not already tracked in sync status.
-      // After a pull, the methods registry has templates from the device that may
-      // not be in either our local build or the deployed manifest.
+      // Include pulled official-methods templates not already tracked in sync status.
+      // Only official-methods entries are added — custom-methods are already in the
+      // local build via importCustomMethods and tracked through manifests.
       try {
         const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as {
           templates: { rmMethodsId?: string; name: string; origin?: string }[]
         }
-        const trackedUuids = new Set(templates.map(t => t.uuid))
-        for (const entry of methodsReg.templates) {
-          if (entry.rmMethodsId && !trackedUuids.has(entry.rmMethodsId)) {
-            templates.push({
-              uuid: entry.rmMethodsId,
-              name: entry.name,
-              state: 'device-only',
-            })
-            summary.deviceOnly++
-            summary.total++
-          }
-        }
+        addMethodsOverlay(templates, summary, methodsReg.templates)
       } catch {
         // No methods registry — skip
       }

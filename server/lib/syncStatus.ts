@@ -74,6 +74,30 @@ export function computeSyncStatus(
 }
 
 // ---------------------------------------------------------------------------
+// Methods registry overlay — add official-methods entries not already tracked
+// ---------------------------------------------------------------------------
+
+/**
+ * After computing sync status from manifests, overlay pulled methods entries
+ * that aren't tracked in either manifest. Only adds official-methods entries;
+ * custom-methods entries are already in the local build via importCustomMethods.
+ */
+export function addMethodsOverlay(
+  templates: TemplateSyncEntry[],
+  summary: SyncStatusSummary,
+  methodsEntries: { rmMethodsId?: string; name: string; origin?: string }[],
+): void {
+  const trackedUuids = new Set(templates.map(t => t.uuid))
+  for (const entry of methodsEntries) {
+    if (entry.rmMethodsId && !trackedUuids.has(entry.rmMethodsId) && entry.origin === 'official-methods') {
+      templates.push({ uuid: entry.rmMethodsId, name: entry.name, state: 'device-only' })
+      summary.deviceOnly++
+      summary.total++
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Classic sync status (filename-based comparison, no content hashing)
 // ---------------------------------------------------------------------------
 

@@ -69,7 +69,26 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
       const localUuids = readManifestUuids(devicePaths.deployedManifest)
-      const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
+
+      // Also include custom-methods UUIDs from the methods registry
+      const methodsUuids: string[] = []
+      const methodsNames: Record<string, string> = {}
+      try {
+        const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as {
+          templates: { rmMethodsId?: string; origin?: string; name: string }[]
+        }
+        for (const entry of methodsReg.templates) {
+          if (entry.origin === 'custom-methods' && entry.rmMethodsId) {
+            methodsUuids.push(entry.rmMethodsId)
+            methodsNames[entry.rmMethodsId] = entry.name
+          }
+        }
+      } catch { /* no methods registry */ }
+
+      const allUuids = mergeDeployedUuids(
+        mergeDeployedUuids(localUuids, deviceUuids),
+        methodsUuids,
+      )
 
       if (allUuids.length === 0) {
         return reply.send({ count: 0, error: 'No deploy history found. Cannot determine which templates are custom.' })
@@ -87,6 +106,7 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
         const name =
           deviceTemplates[uuid]?.name ??
           (localManifestTemplates[uuid] as { name?: string })?.name ??
+          methodsNames[uuid] ??
           uuid
         templates.push({ uuid, name })
       }
@@ -122,7 +142,25 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
       const localUuids = readManifestUuids(devicePaths.deployedManifest)
-      const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
+
+      // Also include custom-methods UUIDs from the methods registry —
+      // these are templates pulled from the device that were identified as custom
+      const methodsUuids: string[] = []
+      try {
+        const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as {
+          templates: { rmMethodsId?: string; origin?: string }[]
+        }
+        for (const entry of methodsReg.templates) {
+          if (entry.origin === 'custom-methods' && entry.rmMethodsId) {
+            methodsUuids.push(entry.rmMethodsId)
+          }
+        }
+      } catch { /* no methods registry */ }
+
+      const allUuids = mergeDeployedUuids(
+        mergeDeployedUuids(localUuids, deviceUuids),
+        methodsUuids,
+      )
 
       if (allUuids.length === 0) {
         stream.error('No deploy history found. Cannot determine which templates are custom.')
@@ -178,6 +216,38 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
         unlinkSync(devicePaths.deployedManifest)
         steps.push('Cleared local deploy tracking')
       }
+
+      // Clean up methods-registry.json — remove custom-methods entries
+      // so they don't appear as read-only ghosts in the sidebar
+      const removedUuidSet = new Set(allUuids)
+      try {
+        const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as {
+          templates: { rmMethodsId?: string; origin?: string }[]
+        }
+        const before = methodsReg.templates.length
+        methodsReg.templates = methodsReg.templates.filter(
+          e => e.origin !== 'custom-methods' || !e.rmMethodsId || !removedUuidSet.has(e.rmMethodsId),
+        )
+        if (methodsReg.templates.length < before) {
+          writeFileSync(config.methodsRegistry, JSON.stringify(methodsReg, null, 2) + '\n', 'utf8')
+          steps.push(`Cleaned ${before - methodsReg.templates.length} custom entries from methods registry`)
+        }
+      } catch { /* no methods registry */ }
+
+      // Clean up custom-registry.json — remove entries whose UUIDs were removed
+      try {
+        const customReg = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as {
+          templates: { rmMethodsId?: string }[]
+        }
+        const before = customReg.templates.length
+        customReg.templates = customReg.templates.filter(
+          e => !e.rmMethodsId || !removedUuidSet.has(e.rmMethodsId),
+        )
+        if (customReg.templates.length < before) {
+          writeFileSync(config.customRegistry, JSON.stringify(customReg, null, 2) + '\n', 'utf8')
+          steps.push(`Cleaned ${before - customReg.templates.length} entries from custom registry`)
+        }
+      } catch { /* no custom registry */ }
 
       stream.progress('Restarting device UI...')
       await exec(client2, 'systemctl restart xochitl')

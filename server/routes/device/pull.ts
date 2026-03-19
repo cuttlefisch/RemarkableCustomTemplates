@@ -6,7 +6,7 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
+import { readFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { ServerConfig } from '../../config.ts'
@@ -14,6 +14,7 @@ import { resolveDevicePaths } from '../../config.ts'
 import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, pullDirectory, pullFile } from '../../lib/sftp.ts'
 import { buildMethodsRegistry } from '../../lib/buildMethodsRegistry.ts'
+import { importCustomMethodsEntries } from '../../lib/importCustomMethods.ts'
 import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
@@ -21,74 +22,6 @@ import { readDevice } from '../../lib/deviceStore.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
-
-interface MethodsRegistryEntry {
-  name: string
-  filename: string
-  iconCode: string
-  landscape?: boolean
-  categories: string[]
-  rmMethodsId?: string
-  origin?: string
-}
-
-/**
- * After building the methods registry, auto-import any custom-methods entries
- * into the custom collection so they appear as editable templates.
- * Skips entries already present in custom-registry.json (matched by rmMethodsId).
- */
-function importCustomMethodsEntries(config: ServerConfig): number {
-  let methodsEntries: MethodsRegistryEntry[]
-  try {
-    const raw = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as { templates: MethodsRegistryEntry[] }
-    methodsEntries = raw.templates.filter(e => e.origin === 'custom-methods')
-  } catch {
-    return 0
-  }
-
-  if (methodsEntries.length === 0) return 0
-
-  let customRegistry: { templates: Array<{ filename: string; rmMethodsId?: string; [k: string]: unknown }> }
-  try {
-    customRegistry = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as typeof customRegistry
-  } catch {
-    customRegistry = { templates: [] }
-  }
-
-  const existingIds = new Set(customRegistry.templates.map(e => e.rmMethodsId).filter(Boolean))
-  let imported = 0
-
-  mkdirSync(config.customDir, { recursive: true })
-
-  for (const entry of methodsEntries) {
-    if (!entry.rmMethodsId || existingIds.has(entry.rmMethodsId)) continue
-
-    const srcPath = resolve(config.methodsDir, `${entry.rmMethodsId}.template`)
-    if (!existsSync(srcPath)) continue
-
-    const prefix = entry.landscape ? 'LS' : 'P'
-    const customSlug = `${prefix} ${entry.name}`
-    const destPath = resolve(config.customDir, `${customSlug}.template`)
-    copyFileSync(srcPath, destPath)
-
-    customRegistry.templates.push({
-      name: entry.name,
-      filename: `custom/${customSlug}`,
-      iconCode: entry.iconCode,
-      landscape: entry.landscape ?? false,
-      categories: entry.categories,
-      isCustom: true,
-      rmMethodsId: entry.rmMethodsId,
-    })
-    imported++
-  }
-
-  if (imported > 0) {
-    writeFileSync(config.customRegistry, JSON.stringify(customRegistry, null, 2) + '\n', 'utf8')
-  }
-
-  return imported
-}
 
 export default function devicePullRoutes(app: FastifyInstance, config: ServerConfig) {
   // POST /api/devices/:id/pull-official
@@ -183,12 +116,22 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         ? devicePaths.deployedManifest
         : undefined
 
+      // Read debug registry UUIDs so they're excluded from custom classification
+      let debugUuids: string[] = []
+      try {
+        const debugReg = JSON.parse(readFileSync(config.debugRegistry, 'utf8')) as {
+          templates: Array<{ rmMethodsId?: string }>
+        }
+        debugUuids = debugReg.templates.map(e => e.rmMethodsId).filter((id): id is string => !!id)
+      } catch { /* no debug registry */ }
+
       const result2 = await buildMethodsRegistry({
         tempDir: tmpDir,
         outputDir: config.methodsDir,
         manifestPath,
         deployedManifestPath,
         deviceManifestUuids,
+        debugUuids,
       })
 
       const imported = importCustomMethodsEntries(config)

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { computeSyncStatus, computeClassicSyncStatus } from '../lib/syncStatus.ts'
+import { computeSyncStatus, computeClassicSyncStatus, addMethodsOverlay } from '../lib/syncStatus.ts'
+import type { TemplateSyncEntry, SyncStatusSummary } from '../lib/syncStatus.ts'
 import type { RmMethodsManifest } from '../../src/lib/rmMethods.ts'
 
 function makeManifest(entries: Record<string, { name: string; contentHash: string; templateVersion?: string }>): RmMethodsManifest {
@@ -101,6 +102,65 @@ describe('computeSyncStatus', () => {
     const device = makeManifest({ 'uuid-1': { name: 'Device Name', contentHash: 'sha256:bbb' } })
     const result = computeSyncStatus(local, device)
     expect(result.templates[0].name).toBe('Device Name')
+  })
+})
+
+describe('addMethodsOverlay', () => {
+  function makeSummary(overrides?: Partial<SyncStatusSummary>): SyncStatusSummary {
+    return { synced: 0, localOnly: 0, deviceOnly: 0, modified: 0, total: 0, ...overrides }
+  }
+
+  it('adds official-methods entries not already tracked', () => {
+    const templates: TemplateSyncEntry[] = []
+    const summary = makeSummary()
+    addMethodsOverlay(templates, summary, [
+      { rmMethodsId: 'uuid-1', name: 'Official Grid', origin: 'official-methods' },
+    ])
+    expect(templates).toHaveLength(1)
+    expect(templates[0]).toEqual({ uuid: 'uuid-1', name: 'Official Grid', state: 'device-only' })
+    expect(summary.deviceOnly).toBe(1)
+    expect(summary.total).toBe(1)
+  })
+
+  it('does NOT add custom-methods entries', () => {
+    const templates: TemplateSyncEntry[] = []
+    const summary = makeSummary()
+    addMethodsOverlay(templates, summary, [
+      { rmMethodsId: 'uuid-custom', name: 'Custom Grid', origin: 'custom-methods' },
+    ])
+    expect(templates).toHaveLength(0)
+    expect(summary.deviceOnly).toBe(0)
+    expect(summary.total).toBe(0)
+  })
+
+  it('does NOT add entries already in tracked set', () => {
+    const templates: TemplateSyncEntry[] = [
+      { uuid: 'uuid-1', name: 'Already Tracked', state: 'synced' },
+    ]
+    const summary = makeSummary({ synced: 1, total: 1 })
+    addMethodsOverlay(templates, summary, [
+      { rmMethodsId: 'uuid-1', name: 'Already Tracked', origin: 'official-methods' },
+    ])
+    expect(templates).toHaveLength(1)
+    expect(summary.deviceOnly).toBe(0)
+    expect(summary.total).toBe(1)
+  })
+
+  it('updates summary counts correctly with multiple entries', () => {
+    const templates: TemplateSyncEntry[] = [
+      { uuid: 'existing-1', name: 'Existing', state: 'local-only' },
+    ]
+    const summary = makeSummary({ localOnly: 1, total: 1 })
+    addMethodsOverlay(templates, summary, [
+      { rmMethodsId: 'new-1', name: 'New Official 1', origin: 'official-methods' },
+      { rmMethodsId: 'new-2', name: 'New Official 2', origin: 'official-methods' },
+      { rmMethodsId: 'custom-1', name: 'Custom Skip', origin: 'custom-methods' },
+      { rmMethodsId: 'existing-1', name: 'Already There', origin: 'official-methods' },
+    ])
+    expect(templates).toHaveLength(3)
+    expect(summary.deviceOnly).toBe(2)
+    expect(summary.total).toBe(3)
+    expect(summary.localOnly).toBe(1)
   })
 })
 
