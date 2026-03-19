@@ -53,11 +53,15 @@ This app focuses on native `.template` files — the format that gives you the b
 
 ![Template editor with JSON](docs/images/template-editor.png)
 
+## Themes
+
+10 built-in themes based on popular editor colorschemes — GitHub Light, One Dark, Dracula, Gruvbox, Nord, Solarized, Tokyo Night, and more. Theme selection persists across sessions.
+
+![Theme showcase — 4 of the 10 built-in themes](docs/images/theme-showcase.png)
+
 ## Device Setup
 
-![Device & Sync page](docs/images/device-sync-page.png)
-
-
+![Device connection](docs/images/device-connected.png)
 
 Navigate to the **Device & Sync** page in the app. The setup wizard handles SSH key generation, connection testing, and device configuration — all in your browser.
 
@@ -76,6 +80,8 @@ For CLI workflows and manual SSH setup, see [Device Sync](docs/device-sync.md).
 ## Bug Reports
 
 If you run into an error during device operations (connection, deploy, pull, rollback, etc.), the error dialog includes a **"Copy error for bug report"** button. Click it to copy formatted error details to your clipboard, then [open a GitHub issue](https://github.com/cuttlefisch/RemarkableCustomTemplates/issues/new) and paste the error info. Raw error details are also logged to the browser console (open with F12).
+
+![Error details with copy button](docs/images/error-details.png)
 
 When reporting a bug, please include:
 - The copied error details (or a screenshot)

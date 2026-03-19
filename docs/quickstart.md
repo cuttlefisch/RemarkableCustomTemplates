@@ -35,7 +35,11 @@ Navigate to the **Device & Sync** page. The setup wizard walks you through:
 2. **Connection test** — verifies SSH access to your device
 3. **Device configuration** — saves connection settings
 
-![Device & Sync page](images/device-sync-page.png)
+![Device connection setup](images/device-connection-setup.png)
+
+After connecting, you'll see your device info with connection status:
+
+![Device connected](images/device-connected.png)
 
 > **SSH over WLAN** must be enabled on the device. On newer devices (Paper Pro, Move), developer mode is required first — note that enabling developer mode triggers a factory reset. Find your device IP and SSH password under **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**.
 
@@ -43,7 +47,7 @@ Navigate to the **Device & Sync** page. The setup wizard walks you through:
 
 On the **Device & Sync** page, click **Pull Methods Templates** to fetch official and custom rm_methods templates from the device. These appear as read-only entries in the sidebar — select one and click **Save as New Template** to fork it into an editable custom template.
 
-![Pulling templates from device](images/device-sync-pulling.png)
+![Deploy progress](images/deploy-progress.png)
 
 ## 5. Create or edit templates
 
@@ -54,9 +58,17 @@ On the **Device & Sync** page, click **Pull Methods Templates** to fetch officia
 
 ![Template editor with JSON](images/template-editor.png)
 
+![Validation error in the editor](images/template-editor-error.png)
+
 ## 6. Deploy to your device
 
-On the **Device & Sync** page, click **Deploy**. Templates are deployed in the rm_methods format, which means they **sync across all paired devices** via the reMarkable cloud.
+On the **Device & Sync** page, click **Deploy**. You can check sync status first to see what needs deploying, and optionally select specific templates:
+
+![Sync status](images/sync-status.png)
+
+![Selective deploy](images/deploy-selective.png)
+
+Templates are deployed in the rm_methods format, which means they **sync across all paired devices** via the reMarkable cloud.
 
 > **No Connect subscription required.** rm_methods sync uses the built-in cloud mechanism that ships with every reMarkable — it works with or without a Connect subscription.
 
@@ -74,7 +86,9 @@ Each deploy:
 
 Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all your custom templates. This preserves UUIDs needed for device sync continuity.
 
-To restore: click **↑ Restore** and select the backup ZIP. Existing templates are skipped; new ones are merged in.
+To restore: click **↑ Restore** and select the backup ZIP. A preview shows what will be added, what's already present, and any local templates not in the backup that you can optionally clean up:
+
+![Backup restore preview](images/backup-restore-preview.png)
 
 ## 8. Rollback
 
