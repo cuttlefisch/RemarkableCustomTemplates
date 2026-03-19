@@ -26,10 +26,15 @@ Open **http://localhost:3000** in your browser. That's it.
 
 - **Browse & preview** all templates across reMarkable 1/2, Paper Pro, and Paper Pro Move resolutions
 - **Create from scratch** or **fork any existing template** with a live SVG preview and JSON editor
-- **Deploy to your device** in the rm_methods format — templates sync across all paired devices via the reMarkable cloud
+- **Invert colors** for dark-mode templates — foreground/background swap with one click
+- **Deploy to your devices** in the rm_methods format — templates sync across all paired devices via the reMarkable cloud
+- **Manage multiple devices** — add several reMarkable tablets with independent sync status, deploy, and rollback
+- **Check sync status** before deploying — see which templates are synced, local-only, or device-only
+- **Selective deploy** — choose exactly which templates to push instead of deploying everything
 - **Pull official templates** from your device to browse or use as a starting point
-- **Back up & restore** your entire template collection as a ZIP
+- **Back up & restore** your entire template collection as a ZIP, with merge preview and cleanup
 - **One-click rollback** to the previous deploy or to pristine device state
+- **10 built-in themes** — GitHub Light, Dracula, Nord, Gruvbox, and more
 
 > **No reMarkable Connect subscription required.** rm_methods templates sync via the built-in cloud mechanism that ships with every reMarkable device. This works with or without a Connect subscription.
 
@@ -63,7 +68,9 @@ This app focuses on native `.template` files — the format that gives you the b
 
 ![Device connection](docs/images/device-connected.png)
 
-Navigate to the **Device & Sync** page in the app. The setup wizard handles SSH key generation, connection testing, and device configuration — all in your browser.
+Navigate to the **Device & Sync** page in the app. The setup wizard handles SSH key generation, connection testing, and device configuration — all in your browser. You can manage multiple devices — each with its own connection, sync status, and deploy history.
+
+![Sync status](docs/images/sync-status.png)
 
 For CLI workflows and manual SSH setup, see [Device Sync](docs/device-sync.md).
 

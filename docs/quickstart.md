@@ -35,6 +35,8 @@ Navigate to the **Device & Sync** page. The setup wizard walks you through:
 2. **Connection test** — verifies SSH access to your device
 3. **Device configuration** — saves connection settings
 
+You can add multiple devices — each gets its own connection, sync status, deploy history, and rollback state. Switch between devices using the tabs at the top of the page.
+
 ![Device connection setup](images/device-connection-setup.png)
 
 After connecting, you'll see your device info with connection status:
@@ -54,6 +56,7 @@ On the **Device & Sync** page, click **Pull Methods Templates** to fetch officia
 - Click **New template** in the sidebar to start from scratch
 - Or select any template and click **Save as New Template** to fork it
 - Edit the JSON in the Monaco editor — the canvas updates live as you apply changes
+- Click **Invert** to swap foreground/background colors for dark-mode templates
 - Click **Apply** to validate; any undefined constant references are reported before rendering
 
 ![Template editor with JSON](images/template-editor.png)
