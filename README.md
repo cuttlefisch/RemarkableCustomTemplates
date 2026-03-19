@@ -33,6 +33,9 @@ Open **http://localhost:3000** in your browser. That's it.
 
 > **No reMarkable Connect subscription required.** rm_methods templates sync via the built-in cloud mechanism that ships with every reMarkable device. This works with or without a Connect subscription.
 
+> [!WARNING]
+> **Sync behavior is not guaranteed.** The rm_methods sync mechanism is reverse-engineered from observing how official reMarkable templates work. It is not documented or supported by reMarkable. Syncing behavior could change or break at any time with firmware updates. Always keep backups of your templates. See [How rm_methods sync works](docs/device-sync.md#how-rm_methods-sync-works) for details.
+
 ## Why Native Templates?
 
 reMarkable supports two ways to add page templates: **native `.template` files** and **PDF templates**.

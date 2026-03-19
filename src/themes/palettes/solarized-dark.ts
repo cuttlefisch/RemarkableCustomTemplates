@@ -291,8 +291,12 @@ export const solarizedDark: Theme = {
       'editorLineNumber.activeForeground': '#93a1a1',
       'editor.selectionBackground': '#094858',
       'editorCursor.foreground': '#268bd2',
-      'editorBracketMatch.background': 'rgba(38, 139, 210, 0.15)',
+      'editorBracketMatch.background': '#268bd226',
       'editorBracketMatch.border': '#268bd2',
+      'editorBracketHighlight.foreground1': '#268bd2',
+      'editorBracketHighlight.foreground2': '#6c71c4',
+      'editorBracketHighlight.foreground3': '#2aa198',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#586e75',
     },
   },
 }

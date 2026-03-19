@@ -291,8 +291,12 @@ export const nord: Theme = {
       'editorLineNumber.activeForeground': '#d8dee9',
       'editor.selectionBackground': '#434c5e',
       'editorCursor.foreground': '#88c0d0',
-      'editorBracketMatch.background': 'rgba(136, 192, 208, 0.15)',
+      'editorBracketMatch.background': '#88c0d026',
       'editorBracketMatch.border': '#88c0d0',
+      'editorBracketHighlight.foreground1': '#88c0d0',
+      'editorBracketHighlight.foreground2': '#b48ead',
+      'editorBracketHighlight.foreground3': '#81a1c1',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#4c566a',
     },
   },
 }

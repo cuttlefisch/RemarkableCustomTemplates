@@ -291,8 +291,12 @@ export const gruvboxDark: Theme = {
       'editorLineNumber.activeForeground': '#ebdbb2',
       'editor.selectionBackground': '#504945',
       'editorCursor.foreground': '#83a598',
-      'editorBracketMatch.background': 'rgba(131, 165, 152, 0.15)',
+      'editorBracketMatch.background': '#83a59826',
       'editorBracketMatch.border': '#83a598',
+      'editorBracketHighlight.foreground1': '#83a598',
+      'editorBracketHighlight.foreground2': '#d3869b',
+      'editorBracketHighlight.foreground3': '#8ec07c',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#928374',
     },
   },
 }

@@ -293,6 +293,10 @@ export const githubLight: Theme = {
       'editorCursor.foreground': '#0969da',
       'editorBracketMatch.background': '#b6e3ff40',
       'editorBracketMatch.border': '#0969da',
+      'editorBracketHighlight.foreground1': '#0969da',
+      'editorBracketHighlight.foreground2': '#8250df',
+      'editorBracketHighlight.foreground3': '#0550ae',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#656d76',
     },
   },
 }

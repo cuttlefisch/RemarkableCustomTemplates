@@ -453,7 +453,10 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
               onClick={() => setSelected(entry)}
             >
               <span className="template-btn-name">{entry.name}</span>
-              <span className={`orient-badge ${entry.isCustom ? 'custom' : (entry.origin ? 'methods' : (entry.landscape ? 'ls' : 'p'))}`}>
+              <span
+                className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}
+                title={`${entry.landscape ? 'Landscape' : 'Portrait'}${entry.isCustom ? ' (Custom)' : entry.origin === 'official-methods' ? ' (Methods)' : entry.origin === 'custom-methods' ? ' (Methods — custom)' : ' (Classic)'}`}
+              >
                 {entry.landscape ? 'LS' : 'P'}
               </span>
             </button>

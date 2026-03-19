@@ -60,6 +60,9 @@ On the **Device & Sync** page, click **Deploy**. Templates are deployed in the r
 
 > **No Connect subscription required.** rm_methods sync uses the built-in cloud mechanism that ships with every reMarkable — it works with or without a Connect subscription.
 
+> [!WARNING]
+> **Sync behavior is not guaranteed.** The rm_methods cloud sync mechanism is reverse-engineered and undocumented by reMarkable. It works as of firmware 3.x, but could change or stop working with any firmware update. Always keep local backups of your templates. See [How rm_methods sync works](device-sync.md#how-rm_methods-sync-works) for details.
+
 Each deploy:
 - Backs up the previous state automatically
 - Cleans up any templates you've removed

@@ -182,6 +182,7 @@ export function TemplateEditor({
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             fontSize: 13,
+            bracketPairColorization: { enabled: false },
           }}
         />
       </div>

@@ -291,8 +291,12 @@ export const tokyoNight: Theme = {
       'editorLineNumber.activeForeground': '#a9b1d6',
       'editor.selectionBackground': '#414868',
       'editorCursor.foreground': '#7aa2f7',
-      'editorBracketMatch.background': 'rgba(122, 162, 247, 0.15)',
+      'editorBracketMatch.background': '#7aa2f726',
       'editorBracketMatch.border': '#7aa2f7',
+      'editorBracketHighlight.foreground1': '#7aa2f7',
+      'editorBracketHighlight.foreground2': '#bb9af7',
+      'editorBracketHighlight.foreground3': '#7dcfff',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#565f89',
     },
   },
 }

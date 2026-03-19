@@ -293,6 +293,10 @@ export const dracula: Theme = {
       'editorCursor.foreground': '#bd93f9',
       'editorBracketMatch.background': '#44475a80',
       'editorBracketMatch.border': '#bd93f9',
+      'editorBracketHighlight.foreground1': '#bd93f9',
+      'editorBracketHighlight.foreground2': '#ff79c6',
+      'editorBracketHighlight.foreground3': '#8be9fd',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#6272a4',
     },
   },
 }

@@ -58,6 +58,7 @@
   margin-bottom: 16px;
   overflow: hidden;
   transition: background-color 0.2s, border-color 0.2s;
+  position: relative;
 }
 
 .device-card-title {
@@ -585,13 +586,16 @@
   font-style: italic;
 }
 
-/* ── Device selector tabs ──────────────────────────────────────────── */
+/* ── Device selector tabs (browser-tab style) ─────────────────────── */
 
 .device-selector-bar {
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 6px;
+  margin-bottom: -1px; /* overlap with card border below */
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+  padding-left: 16px;
 }
 
 .device-selector-tab {
@@ -599,28 +603,47 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  padding: 8px 16px;
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
-  border-radius: 6px;
+  padding: 8px 18px 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+  position: relative;
+  opacity: 0.5;
 }
 
 .device-selector-tab:hover {
+  opacity: 0.75;
   background: var(--color-card-title-bg);
+  border-color: var(--color-card-border);
 }
 
 .device-selector-tab.active {
-  border-color: var(--color-btn-primary);
-  background: var(--color-card-bg);
-  box-shadow: 0 0 0 1px var(--color-btn-primary);
+  background: var(--color-card-title-bg);
+  border: 2px solid var(--color-card-border);
+  border-top-color: var(--color-accent);
+  border-bottom: none;
+  padding: 7px 17px 10px; /* compensate for 2px border */
+  opacity: 1;
+  z-index: 2;
+}
+
+/* Card below selector keeps its natural radius */
+.device-selector-bar + .device-card {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 }
 
 .device-selector-tab-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.device-selector-tab.active .device-selector-tab-name {
+  color: var(--color-accent-text);
 }
 
 .device-selector-tab-model {
@@ -633,4 +656,33 @@
 .device-card-title-nickname {
   font-weight: 400;
   color: var(--color-text-muted);
+}
+
+/* ── Sync auto-refresh flourish ──────────────────────────────────── */
+
+.sync-auto-refreshed {
+  animation: sync-flash 0.6s ease-out;
+}
+
+.sync-auto-refreshed-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+  animation: badge-fade 3s ease-out forwards;
+}
+
+@keyframes sync-flash {
+  0% { background-color: var(--color-success-bg); }
+  100% { background-color: transparent; }
+}
+
+@keyframes badge-fade {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
 }

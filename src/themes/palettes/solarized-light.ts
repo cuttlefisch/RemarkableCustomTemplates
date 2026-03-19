@@ -293,6 +293,10 @@ export const solarizedLight: Theme = {
       'editorCursor.foreground': '#268bd2',
       'editorBracketMatch.background': '#d5eaf740',
       'editorBracketMatch.border': '#268bd2',
+      'editorBracketHighlight.foreground1': '#268bd2',
+      'editorBracketHighlight.foreground2': '#6c71c4',
+      'editorBracketHighlight.foreground3': '#2aa198',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#93a1a1',
     },
   },
 }

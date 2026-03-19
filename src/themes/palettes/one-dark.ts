@@ -291,8 +291,12 @@ export const oneDark: Theme = {
       'editorLineNumber.activeForeground': '#abb2bf',
       'editor.selectionBackground': '#3e4451',
       'editorCursor.foreground': '#61afef',
-      'editorBracketMatch.background': 'rgba(97, 175, 239, 0.15)',
+      'editorBracketMatch.background': '#61afef26',
       'editorBracketMatch.border': '#61afef',
+      'editorBracketHighlight.foreground1': '#61afef',
+      'editorBracketHighlight.foreground2': '#c678dd',
+      'editorBracketHighlight.foreground3': '#56b6c2',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#636d83',
     },
   },
 }

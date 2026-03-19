@@ -293,6 +293,10 @@ export const gruvboxLight: Theme = {
       'editorCursor.foreground': '#458588',
       'editorBracketMatch.background': '#d5c4a140',
       'editorBracketMatch.border': '#458588',
+      'editorBracketHighlight.foreground1': '#458588',
+      'editorBracketHighlight.foreground2': '#b16286',
+      'editorBracketHighlight.foreground3': '#689d6a',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#928374',
     },
   },
 }

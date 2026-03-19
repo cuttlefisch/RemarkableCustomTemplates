@@ -45,6 +45,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
     const devicePaths = resolveDevicePaths(config, id)
     const stream = createNdjsonStream(reply)
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
       const steps: string[] = []
 
@@ -59,7 +60,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
 
       // Single SSH connection for entire operation
       stream.progress('Connecting to device...')
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
       // Read device manifest for orphan tracking
@@ -159,9 +160,10 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
         mergedManifest.exportedAt = buildManifest.exportedAt
 
         // Write merged manifest (no orphan cleanup for selective deploys)
+        // Write device manifest first — if it fails, local state stays consistent
         stream.progress('Updating device manifest...')
-        writeFileSync(devicePaths.deployedManifest, JSON.stringify(mergedManifest, null, 2), 'utf8')
         await writeDeviceManifest(sftp, mergedManifest)
+        writeFileSync(devicePaths.deployedManifest, JSON.stringify(mergedManifest, null, 2), 'utf8')
       } else {
         // Full deploy: orphan cleanup + push all
         const localUuids = readManifestUuids(devicePaths.deployedManifest)
@@ -202,22 +204,23 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
         })
         steps.push(`Pushed ${pushed.length} files`)
 
-        // Update deployed manifest (local cache + device)
+        // Update deployed manifest — device first, then local cache
         stream.progress('Updating device manifest...')
-        copyFileSync(manifestPath, devicePaths.deployedManifest)
         await writeDeviceManifest(sftp, buildResult.manifest)
+        copyFileSync(manifestPath, devicePaths.deployedManifest)
       }
 
       // Restart xochitl
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
-      client.end()
       steps.push('Restarted xochitl')
 
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       stream.error(`Deploy failed: ${formatted.message}`, formatted.hint)
+    } finally {
+      client?.end()
     }
   })
 
@@ -231,6 +234,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
 
     const stream = createNdjsonStream(reply)
 
+    let client2: Awaited<ReturnType<typeof connect>> | null = null
     try {
       const steps: string[] = []
 
@@ -241,11 +245,11 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
 
       const distDir = config.classicDistDir
 
-      const client = await connect(deviceConfig)
-      const sftp = await getSftp(client)
+      client2 = await connect(deviceConfig)
+      const sftp = await getSftp(client2)
 
       stream.progress('Creating backup on device...')
-      await exec(client, `mount -o remount,rw / && mkdir -p /home/root/template-backups && timestamp=$(date +%Y%m%d_%H%M%S) && tar czf /home/root/template-backups/templates_\${timestamp}.tar.gz -C /usr/share/remarkable templates`)
+      await exec(client2, `mount -o remount,rw / && mkdir -p /home/root/template-backups && timestamp=$(date +%Y%m%d_%H%M%S) && tar czf /home/root/template-backups/templates_\${timestamp}.tar.gz -C /usr/share/remarkable templates`)
       steps.push('Created backup on device')
 
       const pushed = await pushDirectory(sftp, distDir, TEMPLATES_PATH, undefined, (cur, tot) => {
@@ -254,14 +258,15 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       steps.push(`Pushed ${pushed.length} files`)
 
       stream.progress('Restarting device UI...')
-      await exec(client, 'mount -o remount,ro / && systemctl restart xochitl')
-      client.end()
+      await exec(client2, 'mount -o remount,ro / && systemctl restart xochitl')
       steps.push('Restarted xochitl')
 
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       stream.error(`Deploy failed: ${formatted.message}`, formatted.hint)
+    } finally {
+      client2?.end()
     }
   })
 }

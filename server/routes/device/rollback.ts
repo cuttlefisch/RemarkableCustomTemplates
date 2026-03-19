@@ -59,10 +59,11 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
     const stream = createNdjsonStream(reply)
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
       const steps: string[] = []
       stream.progress('Connecting to device...')
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
       const deviceManifest = await readDeviceManifest(sftp)
@@ -87,19 +88,21 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       })
       steps.push(`Restored ${pushed.length} files from backup`)
 
-      copyFileSync(latestManifest, devicePaths.deployedManifest)
+      // Write device manifest first, then local cache
       const backupManifestContent = JSON.parse(readFileSync(latestManifest, 'utf8'))
       await writeDeviceManifest(sftp, backupManifestContent)
+      copyFileSync(latestManifest, devicePaths.deployedManifest)
 
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
-      client.end()
       steps.push('Restarted xochitl')
 
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       stream.error(`Rollback failed: ${formatted.message}`, formatted.hint)
+    } finally {
+      client?.end()
     }
   })
 
@@ -124,10 +127,11 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
     const stream = createNdjsonStream(reply)
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
       const steps: string[] = []
       stream.progress('Connecting to device...')
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
       // Determine what's currently on the device
@@ -159,8 +163,7 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
         steps.push(`Restored ${pushed.length} original template files`)
       }
 
-      // Update manifest to match original state
-      copyFileSync(originalManifestPath, devicePaths.deployedManifest)
+      // Update manifest — device first, then local cache
       if (originalUuids.size > 0) {
         const originalManifestContent = JSON.parse(readFileSync(originalManifestPath, 'utf8'))
         await writeDeviceManifest(sftp, originalManifestContent)
@@ -169,16 +172,18 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
           await removeDeviceManifest(sftp)
         } catch { /* may not exist */ }
       }
+      copyFileSync(originalManifestPath, devicePaths.deployedManifest)
 
       stream.progress('Restarting device UI...')
       await exec(client, 'systemctl restart xochitl')
-      client.end()
       steps.push('Restarted xochitl')
 
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       stream.error(`Rollback failed: ${formatted.message}`, formatted.hint)
+    } finally {
+      client?.end()
     }
   })
 

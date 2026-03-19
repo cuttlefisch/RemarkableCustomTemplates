@@ -293,6 +293,10 @@ export const oneLight: Theme = {
       'editorCursor.foreground': '#4078f2',
       'editorBracketMatch.background': '#d7e5f8',
       'editorBracketMatch.border': '#4078f2',
+      'editorBracketHighlight.foreground1': '#4078f2',
+      'editorBracketHighlight.foreground2': '#a626a4',
+      'editorBracketHighlight.foreground3': '#0184bc',
+      'editorBracketHighlight.unexpectedBracket.foreground': '#696c77',
     },
   },
 }

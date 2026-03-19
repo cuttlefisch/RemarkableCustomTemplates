@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 interface Props {
   deviceId: string | null
@@ -449,14 +449,17 @@ function ClassicSyncStatusSection({ classic }: { classic: ClassicSyncStatus | nu
   )
 }
 
-function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSyncStatus> }) {
+function SyncStatusSection({ syncStatus, autoRefreshed }: { syncStatus: ReturnType<typeof useSyncStatus>; autoRefreshed: boolean }) {
   const { loading, status, error, check } = syncStatus
 
   const allSynced = status && status.summary.total > 0 && status.summary.synced === status.summary.total
 
   return (
-    <div className="device-op-section">
-      <h3 className="device-op-section-title">Sync Status</h3>
+    <div className={`device-op-section${autoRefreshed ? ' sync-auto-refreshed' : ''}`}>
+      <h3 className="device-op-section-title">
+        Sync Status
+        {autoRefreshed && <span className="sync-auto-refreshed-badge">Updated</span>}
+      </h3>
       <p className="device-op-desc">Compare your local templates against what's deployed on the device.</p>
 
       <button
@@ -607,40 +610,76 @@ function SelectiveDeploySection({
 export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
   const [showPullHelp, setShowPullHelp] = useState(false)
+  const [autoRefreshed, setAutoRefreshed] = useState(false)
+  const autoRefreshTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const syncStatus = useSyncStatus(deviceId)
   const selective = useSelectiveDeploy()
 
+  const syncCheckRef = useRef(syncStatus.check)
+  useEffect(() => { syncCheckRef.current = syncStatus.check }, [syncStatus.check])
+
+  // Cleanup timers on unmount
+  useEffect(() => () => clearTimeout(autoRefreshTimer.current), [])
+
+  const triggerAutoRefresh = useCallback(() => {
+    // Small delay so the user sees the op result first, then sync refreshes
+    setTimeout(() => {
+      syncCheckRef.current()
+      setAutoRefreshed(true)
+      clearTimeout(autoRefreshTimer.current)
+      autoRefreshTimer.current = setTimeout(() => setAutoRefreshed(false), 3000)
+    }, 500)
+    onSyncComplete?.()
+  }, [onSyncComplete])
+
   const pullOfficial = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/pull-official` : '',
-    { onSuccess: onSyncComplete },
+    { onSuccess: triggerAutoRefresh },
   )
   const pullMethods = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/pull-methods` : '',
-    { onSuccess: onSyncComplete },
+    { onSuccess: triggerAutoRefresh },
   )
   const deployMethods = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/deploy-methods` : '',
-    { bodyFn: () => {
+    { onSuccess: triggerAutoRefresh, bodyFn: () => {
       const ids = selective.getTemplateIds()
       return ids ? { templateIds: ids } : undefined
     }},
   )
   const deployClassic = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/deploy-classic` : '',
+    { onSuccess: triggerAutoRefresh },
   )
   const rollbackMethods = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/rollback-methods` : '',
-    { confirmMsg: `Rollback ${deviceName} to the most recent backup? This will restart the device UI.` },
+    { confirmMsg: `Rollback ${deviceName} to the most recent backup? This will restart the device UI.`, onSuccess: triggerAutoRefresh },
   )
   const rollbackOriginal = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/rollback-original` : '',
-    { confirmMsg: `Restore ${deviceName} to its original state? This will restart the device UI.` },
+    { confirmMsg: `Restore ${deviceName} to its original state? This will restart the device UI.`, onSuccess: triggerAutoRefresh },
   )
   const rollbackClassic = useDeviceOp(
     deviceId ? `/api/devices/${deviceId}/rollback-classic` : '',
-    { confirmMsg: `Restore ${deviceName} from the latest classic backup? This will restart the device UI.` },
+    { confirmMsg: `Restore ${deviceName} from the latest classic backup? This will restart the device UI.`, onSuccess: triggerAutoRefresh },
   )
   const removeAll = useRemoveAll(deviceId)
+
+  // Prevent concurrent device operations
+  const anyOpRunning =
+    pullOfficial.loading || pullMethods.loading ||
+    deployMethods.loading || deployClassic.loading ||
+    rollbackMethods.loading || rollbackOriginal.loading || rollbackClassic.loading ||
+    removeAll.phase === 'executing' || removeAll.phase === 'loading-preview'
+
+  // Auto-refresh sync status when removeAll completes
+  const prevRemovePhase = useRef(removeAll.phase)
+  useEffect(() => {
+    if (prevRemovePhase.current === 'executing' && removeAll.phase === 'done') {
+      triggerAutoRefresh()
+    }
+    prevRemovePhase.current = removeAll.phase
+  }, [removeAll.phase, triggerAutoRefresh])
 
   return (
     <section className="device-card">
@@ -666,7 +705,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
               </div>
             )}
 
-            <SyncStatusSection syncStatus={syncStatus} />
+            <SyncStatusSection syncStatus={syncStatus} autoRefreshed={autoRefreshed} />
 
             <div className="device-op-section">
               <h3 className="device-op-section-title">Pull from {deviceName}</h3>
@@ -691,6 +730,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   label={`Pull Methods from ${deviceName}`}
                   loadingLabel={`Pulling from ${deviceName}...`}
                   op={pullMethods}
+                  disabled={anyOpRunning}
                   title={`Download methods templates (official + custom) from ${deviceName}`}
                 />
                 <OpButton
@@ -698,6 +738,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   loadingLabel={`Pulling from ${deviceName}...`}
                   op={pullOfficial}
                   variant="secondary"
+                  disabled={anyOpRunning}
                   title={`Download classic templates from ${deviceName}`}
                 />
               </div>
@@ -718,6 +759,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                     : `Deploy to ${deviceName}`}
                   loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployMethods}
+                  disabled={anyOpRunning}
                   title={`Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
                 />
                 <OpButton
@@ -725,6 +767,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployClassic}
                   variant="secondary"
+                  disabled={anyOpRunning}
                   title={`Push classic templates to ${deviceName} — single device only, wiped on firmware updates`}
                 />
               </div>
@@ -745,6 +788,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackMethods}
                   variant="danger"
+                  disabled={anyOpRunning}
                   title={`Revert ${deviceName} to the state before your last deploy`}
                 />
                 <OpButton
@@ -752,6 +796,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackOriginal}
                   variant="danger"
+                  disabled={anyOpRunning}
                   title={`Restore ${deviceName} to its pre-app state`}
                 />
                 <OpButton
@@ -759,6 +804,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackClassic}
                   variant="danger"
+                  disabled={anyOpRunning}
                   title={`Restore ${deviceName} from the most recent classic template backup`}
                 />
               </div>
@@ -772,6 +818,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                 <button
                   className="device-card-btn device-card-btn-danger"
                   onClick={removeAll.loadPreview}
+                  disabled={anyOpRunning}
                 >
                   Remove All Custom Templates from {deviceName}
                 </button>

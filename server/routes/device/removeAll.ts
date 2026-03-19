@@ -61,8 +61,9 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
 
     const devicePaths = resolveDevicePaths(config, id)
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
       const deviceManifest = await readDeviceManifest(sftp)
@@ -71,7 +72,6 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
       if (allUuids.length === 0) {
-        client.end()
         return reply.send({ count: 0, error: 'No deploy history found. Cannot determine which templates are custom.' })
       }
 
@@ -91,11 +91,12 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
         templates.push({ uuid, name })
       }
 
-      client.end()
       return reply.send({ count: allUuids.length, templates })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       return reply.status(500).send({ error: `Preview failed: ${formatted.message}`, hint: formatted.hint })
+    } finally {
+      client?.end()
     }
   })
 
@@ -110,12 +111,13 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
     const devicePaths = resolveDevicePaths(config, id)
     const stream = createNdjsonStream(reply)
 
+    let client2: Awaited<ReturnType<typeof connect>> | null = null
     try {
       const steps: string[] = []
 
       stream.progress('Connecting to device...')
-      const client = await connect(deviceConfig)
-      const sftp = await getSftp(client)
+      client2 = await connect(deviceConfig)
+      const sftp = await getSftp(client2)
 
       const deviceManifest = await readDeviceManifest(sftp)
       const deviceUuids = deviceManifest ? parseManifestUuids(JSON.stringify(deviceManifest)) : []
@@ -123,7 +125,6 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       const allUuids = mergeDeployedUuids(localUuids, deviceUuids)
 
       if (allUuids.length === 0) {
-        client.end()
         stream.error('No deploy history found. Cannot determine which templates are custom.')
         return
       }
@@ -158,7 +159,6 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       steps.push(`Saved backup: ${backupFilename} (${Object.keys(fileMap).length} files)`)
 
       if (!existsSync(backupPath)) {
-        client.end()
         stream.error('Backup verification failed — ZIP was not saved')
         return
       }
@@ -180,14 +180,15 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       }
 
       stream.progress('Restarting device UI...')
-      await exec(client, 'systemctl restart xochitl')
-      client.end()
+      await exec(client2, 'systemctl restart xochitl')
       steps.push('Restarted xochitl')
 
       stream.done({ steps, backupFilename })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
       stream.error(`Remove all failed: ${formatted.message}`, formatted.hint)
+    } finally {
+      client2?.end()
     }
   })
 }
