@@ -3,6 +3,7 @@
  */
 
 import type { FastifyInstance } from 'fastify'
+import { readFileSync } from 'node:fs'
 import type { ServerConfig } from '../../config.ts'
 import { connect } from '../../lib/ssh.ts'
 import { getSftp } from '../../lib/sftp.ts'
@@ -46,6 +47,29 @@ export default function deviceSyncStatusRoutes(app: FastifyInstance, config: Ser
       }
 
       const { summary, templates } = computeSyncStatus(buildResult.manifest, deviceManifest)
+
+      // Include pulled methods templates not already tracked in sync status.
+      // After a pull, the methods registry has templates from the device that may
+      // not be in either our local build or the deployed manifest.
+      try {
+        const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as {
+          templates: { rmMethodsId?: string; name: string; origin?: string }[]
+        }
+        const trackedUuids = new Set(templates.map(t => t.uuid))
+        for (const entry of methodsReg.templates) {
+          if (entry.rmMethodsId && !trackedUuids.has(entry.rmMethodsId)) {
+            templates.push({
+              uuid: entry.rmMethodsId,
+              name: entry.name,
+              state: 'device-only',
+            })
+            summary.deviceOnly++
+            summary.total++
+          }
+        }
+      } catch {
+        // No methods registry — skip
+      }
 
       return reply.send({
         ok: true,

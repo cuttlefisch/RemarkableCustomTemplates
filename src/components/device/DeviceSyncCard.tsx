@@ -393,7 +393,7 @@ function useSelectiveDeploy() {
     selectAll,
     deselectAll,
     reset,
-    getTemplateIds: () => selectedIds.size > 0 ? Array.from(selectedIds) : undefined,
+    getTemplateIds: () => showSelector ? Array.from(selectedIds) : undefined,
   }
 }
 
@@ -774,8 +774,10 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                     : `Deploy to ${deviceName}`}
                   loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployMethods}
-                  disabled={anyOpRunning}
-                  title={`Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
+                  disabled={anyOpRunning || (selective.showSelector && selective.selectedIds.size === 0)}
+                  title={selective.showSelector && selective.selectedIds.size === 0
+                    ? 'Select at least one template to deploy'
+                    : `Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
                 />
                 <OpButton
                   label={`Classic Deploy to ${deviceName}`}

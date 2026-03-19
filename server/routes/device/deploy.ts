@@ -42,6 +42,11 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
     const selectiveIds = body?.templateIds
     const isSelective = Array.isArray(selectiveIds) && selectiveIds.length > 0
 
+    // Empty selective array means user explicitly selected nothing — don't deploy
+    if (Array.isArray(selectiveIds) && selectiveIds.length === 0) {
+      return reply.status(400).send({ error: 'No templates selected for deploy' })
+    }
+
     const devicePaths = resolveDevicePaths(config, id)
     const stream = createNdjsonStream(reply)
 

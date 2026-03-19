@@ -6,7 +6,7 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { ServerConfig } from '../../config.ts'
@@ -18,6 +18,7 @@ import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
+import { mapForegroundColors } from '../../../src/lib/customTemplates.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
@@ -69,7 +70,11 @@ function importCustomMethodsEntries(config: ServerConfig): number {
     const prefix = entry.landscape ? 'LS' : 'P'
     const customSlug = `${prefix} ${entry.name}`
     const destPath = resolve(config.customDir, `${customSlug}.template`)
-    copyFileSync(srcPath, destPath)
+
+    // Map hardcoded hex colors to foreground/background constants so inversion works
+    const rawContent = readFileSync(srcPath, 'utf8')
+    const mappedContent = mapForegroundColors(rawContent)
+    writeFileSync(destPath, mappedContent, 'utf8')
 
     customRegistry.templates.push({
       name: entry.name,
