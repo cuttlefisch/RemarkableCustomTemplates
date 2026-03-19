@@ -43,14 +43,11 @@ reMarkable supports two ways to add page templates: **native `.template` files**
 | | Native `.template` | PDF template |
 |---|---|---|
 | **Rendering** | Vector — drawn by xochitl's native renderer | Rasterized at fixed resolution |
-| **Zoom** | Infinite, crisp at any level | Pixelates when zoomed in |
-| **Battery** | Minimal — lightweight vector paths | Higher — full-page bitmap in memory |
-| **Startup** | Instant | Slower for complex pages |
-| **Sync** | Via rm_methods (cloud sync across devices) | Manual file transfer |
+| **Battery** | Minimal — lightweight vector paths | Higher — in manual testing, battery life is substantially shorter when using PDFs for pen and writing-intensive tasks |
 | **Layout** | JSON-based with expressions and constants | Any layout tool that exports PDF |
-| **Inter-page links** | Not supported | Supported |
+| **Links & ToC** | Not supported | Supports inter-page linking and table of contents |
 
-Native templates are ideal for grids, lined paper, planners, and any repeating geometric pattern. PDF templates are better for complex, non-repeating layouts or when you need clickable links between pages.
+Native templates are ideal for grids, lined paper, planners, and any repeating geometric pattern. PDF templates are better for complex, non-repeating layouts or when you need clickable links and table of contents navigation.
 
 This app focuses on native `.template` files — the format that gives you the best performance and cloud sync on reMarkable devices.
 
