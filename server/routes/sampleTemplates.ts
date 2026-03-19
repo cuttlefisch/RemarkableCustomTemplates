@@ -4,8 +4,8 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import type { ServerConfig } from '../config.ts'
 
 function readHidden(path: string): string[] {
@@ -42,6 +42,22 @@ export default function sampleTemplateRoutes(app: FastifyInstance, config: Serve
     const hidden = readHidden(config.hiddenSamplesPath)
     const count = hidden.length
     writeHidden(config.hiddenSamplesPath, [])
-    return { ok: true, restored: count }
+
+    // Re-copy pristine sample files to restore original contents
+    let filesRestored = 0
+    if (existsSync(config.samplesPristineDir)) {
+      mkdirSync(config.samplesDir, { recursive: true })
+      const pristineFiles = readdirSync(config.samplesPristineDir)
+      for (const file of pristineFiles) {
+        const src = resolve(config.samplesPristineDir, file)
+        const dest = resolve(config.samplesDir, file)
+        if (src !== dest) {
+          copyFileSync(src, dest)
+          filesRestored++
+        }
+      }
+    }
+
+    return { ok: true, restored: count, filesRestored }
   })
 }

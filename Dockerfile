@@ -45,6 +45,9 @@ COPY --from=builder /app/public/templates/debug /data/public/templates/debug
 # Copy sample templates into the data directory
 COPY --from=builder /app/public/templates/samples /data/public/templates/samples
 
+# Keep a pristine copy for restore-all (not on volume, so it survives edits)
+COPY --from=builder /app/public/templates/samples /app/samples-pristine
+
 ENV NODE_ENV=production
 ENV DATA_DIR=/data
 ENV PORT=3000

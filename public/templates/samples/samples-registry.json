@@ -28,6 +28,20 @@
       "landscape": true,
       "categories": ["Samples"],
       "rmMethodsId": "a1b2c3d4-0004-4000-8000-000000000004"
+    },
+    {
+      "name": "Sample Pride College Ruled",
+      "filename": "samples/P Sample Pride College Ruled",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0005-4000-8000-000000000005"
+    },
+    {
+      "name": "Sample Golden Spiral",
+      "filename": "samples/P Sample Golden Spiral",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-000b-4000-8000-00000000000b"
     }
   ]
 }

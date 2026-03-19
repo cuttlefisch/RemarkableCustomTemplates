@@ -42,6 +42,7 @@ export interface ServerConfig {
   methodsDir: string
   methodsRegistry: string
   samplesDir: string
+  samplesPristineDir: string
   samplesRegistry: string
   hiddenSamplesPath: string
   classicDistDir: string
@@ -73,6 +74,9 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     methodsDir: resolve(templatesDir, 'methods'),
     methodsRegistry: resolve(templatesDir, 'methods/methods-registry.json'),
     samplesDir: resolve(templatesDir, 'samples'),
+    samplesPristineDir: production
+      ? resolve(dataDir, '../app/samples-pristine')
+      : resolve(templatesDir, 'samples'),
     samplesRegistry: resolve(templatesDir, 'samples/samples-registry.json'),
     hiddenSamplesPath: resolve(templatesDir, 'custom/hidden-samples.json'),
     classicDistDir: resolve(dataDir, 'dist-deploy'),

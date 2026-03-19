@@ -1,0 +1,128 @@
+{
+  "name": "Sample Pride College Ruled",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "portrait",
+  "constants": [
+    { "margin": "templateWidth * 0.07" },
+    { "lineSpacing": 32 },
+    { "linesY": 60 },
+    { "bandW": "templateWidth * 0.008" },
+    { "stripeW": "bandW * 6" },
+    { "bandX": "margin - stripeW - bandW" },
+    { "lineColor": "#bbbbbb" },
+    { "redBand": "#cc2222" },
+    { "orangeBand": "#dd7722" },
+    { "yellowBand": "#ccaa22" },
+    { "greenBand": "#228833" },
+    { "blueBand": "#2244bb" },
+    { "purpleBand": "#772288" }
+  ],
+  "items": [
+    {
+      "id": "lines",
+      "type": "group",
+      "boundingBox": {
+        "x": "margin",
+        "y": "linesY",
+        "width": "templateWidth - margin * 2",
+        "height": "lineSpacing"
+      },
+      "repeat": { "rows": "down" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 0, "parentHeight", "L", "parentWidth", "parentHeight"],
+          "strokeColor": "lineColor",
+          "strokeWidth": 0.5
+        }
+      ]
+    },
+    {
+      "id": "band-red",
+      "type": "path",
+      "data": [
+        "M", "bandX", 0,
+        "L", "bandX + bandW", 0,
+        "L", "bandX + bandW", "templateHeight",
+        "L", "bandX", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "redBand",
+      "strokeColor": "redBand",
+      "strokeWidth": 0
+    },
+    {
+      "id": "band-orange",
+      "type": "path",
+      "data": [
+        "M", "bandX + bandW", 0,
+        "L", "bandX + bandW * 2", 0,
+        "L", "bandX + bandW * 2", "templateHeight",
+        "L", "bandX + bandW", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "orangeBand",
+      "strokeColor": "orangeBand",
+      "strokeWidth": 0
+    },
+    {
+      "id": "band-yellow",
+      "type": "path",
+      "data": [
+        "M", "bandX + bandW * 2", 0,
+        "L", "bandX + bandW * 3", 0,
+        "L", "bandX + bandW * 3", "templateHeight",
+        "L", "bandX + bandW * 2", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "yellowBand",
+      "strokeColor": "yellowBand",
+      "strokeWidth": 0
+    },
+    {
+      "id": "band-green",
+      "type": "path",
+      "data": [
+        "M", "bandX + bandW * 3", 0,
+        "L", "bandX + bandW * 4", 0,
+        "L", "bandX + bandW * 4", "templateHeight",
+        "L", "bandX + bandW * 3", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "greenBand",
+      "strokeColor": "greenBand",
+      "strokeWidth": 0
+    },
+    {
+      "id": "band-blue",
+      "type": "path",
+      "data": [
+        "M", "bandX + bandW * 4", 0,
+        "L", "bandX + bandW * 5", 0,
+        "L", "bandX + bandW * 5", "templateHeight",
+        "L", "bandX + bandW * 4", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "blueBand",
+      "strokeColor": "blueBand",
+      "strokeWidth": 0
+    },
+    {
+      "id": "band-purple",
+      "type": "path",
+      "data": [
+        "M", "bandX + bandW * 5", 0,
+        "L", "bandX + bandW * 6", 0,
+        "L", "bandX + bandW * 6", "templateHeight",
+        "L", "bandX + bandW * 5", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "purpleBand",
+      "strokeColor": "purpleBand",
+      "strokeWidth": 0
+    }
+  ]
+}

@@ -13,13 +13,6 @@
   ],
   "items": [
     {
-      "id": "title",
-      "type": "text",
-      "text": "Grid Template",
-      "fontSize": 36,
-      "position": { "x": "templateWidth / 2 - textWidth / 2", "y": "margin + 20" }
-    },
-    {
       "id": "grid",
       "type": "group",
       "boundingBox": {

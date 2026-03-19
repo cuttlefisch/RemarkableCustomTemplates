@@ -12,11 +12,15 @@ function makeConfig(): ServerConfig {
   mkdirSync(resolve(base, 'public/templates/debug'), { recursive: true })
   mkdirSync(resolve(base, 'public/templates/methods'), { recursive: true })
   mkdirSync(resolve(base, 'public/templates/samples'), { recursive: true })
+  mkdirSync(resolve(base, 'samples-pristine'), { recursive: true })
   mkdirSync(resolve(base, 'remarkable_official_templates'), { recursive: true })
   mkdirSync(resolve(base, 'rm-methods-dist'), { recursive: true })
   mkdirSync(resolve(base, 'rm-methods-backups'), { recursive: true })
   mkdirSync(resolve(base, 'data/ssh'), { recursive: true })
-  return resolveConfig({ dataDir: base, port: 0, production: false })
+  const config = resolveConfig({ dataDir: base, port: 0, production: false })
+  // In tests, point pristine dir to a separate location (simulating Docker layout)
+  config.samplesPristineDir = resolve(base, 'samples-pristine')
+  return config
 }
 
 const sampleRegistry = {
@@ -36,10 +40,14 @@ describe('sample templates', () => {
 
   beforeEach(() => {
     config = makeConfig()
-    // Write samples registry and a template file
+    // Write samples registry and template files
     writeFileSync(config.samplesRegistry, JSON.stringify(sampleRegistry))
     writeFileSync(resolve(config.samplesDir, 'P Sample Grid.template'), sampleTemplate)
     writeFileSync(resolve(config.samplesDir, 'P Sample Lined.template'), sampleTemplate)
+    // Write pristine copies (original state for restore)
+    writeFileSync(resolve(config.samplesPristineDir, 'samples-registry.json'), JSON.stringify(sampleRegistry))
+    writeFileSync(resolve(config.samplesPristineDir, 'P Sample Grid.template'), sampleTemplate)
+    writeFileSync(resolve(config.samplesPristineDir, 'P Sample Lined.template'), sampleTemplate)
     // Write official templates so merged registry returns 200
     writeFileSync(resolve(config.officialDir, 'templates.json'), JSON.stringify({ templates: [] }))
   })
@@ -148,6 +156,37 @@ describe('sample templates', () => {
       const names = regBody.templates.map((t: { name: string }) => t.name)
       expect(names).toContain('Sample Grid')
       expect(names).toContain('Sample Lined')
+      await app.close()
+    })
+
+    it('restores sample file contents from pristine copies', async () => {
+      // Corrupt a sample file
+      writeFileSync(resolve(config.samplesDir, 'P Sample Grid.template'), '{"corrupted": true}')
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'POST', url: '/api/sample-templates/restore-all' })
+      expect(res.statusCode).toBe(200)
+      const body = JSON.parse(res.body)
+      expect(body.filesRestored).toBeGreaterThan(0)
+
+      // Verify the file was restored to its original content
+      const restored = readFileSync(resolve(config.samplesDir, 'P Sample Grid.template'), 'utf8')
+      expect(JSON.parse(restored).name).toBe('Sample Grid')
+      await app.close()
+    })
+
+    it('restores deleted sample files from pristine copies', async () => {
+      // Delete a sample file
+      const { unlinkSync } = await import('node:fs')
+      unlinkSync(resolve(config.samplesDir, 'P Sample Grid.template'))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'POST', url: '/api/sample-templates/restore-all' })
+      expect(res.statusCode).toBe(200)
+
+      // Verify the file was re-created
+      const restored = readFileSync(resolve(config.samplesDir, 'P Sample Grid.template'), 'utf8')
+      expect(JSON.parse(restored).name).toBe('Sample Grid')
       await app.close()
     })
   })

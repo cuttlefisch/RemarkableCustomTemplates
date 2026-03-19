@@ -1,0 +1,671 @@
+{
+  "name": "Sample Golden Spiral",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": [
+    "Samples"
+  ],
+  "orientation": "portrait",
+  "constants": [
+    {
+      "phi": 1.618
+    },
+    {
+      "totalW": "templateWidth * 0.7"
+    },
+    {
+      "totalH": "totalW / phi"
+    },
+    {
+      "ox": "templateWidth * 0.15"
+    },
+    {
+      "oy": "templateHeight / 2 - totalH / 2"
+    },
+    {
+      "s0": "totalH"
+    },
+    {
+      "s1": "totalW - s0"
+    },
+    {
+      "s2": "s0 - s1"
+    },
+    {
+      "s3": "s1 - s2"
+    },
+    {
+      "s4": "s2 - s3"
+    },
+    {
+      "s5": "s3 - s4"
+    },
+    {
+      "s6": "s4 - s5"
+    },
+    {
+      "s7": "s5 - s6"
+    },
+    {
+      "s8": "s6 - s7"
+    },
+    {
+      "s9": "s7 - s8"
+    },
+    {
+      "borderColor": "#bbbbbb"
+    },
+    {
+      "rectColor": "#dddddd"
+    },
+    {
+      "spiralColor": "#555555"
+    },
+    {
+      "k": 0.552
+    },
+    {
+      "r0x": "ox"
+    },
+    {
+      "r0y": "oy"
+    },
+    {
+      "r1x": "ox + s0"
+    },
+    {
+      "r1y": "oy"
+    },
+    {
+      "r2x": "ox + s0"
+    },
+    {
+      "r2y": "oy + s1"
+    },
+    {
+      "r3x": "ox + s0"
+    },
+    {
+      "r3y": "oy + s1"
+    },
+    {
+      "r4x": "ox + s0"
+    },
+    {
+      "r4y": "oy + s1"
+    },
+    {
+      "r5x": "ox + s0 + s4"
+    },
+    {
+      "r5y": "oy + s1"
+    },
+    {
+      "r6x": "ox + s0 + s4"
+    },
+    {
+      "r6y": "oy + s1 + s5"
+    },
+    {
+      "r7x": "ox + s0 + s4"
+    },
+    {
+      "r7y": "oy + s1 + s5"
+    },
+    {
+      "r8x": "ox + s0 + s4"
+    },
+    {
+      "r8y": "oy + s1 + s5"
+    },
+    {
+      "r9x": "ox + s0 + s4 + s8"
+    },
+    {
+      "r9y": "oy + s1 + s5"
+    },
+    {
+      "a0sx": "ox"
+    },
+    {
+      "a0sy": "oy + s0"
+    },
+    {
+      "a0c1x": "ox"
+    },
+    {
+      "a0c1y": "oy + s0 - k * s0"
+    },
+    {
+      "a0c2x": "ox + s0 - k * s0"
+    },
+    {
+      "a0c2y": "oy"
+    },
+    {
+      "a0ex": "ox + s0"
+    },
+    {
+      "a0ey": "oy"
+    },
+    {
+      "a1sx": "ox + s0"
+    },
+    {
+      "a1sy": "oy"
+    },
+    {
+      "a1c1x": "ox + s0 + k * s1"
+    },
+    {
+      "a1c1y": "oy"
+    },
+    {
+      "a1c2x": "ox + s0 + s1"
+    },
+    {
+      "a1c2y": "oy + s1 - k * s1"
+    },
+    {
+      "a1ex": "ox + s0 + s1"
+    },
+    {
+      "a1ey": "oy + s1"
+    },
+    {
+      "c2x": "ox + s0 + s1 - s2"
+    },
+    {
+      "c2y": "oy + s1"
+    },
+    {
+      "a2sx": "c2x + s2"
+    },
+    {
+      "a2sy": "c2y"
+    },
+    {
+      "a2c1x": "c2x + s2"
+    },
+    {
+      "a2c1y": "c2y + k * s2"
+    },
+    {
+      "a2c2x": "c2x + k * s2"
+    },
+    {
+      "a2c2y": "c2y + s2"
+    },
+    {
+      "a2ex": "c2x"
+    },
+    {
+      "a2ey": "c2y + s2"
+    },
+    {
+      "c3x": "ox + s0 + s3"
+    },
+    {
+      "c3y": "oy + s1 + s2 - s3"
+    },
+    {
+      "a3sx": "c3x"
+    },
+    {
+      "a3sy": "c3y + s3"
+    },
+    {
+      "a3c1x": "c3x - k * s3"
+    },
+    {
+      "a3c1y": "c3y + s3"
+    },
+    {
+      "a3c2x": "c3x - s3"
+    },
+    {
+      "a3c2y": "c3y + k * s3"
+    },
+    {
+      "a3ex": "c3x - s3"
+    },
+    {
+      "a3ey": "c3y"
+    },
+    {
+      "c4x": "ox + s0 + s4"
+    },
+    {
+      "c4y": "oy + s1 + s4"
+    },
+    {
+      "a4sx": "c4x - s4"
+    },
+    {
+      "a4sy": "c4y"
+    },
+    {
+      "a4c1x": "c4x - s4"
+    },
+    {
+      "a4c1y": "c4y - k * s4"
+    },
+    {
+      "a4c2x": "c4x - k * s4"
+    },
+    {
+      "a4c2y": "c4y - s4"
+    },
+    {
+      "a4ex": "c4x"
+    },
+    {
+      "a4ey": "c4y - s4"
+    },
+    {
+      "c5x": "ox + s0 + s4"
+    },
+    {
+      "c5y": "oy + s1 + s5"
+    },
+    {
+      "a5sx": "c5x"
+    },
+    {
+      "a5sy": "c5y - s5"
+    },
+    {
+      "a5c1x": "c5x + k * s5"
+    },
+    {
+      "a5c1y": "c5y - s5"
+    },
+    {
+      "a5c2x": "c5x + s5"
+    },
+    {
+      "a5c2y": "c5y - k * s5"
+    },
+    {
+      "a5ex": "c5x + s5"
+    },
+    {
+      "a5ey": "c5y"
+    },
+    {
+      "c6x": "ox + s0 + s4 + s5 - s6"
+    },
+    {
+      "c6y": "oy + s1 + s5"
+    },
+    {
+      "a6sx": "c6x + s6"
+    },
+    {
+      "a6sy": "c6y"
+    },
+    {
+      "a6c1x": "c6x + s6"
+    },
+    {
+      "a6c1y": "c6y + k * s6"
+    },
+    {
+      "a6c2x": "c6x + k * s6"
+    },
+    {
+      "a6c2y": "c6y + s6"
+    },
+    {
+      "a6ex": "c6x"
+    },
+    {
+      "a6ey": "c6y + s6"
+    },
+    {
+      "c7x": "ox + s0 + s4 + s7"
+    },
+    {
+      "c7y": "oy + s1 + s5 + s6 - s7"
+    },
+    {
+      "a7sx": "c7x"
+    },
+    {
+      "a7sy": "c7y + s7"
+    },
+    {
+      "a7c1x": "c7x - k * s7"
+    },
+    {
+      "a7c1y": "c7y + s7"
+    },
+    {
+      "a7c2x": "c7x - s7"
+    },
+    {
+      "a7c2y": "c7y + k * s7"
+    },
+    {
+      "a7ex": "c7x - s7"
+    },
+    {
+      "a7ey": "c7y"
+    },
+    {
+      "c8x": "ox + s0 + s4 + s8"
+    },
+    {
+      "c8y": "oy + s1 + s5 + s8"
+    },
+    {
+      "a8sx": "c8x - s8"
+    },
+    {
+      "a8sy": "c8y"
+    },
+    {
+      "a8c1x": "c8x - s8"
+    },
+    {
+      "a8c1y": "c8y - k * s8"
+    },
+    {
+      "a8c2x": "c8x - k * s8"
+    },
+    {
+      "a8c2y": "c8y - s8"
+    },
+    {
+      "a8ex": "c8x"
+    },
+    {
+      "a8ey": "c8y - s8"
+    },
+    {
+      "c9x": "ox + s0 + s4 + s8"
+    },
+    {
+      "c9y": "oy + s1 + s5 + s9"
+    },
+    {
+      "a9sx": "c9x"
+    },
+    {
+      "a9sy": "c9y - s9"
+    },
+    {
+      "a9c1x": "c9x + k * s9"
+    },
+    {
+      "a9c1y": "c9y - s9"
+    },
+    {
+      "a9c2x": "c9x + s9"
+    },
+    {
+      "a9c2y": "c9y - k * s9"
+    },
+    {
+      "a9ex": "c9x + s9"
+    },
+    {
+      "a9ey": "c9y"
+    }
+  ],
+  "items": [
+    {
+      "id": "title",
+      "type": "text",
+      "text": "Golden Spiral",
+      "fontSize": 28,
+      "position": {
+        "x": "templateWidth / 2",
+        "y": "oy - 40"
+      }
+    },
+    {
+      "id": "outerRect",
+      "type": "path",
+      "data": [
+        "M",
+        "ox",
+        "oy",
+        "L",
+        "ox + totalW",
+        "oy",
+        "L",
+        "ox + totalW",
+        "oy + totalH",
+        "L",
+        "ox",
+        "oy + totalH",
+        "Z"
+      ],
+      "strokeColor": "borderColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div0",
+      "type": "path",
+      "data": [
+        "M",
+        "ox + s0",
+        "oy",
+        "L",
+        "ox + s0",
+        "oy + s0"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div1",
+      "type": "path",
+      "data": [
+        "M",
+        "ox + s0",
+        "oy + s1",
+        "L",
+        "ox + s0 + s1",
+        "oy + s1"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div2",
+      "type": "path",
+      "data": [
+        "M",
+        "c2x",
+        "c2y",
+        "L",
+        "c2x",
+        "c2y + s2"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div3",
+      "type": "path",
+      "data": [
+        "M",
+        "c3x - s3",
+        "c3y",
+        "L",
+        "c3x",
+        "c3y"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div4",
+      "type": "path",
+      "data": [
+        "M",
+        "c4x",
+        "c4y - s4",
+        "L",
+        "c4x",
+        "c4y"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div5",
+      "type": "path",
+      "data": [
+        "M",
+        "c5x",
+        "c5y",
+        "L",
+        "c5x + s5",
+        "c5y"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div6",
+      "type": "path",
+      "data": [
+        "M",
+        "c6x",
+        "c6y",
+        "L",
+        "c6x",
+        "c6y + s6"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div7",
+      "type": "path",
+      "data": [
+        "M",
+        "c7x - s7",
+        "c7y",
+        "L",
+        "c7x",
+        "c7y"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div8",
+      "type": "path",
+      "data": [
+        "M",
+        "c8x",
+        "c8y - s8",
+        "L",
+        "c8x",
+        "c8y"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "div9",
+      "type": "path",
+      "data": [
+        "M",
+        "c9x",
+        "c9y",
+        "L",
+        "c9x + s9",
+        "c9y"
+      ],
+      "strokeColor": "rectColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "spiral",
+      "type": "path",
+      "data": [
+        "M",
+        "a0sx",
+        "a0sy",
+        "C",
+        "a0c1x",
+        "a0c1y",
+        "a0c2x",
+        "a0c2y",
+        "a0ex",
+        "a0ey",
+        "C",
+        "a1c1x",
+        "a1c1y",
+        "a1c2x",
+        "a1c2y",
+        "a1ex",
+        "a1ey",
+        "C",
+        "a2c1x",
+        "a2c1y",
+        "a2c2x",
+        "a2c2y",
+        "a2ex",
+        "a2ey",
+        "C",
+        "a3c1x",
+        "a3c1y",
+        "a3c2x",
+        "a3c2y",
+        "a3ex",
+        "a3ey",
+        "C",
+        "a4c1x",
+        "a4c1y",
+        "a4c2x",
+        "a4c2y",
+        "a4ex",
+        "a4ey",
+        "C",
+        "a5c1x",
+        "a5c1y",
+        "a5c2x",
+        "a5c2y",
+        "a5ex",
+        "a5ey",
+        "C",
+        "a6c1x",
+        "a6c1y",
+        "a6c2x",
+        "a6c2y",
+        "a6ex",
+        "a6ey",
+        "C",
+        "a7c1x",
+        "a7c1y",
+        "a7c2x",
+        "a7c2y",
+        "a7ex",
+        "a7ey",
+        "C",
+        "a8c1x",
+        "a8c1y",
+        "a8c2x",
+        "a8c2y",
+        "a8ex",
+        "a8ey",
+        "C",
+        "a9c1x",
+        "a9c1y",
+        "a9c2x",
+        "a9c2y",
+        "a9ex",
+        "a9ey"
+      ],
+      "strokeColor": "spiralColor",
+      "strokeWidth": 2
+    }
+  ]
+}

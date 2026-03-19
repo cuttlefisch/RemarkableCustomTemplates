@@ -13,13 +13,6 @@
   ],
   "items": [
     {
-      "id": "title",
-      "type": "text",
-      "text": "Lined Template",
-      "fontSize": 32,
-      "position": { "x": "margin", "y": "headerY" }
-    },
-    {
       "id": "header-line",
       "type": "path",
       "data": ["M", "margin", "linesY - 10", "L", "templateWidth - margin", "linesY - 10"],
