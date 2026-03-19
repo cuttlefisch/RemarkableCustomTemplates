@@ -217,6 +217,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       const res = await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       setCustomRegistry(prev => removeEntry(prev, selected.filename))
+      refreshRegistry()
       setSelected(null)
       setTemplate(null)
       setEditorOpen(false)
@@ -480,7 +481,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             >
               <span className="template-btn-name">{entry.name}</span>
               <span className="template-btn-right">
-                {entry.categories.includes('Samples') && (
+                {entry.categories.includes('Samples') && !entry.isCustom && (
                   <button
                     className="sample-hide-btn"
                     title="Hide this sample"
