@@ -552,19 +552,43 @@ function SelectiveDeploySection({
   const templates = syncStatus.status?.templates ?? []
   const deployableTemplates = templates.filter(t => t.state !== 'device-only')
 
+  // Auto-select all when sync data arrives while selector is open with nothing selected
+  const prevTemplateCount = useRef(0)
+  useEffect(() => {
+    if (selective.showSelector && deployableTemplates.length > 0 && prevTemplateCount.current === 0 && selective.selectedIds.size === 0) {
+      selective.selectAll(deployableTemplates.map(t => t.uuid))
+    }
+    prevTemplateCount.current = deployableTemplates.length
+  }, [deployableTemplates.length, selective])
+
   if (!selective.showSelector) {
     return (
       <button
         className="device-form-help-toggle"
         onClick={() => {
           selective.setShowSelector(true)
-          // Pre-select all deployable templates
-          selective.selectAll(deployableTemplates.map(t => t.uuid))
+          if (deployableTemplates.length > 0) {
+            // Pre-select all deployable templates
+            selective.selectAll(deployableTemplates.map(t => t.uuid))
+          } else if (!syncStatus.status && !syncStatus.loading) {
+            // No sync data yet — fetch it so the template list populates
+            syncStatus.check()
+          }
         }}
         style={{ marginTop: 4 }}
+        disabled={syncStatus.loading}
       >
-        Select specific templates to deploy
+        {syncStatus.loading ? 'Loading templates...' : 'Select specific templates to deploy'}
       </button>
+    )
+  }
+
+  if (syncStatus.loading && deployableTemplates.length === 0) {
+    return (
+      <div className="selective-deploy" style={{ marginTop: 8 }}>
+        <p className="device-card-hint">Loading template list...</p>
+        <button className="device-form-help-toggle" onClick={selective.reset}>Cancel</button>
+      </div>
     )
   }
 
@@ -763,9 +787,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
               <h3 className="device-op-section-title">Deploy to {deviceName}</h3>
               <p className="device-op-desc">Push your custom templates to {deviceName}. The device UI will restart.</p>
 
-              {syncStatus.status && (
-                <SelectiveDeploySection syncStatus={syncStatus} selective={selective} />
-              )}
+              <SelectiveDeploySection syncStatus={syncStatus} selective={selective} />
 
               <div className="device-card-btn-row" style={{ marginTop: 8 }}>
                 <OpButton
