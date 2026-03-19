@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { UseDevices } from '../../hooks/useDevices'
+import { ErrorDetails } from './ErrorDetails'
 
 interface Props {
   devicesState: UseDevices
@@ -16,10 +17,10 @@ export function DeviceConnectionCard({ devicesState }: Props) {
   const [formPort, setFormPort] = useState(22)
   const [formPassword, setFormPassword] = useState('')
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; deviceModel?: string; error?: string; hint?: string } | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; deviceModel?: string; error?: string; hint?: string; rawError?: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [settingUpKeys, setSettingUpKeys] = useState(false)
-  const [keyResult, setKeyResult] = useState<{ ok: boolean; error?: string; hint?: string } | null>(null)
+  const [keyResult, setKeyResult] = useState<{ ok: boolean; error?: string; hint?: string; rawError?: string } | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [connected, setConnected] = useState<boolean | null>(null)
   // Track the device ID we just created during the add flow, so we can test-connection with override
@@ -28,10 +29,12 @@ export function DeviceConnectionCard({ devicesState }: Props) {
   // Whether the device being edited uses key auth (no password required)
   const editingKeyAuth = !isAddingNew && activeDevice?.authMethod === 'key'
 
-  // Sync form fields when activeDevice changes while editing (not adding)
+  // Sync form fields when activeDevice changes while editing (not adding).
+  // Intentional setState-in-effect: this synchronizes form inputs with the
+  // externally-selected device when the user switches tabs during edit mode.
   useEffect(() => {
     if (showForm && !isAddingNew && activeDevice) {
-      setFormNickname(activeDevice.nickname)
+      setFormNickname(activeDevice.nickname)  // eslint-disable-line react-hooks/set-state-in-effect
       setFormIp(activeDevice.deviceIp)
       setFormPort(activeDevice.sshPort)
       setFormPassword('')
@@ -224,11 +227,13 @@ export function DeviceConnectionCard({ devicesState }: Props) {
           )}
 
           {testResult && !testResult.ok && (
-            <div className="device-error" style={{ marginTop: 8, marginBottom: 8 }}>
-              {testResult.error}
-              {testResult.hint && (
-                <p className="device-error-hint">{testResult.hint}</p>
-              )}
+            <div style={{ marginTop: 8, marginBottom: 8 }}>
+              <ErrorDetails
+                error={testResult.error!}
+                hint={testResult.hint}
+                rawError={testResult.rawError}
+                className="device-error"
+              />
             </div>
           )}
 
@@ -306,12 +311,19 @@ export function DeviceConnectionCard({ devicesState }: Props) {
             </div>
           )}
 
-          {keyResult && (
-            <div className={keyResult.ok ? 'device-card-hint' : 'device-error'} style={{ marginTop: 8 }}>
-              {keyResult.ok ? 'SSH keys installed. Switched to key authentication.' : keyResult.error}
-              {!keyResult.ok && keyResult.hint && (
-                <p className="device-error-hint">{keyResult.hint}</p>
-              )}
+          {keyResult && keyResult.ok && (
+            <div className="device-card-hint" style={{ marginTop: 8 }}>
+              SSH keys installed. Switched to key authentication.
+            </div>
+          )}
+          {keyResult && !keyResult.ok && (
+            <div style={{ marginTop: 8 }}>
+              <ErrorDetails
+                error={keyResult.error!}
+                hint={keyResult.hint}
+                rawError={keyResult.rawError}
+                className="device-error"
+              />
             </div>
           )}
         </div>
@@ -436,15 +448,18 @@ export function DeviceConnectionCard({ devicesState }: Props) {
               </div>
             )}
 
-            {testResult && (
-              <div className={testResult.ok ? 'device-status' : 'device-error'}>
-                {testResult.ok
-                  ? `Connected to ${testResult.deviceModel ?? 'device'}`
-                  : testResult.error}
-                {!testResult.ok && testResult.hint && (
-                  <p className="device-error-hint">{testResult.hint}</p>
-                )}
+            {testResult && testResult.ok && (
+              <div className="device-status">
+                Connected to {testResult.deviceModel ?? 'device'}
               </div>
+            )}
+            {testResult && !testResult.ok && (
+              <ErrorDetails
+                error={testResult.error!}
+                hint={testResult.hint}
+                rawError={testResult.rawError}
+                className="device-error"
+              />
             )}
 
             <div className="device-card-btn-row">

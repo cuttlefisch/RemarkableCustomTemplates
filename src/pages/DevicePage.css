@@ -328,6 +328,15 @@
   gap: 6px;
 }
 
+.device-backup-list-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 12px 0 4px;
+}
+
 .device-backup-entry {
   display: flex;
   justify-content: space-between;
@@ -339,13 +348,61 @@
   font-size: 12px;
 }
 
+.device-backup-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .device-backup-name {
   color: var(--color-text-primary);
   font-weight: 500;
 }
 
+.device-backup-size {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
 .device-backup-count {
   color: var(--color-text-muted);
+}
+
+.device-backup-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.device-backup-action-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--color-btn-secondary-border);
+  border-radius: 4px;
+  background: var(--color-btn-secondary-bg);
+  color: var(--color-btn-secondary-text);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.device-backup-action-btn:hover:not(:disabled) {
+  background: var(--color-btn-secondary-hover);
+}
+
+.device-backup-action-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.device-backup-delete-btn {
+  color: var(--color-error-text);
+  border-color: var(--color-error-border);
+}
+
+.device-backup-delete-btn:hover:not(:disabled) {
+  background: var(--color-error-bg);
 }
 
 .device-backup-empty {
@@ -353,6 +410,217 @@
   color: var(--color-text-hint);
   font-style: italic;
   margin: 0;
+}
+
+/* ── Backup inline feedback ────────────────────────────────────────── */
+
+.backup-inline-status {
+  padding: 8px 12px;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: 5px;
+  color: var(--color-success-text);
+  font-size: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 4px;
+}
+
+.backup-inline-error {
+  padding: 8px 12px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 5px;
+  color: var(--color-error-text);
+  font-size: 12px;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.backup-inline-dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+  margin-left: auto;
+  opacity: 0.6;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.backup-inline-dismiss:hover {
+  opacity: 1;
+}
+
+.backup-reload-hint {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* ── Restore preview panel ─────────────────────────────────────────── */
+
+.backup-preview-panel {
+  background: var(--color-help-bg);
+  border: 1px solid var(--color-help-border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.backup-preview-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 6px;
+}
+
+.backup-preview-source {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin: 0 0 8px;
+}
+
+.backup-preview-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 10px;
+}
+
+.backup-preview-stat {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.backup-preview-incoming {
+  color: var(--color-text-primary);
+}
+
+.backup-preview-add {
+  color: var(--color-success-text);
+}
+
+.backup-preview-skip {
+  color: var(--color-text-muted);
+}
+
+/* ── Cleanup section ───────────────────────────────────────────────── */
+
+.backup-cleanup-section {
+  border: 1px solid var(--color-warning-border);
+  background: var(--color-warning-bg);
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.backup-cleanup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.backup-cleanup-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-warning-text);
+  margin: 0;
+}
+
+.backup-cleanup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.backup-cleanup-toggle {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--color-link);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.backup-cleanup-toggle:hover {
+  color: var(--color-link-hover);
+}
+
+.backup-cleanup-warning {
+  font-size: 11px;
+  color: var(--color-warning-text);
+  margin: 4px 0 8px;
+  font-style: italic;
+}
+
+.backup-cleanup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.backup-cleanup-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.backup-cleanup-item:hover {
+  background: var(--color-surface-2);
+}
+
+.backup-cleanup-item input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+.backup-cleanup-item-name {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-cleanup-item-collection {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.backup-preview-warnings {
+  font-size: 11px;
+  color: var(--color-warning-text);
+  margin-bottom: 8px;
+}
+
+.backup-preview-warnings p {
+  margin: 0 0 2px;
+}
+
+.backup-preview-btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* ── Button variants ───────────────────────────────────────────────── */
@@ -373,6 +641,53 @@
   color: var(--color-error-hint-text);
   margin: 6px 0 0;
   line-height: 1.5;
+}
+
+.device-error-toggle {
+  background: none;
+  border: none;
+  color: var(--color-error-hint-text);
+  font-size: 11px;
+  padding: 0;
+  margin-top: 6px;
+  cursor: pointer;
+  text-decoration: underline;
+  opacity: 0.8;
+}
+.device-error-toggle:hover {
+  opacity: 1;
+}
+
+.device-error-raw {
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 8px;
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.device-error-actions {
+  margin-top: 6px;
+}
+
+.device-error-copy {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.device-error-copy:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
 }
 
 /* ── SSH key callout ──────────────────────────────────────────────── */

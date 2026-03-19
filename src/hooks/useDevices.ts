@@ -38,8 +38,8 @@ export interface UseDevices {
     sshPort: number
     authMethod: string
     sshPassword?: string
-  }) => Promise<{ ok: boolean; deviceModel?: string; error?: string; hint?: string }>
-  setupKeys: (id: string) => Promise<{ ok: boolean; error?: string; hint?: string }>
+  }) => Promise<{ ok: boolean; deviceModel?: string; error?: string; hint?: string; rawError?: string }>
+  setupKeys: (id: string) => Promise<{ ok: boolean; error?: string; hint?: string; rawError?: string }>
 }
 
 export function useDevices(): UseDevices {
@@ -183,15 +183,18 @@ export function useDevices(): UseDevices {
         lastConnected?: string
         error?: string
         hint?: string
+        rawError?: string
       }
       if (!res.ok) {
-        return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint }
+        console.error('[test-connection]', data.rawError ?? data.error)
+        return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint, rawError: data.rawError }
       }
       await refresh()
       return { ok: true, deviceModel: data.deviceModel }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      return { ok: false, error: msg }
+      console.error('[test-connection]', msg)
+      return { ok: false, error: msg, rawError: msg }
     }
   }, [refresh])
 
@@ -199,15 +202,17 @@ export function useDevices(): UseDevices {
     try {
       setError(null)
       const res = await fetch(`/api/devices/${id}/setup-keys`, { method: 'POST' })
-      const data = (await res.json()) as { ok?: boolean; error?: string; hint?: string }
+      const data = (await res.json()) as { ok?: boolean; error?: string; hint?: string; rawError?: string }
       if (!res.ok) {
-        return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint }
+        console.error('[setup-keys]', data.rawError ?? data.error)
+        return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint, rawError: data.rawError }
       }
       await refresh()
       return { ok: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      return { ok: false, error: msg }
+      console.error('[setup-keys]', msg)
+      return { ok: false, error: msg, rawError: msg }
     }
   }, [refresh])
 

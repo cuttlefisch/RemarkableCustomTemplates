@@ -63,16 +63,17 @@ export function useRegistry(): RegistryState {
             try {
               const slug = entry.filename.split('/').map(s => encodeURIComponent(s)).join('/')
               const r = await fetch(`/templates/${slug}.template`)
-              if (!r.ok) return entry
+              if (!r.ok) return null // Drop entries whose template file is missing
               const data = await r.json()
               const tpl = parseTemplate(data)
               const synced = mergeCategories(tpl.categories)
               return { ...entry, categories: synced }
             } catch {
-              return entry
+              return null // Drop entries that fail to parse
             }
           }),
-        ).then(syncedTemplates => {
+        ).then(results => {
+          const syncedTemplates = results.filter((e): e is NonNullable<typeof e> => e !== null)
           setCustomRegistry({ templates: syncedTemplates })
           setLoadingRegistry(false)
         })

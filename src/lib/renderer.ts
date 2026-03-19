@@ -239,6 +239,8 @@ export function collectMissingConstants(
         if (typeof token === 'string' && !PATH_COMMANDS.has(token)) checkExpr(token)
       }
       if (item.strokeWidth !== undefined) checkExpr(item.strokeWidth)
+      if (item.fillColor !== undefined) checkExpr(item.fillColor)
+      if (item.strokeColor !== undefined) checkExpr(item.strokeColor)
     } else if (item.type === 'text') {
       checkExpr(item.position.x)
       checkExpr(item.position.y)

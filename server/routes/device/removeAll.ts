@@ -94,7 +94,7 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       return reply.send({ count: allUuids.length, templates })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Preview failed: ${formatted.message}`, hint: formatted.hint })
+      return reply.status(500).send({ error: `Preview failed: ${formatted.message}`, hint: formatted.hint, rawError: formatted.rawError })
     } finally {
       client?.end()
     }
@@ -186,7 +186,7 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       stream.done({ steps, backupFilename })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Remove all failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Remove all failed: ${formatted.message}`, formatted.hint, formatted.rawError)
     } finally {
       client2?.end()
     }

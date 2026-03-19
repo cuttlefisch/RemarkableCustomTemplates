@@ -218,7 +218,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Deploy failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Deploy failed: ${formatted.message}`, formatted.hint, formatted.rawError)
     } finally {
       client?.end()
     }
@@ -264,7 +264,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Deploy failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Deploy failed: ${formatted.message}`, formatted.hint, formatted.rawError)
     } finally {
       client2?.end()
     }

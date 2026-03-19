@@ -46,6 +46,7 @@ export interface ServerConfig {
   rmMethodsBackupDir: string
   rmMethodsDeployedManifest: string
   rmMethodsOriginalBackup: string
+  appBackupsDir: string
   deviceConfigPath: string
   sshDir: string
 }
@@ -73,6 +74,7 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     rmMethodsBackupDir: resolve(dataDir, 'rm-methods-backups'),
     rmMethodsDeployedManifest: resolve(dataDir, 'rm-methods-backups/.deployed-manifest'),
     rmMethodsOriginalBackup: resolve(dataDir, 'rm-methods-backups/.original'),
+    appBackupsDir: resolve(dataDir, 'data/backups'),
     deviceConfigPath: resolve(dataDir, 'data/device-config.json'),
     sshDir: resolve(dataDir, 'data/ssh'),
   }

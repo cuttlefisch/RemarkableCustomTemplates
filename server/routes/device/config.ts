@@ -155,28 +155,32 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
         return reply.status(400).send({ error: 'No device IP configured' })
       }
 
-      const client = await connect(deviceConfig)
-      const result = await exec(client, 'cat /sys/devices/soc0/machine')
-      client.end()
+      let client: Awaited<ReturnType<typeof connect>> | null = null
+      try {
+        client = await connect(deviceConfig)
+        const result = await exec(client, 'cat /sys/devices/soc0/machine')
 
-      const now = new Date().toISOString()
-      const deviceModel = result.stdout.trim()
+        const now = new Date().toISOString()
+        const deviceModel = result.stdout.trim()
 
-      // Update cached info on the saved device
-      if (savedConfig) {
-        savedConfig.lastConnected = now
-        savedConfig.deviceModel = deviceModel
-        writeDevice(config.deviceConfigPath, savedConfig)
+        // Update cached info on the saved device
+        if (savedConfig) {
+          savedConfig.lastConnected = now
+          savedConfig.deviceModel = deviceModel
+          writeDevice(config.deviceConfigPath, savedConfig)
+        }
+
+        return reply.send({
+          ok: true,
+          deviceModel,
+          lastConnected: now,
+        })
+      } finally {
+        client?.end()
       }
-
-      return reply.send({
-        ok: true,
-        deviceModel,
-        lastConnected: now,
-      })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Connection failed: ${formatted.message}`, hint: formatted.hint })
+      return reply.status(500).send({ error: `Connection failed: ${formatted.message}`, hint: formatted.hint, rawError: formatted.rawError })
     }
   })
 
@@ -210,13 +214,17 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       writeFileSync(resolve(paths.sshDir, 'id_remarkable.pub'), opensshPubStr + '\n')
 
       // Connect with current auth (password) and install the public key
-      const client = await connect(deviceConfig)
-      const escapedPubKey = opensshPubStr.replace(/'/g, "'\\''")
+      let client: Awaited<ReturnType<typeof connect>> | null = null
+      try {
+        client = await connect(deviceConfig)
+        const escapedPubKey = opensshPubStr.replace(/'/g, "'\\''")
 
-      await exec(client, `mkdir -p /home/root/.ssh && chmod 700 /home/root/.ssh`)
-      await exec(client, `grep -qF '${escapedPubKey}' /home/root/.ssh/authorized_keys 2>/dev/null || echo '${escapedPubKey}' >> /home/root/.ssh/authorized_keys`)
-      await exec(client, `chmod 600 /home/root/.ssh/authorized_keys`)
-      client.end()
+        await exec(client, `mkdir -p /home/root/.ssh && chmod 700 /home/root/.ssh`)
+        await exec(client, `grep -qF '${escapedPubKey}' /home/root/.ssh/authorized_keys 2>/dev/null || echo '${escapedPubKey}' >> /home/root/.ssh/authorized_keys`)
+        await exec(client, `chmod 600 /home/root/.ssh/authorized_keys`)
+      } finally {
+        client?.end()
+      }
 
       // Update config to use key auth
       deviceConfig.authMethod = 'key'
@@ -227,7 +235,7 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       return reply.send({ ok: true, message: 'SSH keys generated and installed. Switched to key authentication.' })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Key setup failed: ${formatted.message}`, hint: formatted.hint })
+      return reply.status(500).send({ error: `Key setup failed: ${formatted.message}`, hint: formatted.hint, rawError: formatted.rawError })
     }
   })
 }

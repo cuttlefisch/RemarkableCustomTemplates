@@ -10,7 +10,7 @@ import type { FastifyReply } from 'fastify'
 export interface NdjsonStream {
   progress(phase: string, current?: number, total?: number): void
   done(data: Record<string, unknown>): void
-  error(message: string, hint?: string): void
+  error(message: string, hint?: string, rawError?: string): void
 }
 
 export function createNdjsonStream(reply: FastifyReply): NdjsonStream {
@@ -35,9 +35,10 @@ export function createNdjsonStream(reply: FastifyReply): NdjsonStream {
       write({ type: 'done', ok: true, ...data })
       reply.raw.end()
     },
-    error(message, hint?) {
+    error(message, hint?, rawError?) {
       const event: Record<string, unknown> = { type: 'error', error: message }
       if (hint) event.hint = hint
+      if (rawError) event.rawError = rawError
       write(event)
       reply.raw.end()
     },

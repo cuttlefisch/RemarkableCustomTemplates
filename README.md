@@ -73,6 +73,16 @@ For CLI workflows and manual SSH setup, see [Device Sync](docs/device-sync.md).
 | [Architecture](docs/architecture.md) | Project structure, data flow, key types, registry system |
 | [Contributing](.github/CONTRIBUTING.md) | Dev setup, TDD workflow, PR checklist |
 
+## Bug Reports
+
+If you run into an error during device operations (connection, deploy, pull, rollback, etc.), the error dialog includes a **"Copy error for bug report"** button. Click it to copy formatted error details to your clipboard, then [open a GitHub issue](https://github.com/cuttlefisch/RemarkableCustomTemplates/issues/new) and paste the error info. Raw error details are also logged to the browser console (open with F12).
+
+When reporting a bug, please include:
+- The copied error details (or a screenshot)
+- What you were trying to do
+- Your reMarkable device model and firmware version
+- Whether you're using Docker or native dev mode
+
 ## Native Development
 
 To run without Docker (for contributing or hacking on the codebase):

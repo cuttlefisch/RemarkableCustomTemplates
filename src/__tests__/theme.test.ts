@@ -80,6 +80,21 @@ describe('Theme system', () => {
           expect(colors['editor.background']).toBeDefined()
           expect(colors['editor.foreground']).toBeDefined()
         })
+
+        it('has monacoTheme with bracket match colors', () => {
+          const colors = theme.monacoTheme.colors
+          expect(colors['editorBracketMatch.background']).toBeDefined()
+          expect(colors['editorBracketMatch.border']).toBeDefined()
+        })
+
+        it('uses only hex/hex8 colors in monacoTheme (no rgba)', () => {
+          // Monaco defineTheme only parses hex (#rrggbb) and hex8 (#rrggbbaa).
+          // rgba() strings silently fail, falling back to base theme defaults.
+          const hexPattern = /^#[0-9a-fA-F]{3,8}$/
+          for (const [key, value] of Object.entries(theme.monacoTheme.colors)) {
+            expect(value, `${theme.id} monacoTheme.colors["${key}"] = "${value}" is not hex`).toMatch(hexPattern)
+          }
+        })
       })
     }
   })

@@ -55,8 +55,8 @@ export default function deviceSyncStatusRoutes(app: FastifyInstance, config: Ser
         checkedAt: new Date().toISOString(),
       })
     } catch (err) {
-      const { message, hint } = formatSshError(err instanceof Error ? err : String(err))
-      return reply.status(500).send({ error: message, hint })
+      const { message, hint, rawError } = formatSshError(err instanceof Error ? err : String(err))
+      return reply.status(500).send({ error: message, hint, rawError })
     }
   })
 }

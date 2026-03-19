@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { ErrorDetails } from './ErrorDetails'
 
 interface Props {
   deviceId: string | null
@@ -7,7 +8,7 @@ interface Props {
   onSyncComplete?: () => void
 }
 
-type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string; hint?: string }
+type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string; hint?: string; rawError?: string }
 
 interface ProgressState {
   phase: string
@@ -60,7 +61,7 @@ interface SyncStatusResponse {
 function useSyncStatus(deviceId: string | null) {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<SyncStatusResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; hint?: string; rawError?: string } | null>(null)
 
   const check = useCallback(async () => {
     if (!deviceId) return
@@ -68,15 +69,20 @@ function useSyncStatus(deviceId: string | null) {
     setError(null)
     try {
       const res = await fetch(`/api/devices/${deviceId}/sync-status`, { method: 'POST' })
-      const data = await res.json()
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
-        setError((data as { error: string }).error ?? `HTTP ${res.status}`)
+        const msg = (data.error as string) ?? `HTTP ${res.status}`
+        const rawError = data.rawError as string | undefined
+        console.error('[sync-status]', rawError ?? msg)
+        setError({ message: msg, hint: data.hint as string | undefined, rawError })
         setStatus(null)
       } else {
-        setStatus(data as SyncStatusResponse)
+        setStatus(data as unknown as SyncStatusResponse)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[sync-status]', msg)
+      setError({ message: msg, rawError: msg })
       setStatus(null)
     } finally {
       setLoading(false)
@@ -127,7 +133,7 @@ async function readNdjsonStream(
       } else if (event.type === 'done') {
         finalData = event
       } else if (event.type === 'error') {
-        throw { error: event.error as string, hint: event.hint as string | undefined }
+        throw { error: event.error as string, hint: event.hint as string | undefined, rawError: event.rawError as string | undefined }
       }
     }
   }
@@ -162,7 +168,10 @@ function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: (
         data = (await res.json()) as Record<string, unknown>
         if (!res.ok) {
           const hint = data.hint as string | undefined
-          setResult({ ok: false, error: (data.error as string) ?? `HTTP ${res.status}`, hint })
+          const rawError = data.rawError as string | undefined
+          const error = (data.error as string) ?? `HTTP ${res.status}`
+          console.error('[device-op]', url, rawError ?? error)
+          setResult({ ok: false, error, hint, rawError })
           return
         }
       }
@@ -180,10 +189,13 @@ function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: (
       options?.onSuccess?.()
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {
-        const streamErr = e as { error: string; hint?: string }
-        setResult({ ok: false, error: streamErr.error, hint: streamErr.hint })
+        const streamErr = e as { error: string; hint?: string; rawError?: string }
+        console.error('[device-op]', url, streamErr.rawError ?? streamErr.error)
+        setResult({ ok: false, error: streamErr.error, hint: streamErr.hint, rawError: streamErr.rawError })
       } else {
-        setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('[device-op]', url, msg)
+        setResult({ ok: false, error: msg, rawError: msg })
       }
     } finally {
       setLoading(false)
@@ -250,12 +262,12 @@ function OpButton({
       {op.loading && (
         <ProgressBar progress={op.progress} label={loadingLabel} />
       )}
-      {op.result && (
-        <div className={`device-op-result ${op.result.ok ? '' : 'error'}`}>
-          <p style={{ margin: 0 }}>{op.result.ok ? op.result.message : op.result.error}</p>
-          {!op.result.ok && op.result.hint && (
-            <p className="device-error-hint">{op.result.hint}</p>
-          )}
+      {op.result && !op.result.ok && (
+        <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} />
+      )}
+      {op.result?.ok && (
+        <div className="device-op-result">
+          <p style={{ margin: 0 }}>{op.result.message}</p>
         </div>
       )}
     </div>
@@ -266,38 +278,42 @@ function useRemoveAll(deviceId: string | null) {
   const [phase, setPhase] = useState<RemoveAllPhase>('idle')
   const [preview, setPreview] = useState<RemoveAllPreview | null>(null)
   const [result, setResult] = useState<RemoveAllResult | null>(null)
-  const [errorMsg, setErrorMsg] = useState('')
+  const [errorInfo, setErrorInfo] = useState<{ message: string; hint?: string; rawError?: string } | null>(null)
   const [progress, setProgress] = useState<ProgressState | null>(null)
+
+  function setError(message: string, hint?: string, rawError?: string) {
+    console.error('[remove-all]', rawError ?? message)
+    setErrorInfo({ message, hint, rawError })
+    setPhase('error')
+  }
 
   const loadPreview = useCallback(async () => {
     if (!deviceId) return
     setPhase('loading-preview')
-    setErrorMsg('')
+    setErrorInfo(null)
     try {
       const res = await fetch(`/api/devices/${deviceId}/remove-all-preview`, { method: 'POST' })
-      const data = await res.json() as RemoveAllPreview & { hint?: string }
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
-        setErrorMsg((data as unknown as { error: string }).error ?? `HTTP ${res.status}`)
-        setPhase('error')
+        setError((data.error as string) ?? `HTTP ${res.status}`, data.hint as string | undefined, data.rawError as string | undefined)
         return
       }
-      if (data.count === 0 && data.error) {
-        setErrorMsg(data.error)
-        setPhase('error')
+      const preview = data as unknown as RemoveAllPreview
+      if (preview.count === 0 && preview.error) {
+        setError(preview.error)
         return
       }
-      setPreview(data)
+      setPreview(preview)
       setPhase('preview')
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e))
-      setPhase('error')
+      setError(e instanceof Error ? e.message : String(e))
     }
   }, [deviceId])
 
   const execute = useCallback(async () => {
     if (!deviceId) return
     setPhase('executing')
-    setErrorMsg('')
+    setErrorInfo(null)
     setProgress(null)
     try {
       const res = await fetch(`/api/devices/${deviceId}/remove-all-execute`, { method: 'POST' })
@@ -309,8 +325,7 @@ function useRemoveAll(deviceId: string | null) {
       } else {
         data = (await res.json()) as Record<string, unknown>
         if (!res.ok) {
-          setErrorMsg((data.error as string) ?? `HTTP ${res.status}`)
-          setPhase('error')
+          setError((data.error as string) ?? `HTTP ${res.status}`, data.hint as string | undefined, data.rawError as string | undefined)
           return
         }
       }
@@ -319,11 +334,11 @@ function useRemoveAll(deviceId: string | null) {
       setPhase('done')
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {
-        setErrorMsg((e as { error: string }).error)
+        const streamErr = e as { error: string; hint?: string; rawError?: string }
+        setError(streamErr.error, streamErr.hint, streamErr.rawError)
       } else {
-        setErrorMsg(e instanceof Error ? e.message : String(e))
+        setError(e instanceof Error ? e.message : String(e))
       }
-      setPhase('error')
     } finally {
       setProgress(null)
     }
@@ -333,11 +348,11 @@ function useRemoveAll(deviceId: string | null) {
     setPhase('idle')
     setPreview(null)
     setResult(null)
-    setErrorMsg('')
+    setErrorInfo(null)
     setProgress(null)
   }, [])
 
-  return { phase, preview, result, errorMsg, progress, loadPreview, execute, reset }
+  return { phase, preview, result, errorInfo, progress, loadPreview, execute, reset }
 }
 
 // ---------------------------------------------------------------------------
@@ -471,8 +486,8 @@ function SyncStatusSection({ syncStatus, autoRefreshed }: { syncStatus: ReturnTy
       </button>
 
       {error && (
-        <div className="device-op-result error" style={{ marginTop: 8 }}>
-          <p style={{ margin: 0 }}>{error}</p>
+        <div style={{ marginTop: 8 }}>
+          <ErrorDetails error={error.message} hint={error.hint} rawError={error.rawError} />
         </div>
       )}
 
@@ -894,18 +909,17 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                 </div>
               )}
 
-              {removeAll.phase === 'error' && (
+              {removeAll.phase === 'error' && removeAll.errorInfo && (
                 <div>
-                  <div className="device-op-result error">
-                    <p style={{ margin: 0 }}>{removeAll.errorMsg}</p>
-                  </div>
-                  <button
-                    className="device-card-btn device-card-btn-secondary"
-                    onClick={removeAll.reset}
-                    style={{ marginTop: 8 }}
-                  >
-                    Dismiss
-                  </button>
+                  <ErrorDetails error={removeAll.errorInfo.message} hint={removeAll.errorInfo.hint} rawError={removeAll.errorInfo.rawError}>
+                    <button
+                      className="device-card-btn device-card-btn-secondary"
+                      onClick={removeAll.reset}
+                      style={{ marginTop: 8 }}
+                    >
+                      Dismiss
+                    </button>
+                  </ErrorDetails>
                 </div>
               )}
             </div>

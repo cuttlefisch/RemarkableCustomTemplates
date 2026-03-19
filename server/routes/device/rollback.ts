@@ -100,7 +100,7 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Rollback failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Rollback failed: ${formatted.message}`, formatted.hint, formatted.rawError)
     } finally {
       client?.end()
     }
@@ -181,7 +181,7 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       stream.done({ steps })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Rollback failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Rollback failed: ${formatted.message}`, formatted.hint, formatted.rawError)
     } finally {
       client?.end()
     }
@@ -195,23 +195,24 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
       const result = await exec(client, `latest=$(ls -t /home/root/template-backups/templates_*.tar.gz 2>/dev/null | head -n 1); if [ -z "$latest" ]; then echo 'NO_BACKUPS'; exit 1; fi; echo "$latest"`)
 
       if (result.stdout.trim() === 'NO_BACKUPS' || result.code !== 0) {
-        client.end()
         return reply.status(400).send({ error: 'No backups found on device.' })
       }
 
       const latestBackup = result.stdout.trim()
       await exec(client, `mount -o remount,rw / && tar xzf "${latestBackup}" -C /usr/share/remarkable && mount -o remount,ro / && systemctl restart xochitl`)
-      client.end()
 
       return reply.send({ ok: true, restoredFrom: latestBackup })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint })
+      return reply.status(500).send({ error: `Rollback failed: ${formatted.message}`, hint: formatted.hint, rawError: formatted.rawError })
+    } finally {
+      client?.end()
     }
   })
 }

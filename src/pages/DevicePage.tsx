@@ -13,9 +13,11 @@ export function DevicePage() {
 
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [backupsRefreshKey, setBackupsRefreshKey] = useState(0)
 
   function setStatus(msg: string) { setStatusMessage(msg); setErrorMessage(null) }
   function setError(msg: string) { setErrorMessage(msg); setStatusMessage(null) }
+  function handleSyncComplete() { refreshRegistry(); setBackupsRefreshKey(k => k + 1) }
 
   const { devices, activeDevice, activeDeviceId, setActiveDevice, loading } = devicesState
   const configured = activeDevice !== null
@@ -50,7 +52,7 @@ export function DevicePage() {
         )}
 
         <DeviceConnectionCard devicesState={devicesState} />
-        <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} onSyncComplete={refreshRegistry} />
+        <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} onSyncComplete={handleSyncComplete} />
         <DeviceImportExportCard
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}
@@ -62,6 +64,7 @@ export function DevicePage() {
           configured={configured}
           onStatus={setStatus}
           onError={setError}
+          refreshKey={backupsRefreshKey}
         />
       </div>
     </div>

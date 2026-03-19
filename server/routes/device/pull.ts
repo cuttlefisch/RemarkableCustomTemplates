@@ -101,21 +101,23 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
 
     const stream = createNdjsonStream(reply)
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
       stream.progress('Connecting to device...')
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
       const sftp = await getSftp(client)
       mkdirSync(config.officialDir, { recursive: true })
 
       const pulled = await pullDirectory(sftp, TEMPLATES_PATH, config.officialDir, undefined, (cur, tot) => {
         stream.progress('Pulling templates', cur, tot)
       })
-      client.end()
 
       stream.done({ count: pulled.length, files: pulled })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Pull failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Pull failed: ${formatted.message}`, formatted.hint, formatted.rawError)
+    } finally {
+      client?.end()
     }
   })
 
@@ -130,15 +132,17 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
     const devicePaths = resolveDevicePaths(config, id)
     const stream = createNdjsonStream(reply)
 
+    let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
       stream.progress('Scanning device for templates...')
-      const client = await connect(deviceConfig)
+      client = await connect(deviceConfig)
 
       const result = await exec(client, `grep -rl '"type": *"TemplateType"' ${RM_METHODS_PATH}/*.metadata 2>/dev/null || true`)
       const metadataFiles = result.stdout.trim().split('\n').filter(Boolean)
 
       if (metadataFiles.length === 0) {
         client.end()
+        client = null
         stream.done({ count: 0, message: 'No rm_methods templates found on device.' })
         return
       }
@@ -169,6 +173,7 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         ? parseManifestUuids(JSON.stringify(deviceManifest))
         : []
       client.end()
+      client = null
 
       stream.progress('Building methods registry...')
       const manifestPath = existsSync(resolve(config.rmMethodsDistDir, '.manifest'))
@@ -196,7 +201,9 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       stream.done({ count: result2.count, imported })
     } catch (e) {
       const formatted = formatSshError(e instanceof Error ? e : String(e))
-      stream.error(`Pull failed: ${formatted.message}`, formatted.hint)
+      stream.error(`Pull failed: ${formatted.message}`, formatted.hint, formatted.rawError)
+    } finally {
+      client?.end()
     }
   })
 }
