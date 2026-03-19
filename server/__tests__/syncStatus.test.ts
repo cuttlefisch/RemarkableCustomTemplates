@@ -117,8 +117,8 @@ describe('addMethodsOverlay', () => {
       { rmMethodsId: 'uuid-1', name: 'Official Grid', origin: 'official-methods' },
     ])
     expect(templates).toHaveLength(1)
-    expect(templates[0]).toEqual({ uuid: 'uuid-1', name: 'Official Grid', state: 'device-only' })
-    expect(summary.deviceOnly).toBe(1)
+    expect(templates[0]).toEqual({ uuid: 'uuid-1', name: 'Official Grid', state: 'synced' })
+    expect(summary.synced).toBe(1)
     expect(summary.total).toBe(1)
   })
 
@@ -129,7 +129,7 @@ describe('addMethodsOverlay', () => {
       { rmMethodsId: 'uuid-custom', name: 'Custom Grid', origin: 'custom-methods' },
     ])
     expect(templates).toHaveLength(0)
-    expect(summary.deviceOnly).toBe(0)
+    expect(summary.synced).toBe(0)
     expect(summary.total).toBe(0)
   })
 
@@ -142,7 +142,7 @@ describe('addMethodsOverlay', () => {
       { rmMethodsId: 'uuid-1', name: 'Already Tracked', origin: 'official-methods' },
     ])
     expect(templates).toHaveLength(1)
-    expect(summary.deviceOnly).toBe(0)
+    expect(summary.synced).toBe(1)
     expect(summary.total).toBe(1)
   })
 
@@ -158,7 +158,7 @@ describe('addMethodsOverlay', () => {
       { rmMethodsId: 'existing-1', name: 'Already There', origin: 'official-methods' },
     ])
     expect(templates).toHaveLength(3)
-    expect(summary.deviceOnly).toBe(2)
+    expect(summary.synced).toBe(2)
     expect(summary.total).toBe(3)
     expect(summary.localOnly).toBe(1)
   })

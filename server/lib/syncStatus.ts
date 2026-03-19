@@ -79,7 +79,8 @@ export function computeSyncStatus(
 
 /**
  * After computing sync status from manifests, overlay pulled methods entries
- * that aren't tracked in either manifest. Only adds official-methods entries;
+ * that aren't tracked in either manifest as synced (they exist on the device
+ * and have been pulled locally). Only adds official-methods entries;
  * custom-methods entries are already in the local build via importCustomMethods.
  */
 export function addMethodsOverlay(
@@ -90,8 +91,8 @@ export function addMethodsOverlay(
   const trackedUuids = new Set(templates.map(t => t.uuid))
   for (const entry of methodsEntries) {
     if (entry.rmMethodsId && !trackedUuids.has(entry.rmMethodsId) && entry.origin === 'official-methods') {
-      templates.push({ uuid: entry.rmMethodsId, name: entry.name, state: 'device-only' })
-      summary.deviceOnly++
+      templates.push({ uuid: entry.rmMethodsId, name: entry.name, state: 'synced' })
+      summary.synced++
       summary.total++
     }
   }

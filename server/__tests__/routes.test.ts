@@ -58,6 +58,39 @@ describe('server routes', () => {
     })
   })
 
+  describe('GET /templates/templates.json (production mode)', () => {
+    it('returns merged registry even when dist/ has a static templates.json', async () => {
+      // In production, @fastify/static serves files from dist/. Without globIgnore,
+      // it would intercept /templates/templates.json and serve the stale static file
+      // instead of letting the Fastify route handler merge registries.
+      const prodConfig = resolveConfig({ dataDir: config.dataDir, port: 0, production: true })
+
+      writeFileSync(prodConfig.methodsRegistry, JSON.stringify({
+        templates: [{
+          name: 'SEYES',
+          filename: 'methods/SEYES',
+          iconCode: '\ue9d8',
+          landscape: false,
+          categories: ['Lines'],
+          origin: 'official-methods',
+          rmMethodsId: 'fake-uuid-1234',
+        }],
+      }))
+      writeFileSync(resolve(prodConfig.officialDir, 'templates.json'), JSON.stringify({
+        templates: [{ name: 'Official', filename: 'P Official', iconCode: '\ue9d8', landscape: false, categories: ['Lines'] }],
+      }))
+
+      const app = await createApp(prodConfig)
+      const res = await app.inject({ method: 'GET', url: '/templates/templates.json' })
+      expect(res.statusCode).toBe(200)
+      const body = JSON.parse(res.body)
+      const names = body.templates.map((t: { name: string }) => t.name)
+      expect(names).toContain('SEYES')
+      expect(names).toContain('Official')
+      await app.close()
+    })
+  })
+
   describe('GET /templates/debug/*', () => {
     it('serves debug template files', async () => {
       const content = JSON.stringify({ name: 'Test' })
