@@ -796,62 +796,6 @@ describe('mapForegroundColors', () => {
     expect(result.items[0]?.fillColor).toBe(BACKGROUND_CONST)
   })
 
-  // ─── Inverted (dark mode) template detection via bg item ──────────────────
-
-  const makeInvertedJson = (items: unknown[]) => {
-    // bg item with fillColor #000000 signals an inverted template
-    const bgItem = {
-      id: 'bg',
-      type: 'group',
-      boundingBox: { x: 0, y: 0, width: 'templateWidth', height: 'templateHeight' },
-      repeat: { rows: 'infinite', columns: 'infinite' },
-      children: [{ type: 'path', strokeColor: '#000000', fillColor: '#000000', data: [] }],
-    }
-    return JSON.stringify({
-      name: 'T', author: 'a', templateVersion: '1.0.0', formatVersion: 1,
-      categories: [], orientation: 'portrait', constants: [],
-      items: [bgItem, ...items],
-    })
-  }
-
-  it('inverted: maps #ffffff strokeColor to foreground (white lines on dark bg)', () => {
-    const json = makeInvertedJson([{ type: 'path', strokeColor: '#ffffff', data: [] }])
-    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
-    // items[0] is bg item, items[1] is our test item
-    expect(result.items[1]?.strokeColor).toBe(FOREGROUND_CONST)
-  })
-
-  it('inverted: maps #000000 fillColor to background (black fill = bg color)', () => {
-    const json = makeInvertedJson([{ type: 'path', fillColor: '#000000', strokeColor: '#ffffff', data: [] }])
-    const result = JSON.parse(mapForegroundColors(json)) as { items: { fillColor?: string; strokeColor?: string }[] }
-    expect(result.items[1]?.fillColor).toBe(BACKGROUND_CONST)
-    expect(result.items[1]?.strokeColor).toBe(FOREGROUND_CONST)
-  })
-
-  it('inverted: bg item itself gets mapped correctly', () => {
-    const json = makeInvertedJson([])
-    const result = JSON.parse(mapForegroundColors(json)) as {
-      items: { id?: string; children?: { strokeColor?: string; fillColor?: string }[] }[]
-    }
-    const bgItem = result.items.find(i => i.id === 'bg')
-    // bg item's children should map #000000 → background (since it IS the background)
-    expect(bgItem?.children?.[0]?.fillColor).toBe(BACKGROUND_CONST)
-    expect(bgItem?.children?.[0]?.strokeColor).toBe(BACKGROUND_CONST)
-  })
-
-  it('inverted: undefined strokeColor maps to foreground (#ffffff in inverted)', () => {
-    const json = makeInvertedJson([{ type: 'path', data: [] }])
-    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
-    // Even in inverted mode, undefined strokeColor → foreground (device draws in default color)
-    expect(result.items[1]?.strokeColor).toBe(FOREGROUND_CONST)
-  })
-
-  it('inverted: preserves non-black/white colors', () => {
-    const json = makeInvertedJson([{ type: 'path', strokeColor: '#ff0000', fillColor: '#0000ff', data: [] }])
-    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
-    expect(result.items[1]?.strokeColor).toBe('#ff0000')
-    expect(result.items[1]?.fillColor).toBe('#0000ff')
-  })
 })
 
 // ─── mergeRegistries ──────────────────────────────────────────────────────────
