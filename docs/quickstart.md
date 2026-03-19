@@ -35,7 +35,13 @@ Navigate to the **Device & Sync** page. The setup wizard walks you through:
 2. **Connection test** — verifies SSH access to your device
 3. **Device configuration** — saves connection settings
 
-![Device & Sync page](images/device-sync-page.png)
+You can add multiple devices — each gets its own connection, sync status, deploy history, and rollback state. Switch between devices using the tabs at the top of the page.
+
+![Device connection setup](images/device-connection-setup.png)
+
+After connecting, you'll see your device info with connection status:
+
+![Device connected](images/device-connected.png)
 
 > **SSH over WLAN** must be enabled on the device. On newer devices (Paper Pro, Move), developer mode is required first — note that enabling developer mode triggers a factory reset. Find your device IP and SSH password under **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**.
 
@@ -43,31 +49,49 @@ Navigate to the **Device & Sync** page. The setup wizard walks you through:
 
 On the **Device & Sync** page, click **Pull Methods Templates** to fetch official and custom rm_methods templates from the device. These appear as read-only entries in the sidebar — select one and click **Save as New Template** to fork it into an editable custom template.
 
-![Pulling templates from device](images/device-sync-pulling.png)
+![Pulling templates from device](images/deploy-progress.png)
 
 ## 5. Create or edit templates
 
 - Click **New template** in the sidebar to start from scratch
 - Or select any template and click **Save as New Template** to fork it
 - Edit the JSON in the Monaco editor — the canvas updates live as you apply changes
+- Click **Invert** to swap foreground/background colors for dark-mode templates
 - Click **Apply** to validate; any undefined constant references are reported before rendering
 
 ![Template editor with JSON](images/template-editor.png)
 
+![Validation error in the editor](images/template-editor-error.png)
+
 ## 6. Deploy to your device
 
-On the **Device & Sync** page, click **Deploy**. Templates are deployed in the rm_methods format, which means they **sync across all paired devices** via the reMarkable cloud.
+On the **Device & Sync** page, click **Deploy**. You can check sync status first to see what needs deploying, and optionally select specific templates:
+
+![Sync status](images/sync-status.png)
+
+![Selective deploy](images/deploy-selective.png)
+
+Templates are deployed in the rm_methods format, which means they **sync across all paired devices** via the reMarkable cloud.
+
+> **No Connect subscription required.** rm_methods sync uses the built-in cloud mechanism that ships with every reMarkable — it works with or without a Connect subscription.
+
+> [!WARNING]
+> **Sync behavior is not guaranteed.** The rm_methods cloud sync mechanism is reverse-engineered and undocumented by reMarkable. It works as of firmware 3.x, but could change or stop working with any firmware update. Always keep local backups of your templates. See [How rm_methods sync works](device-sync.md#how-rm_methods-sync-works) for details.
 
 Each deploy:
 - Backs up the previous state automatically
 - Cleans up any templates you've removed
 - Restarts the device UI
 
+> **Native vs PDF templates:** This app creates native `.template` files — vector-based pages that render instantly, use minimal battery, and zoom infinitely. PDF templates have their advantages (inter-page links, complex layouts) but are rasterized at fixed resolution and use more memory.
+
 ## 7. Back up your templates
 
 Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all your custom templates. This preserves UUIDs needed for device sync continuity.
 
-To restore: click **↑ Restore** and select the backup ZIP. Existing templates are skipped; new ones are merged in.
+To restore: click **↑ Restore** and select the backup ZIP. A preview shows what will be added, what's already present, and any local templates not in the backup that you can optionally clean up:
+
+![Backup restore preview](images/backup-restore-preview.png)
 
 ## 8. Rollback
 

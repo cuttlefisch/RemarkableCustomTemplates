@@ -449,6 +449,68 @@ describe('resolveStringConstants', () => {
   })
 })
 
+// ─── mapForegroundColors → injectColorConstants → resolveStringConstants ──────
+
+describe('color mapping pipeline (fork → export)', () => {
+  it('maps white fills to background, then resolves back for export', () => {
+    // Simulates forking an official template with hardcoded #ffffff/#000000
+    const official = makeTemplateJson(
+      [],
+      [
+        { type: 'path', strokeColor: '#000000', fillColor: '#ffffff', data: [] },
+        { type: 'path', strokeColor: '#000000', data: [] },
+      ],
+    )
+    // Step 1: mapForegroundColors (fork)
+    const mapped = mapForegroundColors(official)
+    const mappedParsed = JSON.parse(mapped) as { items: { fillColor?: string; strokeColor?: string }[] }
+    expect(mappedParsed.items[0]?.fillColor).toBe(BACKGROUND_CONST)
+    expect(mappedParsed.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
+
+    // Step 2: injectColorConstants (adds foreground/background constants + bg item at [0])
+    const injected = injectColorConstants(mapped)
+
+    // Step 3: resolveStringConstants (export for device)
+    const resolved = resolveStringConstants(injected)
+    const resolvedParsed = JSON.parse(resolved) as { items: { id?: string; fillColor?: string; strokeColor?: string }[] }
+    // items[0] is the injected bg item; our original items are at [1]+
+    const original = resolvedParsed.items.find(i => i.id !== 'bg')!
+    expect(original.fillColor).toBe('#ffffff')
+    expect(original.strokeColor).toBe('#000000')
+  })
+
+  it('preserves transparent black (#00000000) through the pipeline', () => {
+    const official = makeTemplateJson(
+      [],
+      [{ type: 'path', strokeColor: '#00000000', fillColor: '#ffffff', data: [] }],
+    )
+    const mapped = mapForegroundColors(official)
+    const injected = injectColorConstants(mapped)
+    const resolved = resolveStringConstants(injected)
+    const resolvedParsed = JSON.parse(resolved) as { items: { id?: string; strokeColor?: string; fillColor?: string }[] }
+    const original = resolvedParsed.items.find(i => i.id !== 'bg')!
+    expect(original.strokeColor).toBe('#00000000')
+    expect(original.fillColor).toBe('#ffffff')
+  })
+
+  it('inverted colors resolve correctly for export', () => {
+    const official = makeTemplateJson(
+      [],
+      [{ type: 'path', strokeColor: '#000000', fillColor: '#ffffff', data: [] }],
+    )
+    const mapped = mapForegroundColors(official)
+    const injected = injectColorConstants(mapped)
+    // Invert colors (dark mode)
+    const inverted = invertColors(injected)
+    const resolved = resolveStringConstants(inverted)
+    const resolvedParsed = JSON.parse(resolved) as { items: { id?: string; fillColor?: string; strokeColor?: string }[] }
+    const original = resolvedParsed.items.find(i => i.id !== 'bg')!
+    // After inversion: foreground=#ffffff, background=#000000
+    expect(original.strokeColor).toBe('#ffffff')
+    expect(original.fillColor).toBe('#000000')
+  })
+})
+
 // ─── buildDefaultTemplate ─────────────────────────────────────────────────────
 
 describe('buildDefaultTemplate', () => {
@@ -643,7 +705,19 @@ describe('mapForegroundColors', () => {
     expect(result.items[0]?.fillColor).toBe(FOREGROUND_CONST)
   })
 
-  it('does not replace non-black colors', () => {
+  it('replaces #ffffff strokeColor with background sentinel', () => {
+    const json = makeJson([{ type: 'path', strokeColor: '#ffffff', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe(BACKGROUND_CONST)
+  })
+
+  it('replaces #ffffff fillColor with background sentinel', () => {
+    const json = makeJson([{ type: 'path', fillColor: '#ffffff', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { fillColor?: string }[] }
+    expect(result.items[0]?.fillColor).toBe(BACKGROUND_CONST)
+  })
+
+  it('does not replace non-black/white colors', () => {
     const json = makeJson([{ type: 'path', strokeColor: '#ff0000', fillColor: '#0000ff', data: [] }])
     const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
     expect(result.items[0]?.strokeColor).toBe('#ff0000')
@@ -687,11 +761,41 @@ describe('mapForegroundColors', () => {
     expect(result.items[0]?.children?.[0]?.strokeColor).toBe(FOREGROUND_CONST)
   })
 
-  it('is idempotent when colors already reference the sentinel', () => {
-    const json = makeJson([{ type: 'path', strokeColor: FOREGROUND_CONST, data: [] }])
-    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string }[] }
-    expect(result.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
+  it('maps #ffffff recursively inside group children', () => {
+    const json = makeJson([{
+      type: 'group',
+      boundingBox: { x: 0, y: 0, width: 10, height: 10 },
+      repeat: { rows: 0 },
+      children: [{ type: 'path', fillColor: '#ffffff', strokeColor: '#000000', data: [] }],
+    }])
+    const result = JSON.parse(mapForegroundColors(json)) as {
+      items: { children?: { fillColor?: string; strokeColor?: string }[] }[]
+    }
+    expect(result.items[0]?.children?.[0]?.fillColor).toBe(BACKGROUND_CONST)
+    expect(result.items[0]?.children?.[0]?.strokeColor).toBe(FOREGROUND_CONST)
   })
+
+  it('is idempotent when colors already reference the sentinel', () => {
+    const json = makeJson([{ type: 'path', strokeColor: FOREGROUND_CONST, fillColor: BACKGROUND_CONST, data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
+    expect(result.items[0]?.fillColor).toBe(BACKGROUND_CONST)
+  })
+
+  it('maps both foreground and background colors in the same item', () => {
+    const json = makeJson([{ type: 'path', strokeColor: '#000000', fillColor: '#ffffff', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe(FOREGROUND_CONST)
+    expect(result.items[0]?.fillColor).toBe(BACKGROUND_CONST)
+  })
+
+  it('does not map transparent black (#00000000)', () => {
+    const json = makeJson([{ type: 'path', strokeColor: '#00000000', fillColor: '#ffffff', data: [] }])
+    const result = JSON.parse(mapForegroundColors(json)) as { items: { strokeColor?: string; fillColor?: string }[] }
+    expect(result.items[0]?.strokeColor).toBe('#00000000')
+    expect(result.items[0]?.fillColor).toBe(BACKGROUND_CONST)
+  })
+
 })
 
 // ─── mergeRegistries ──────────────────────────────────────────────────────────

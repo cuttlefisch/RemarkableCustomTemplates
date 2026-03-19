@@ -64,6 +64,11 @@ Go to **Settings → Help → Copyrights and Licenses → GPLv3 Compliance**. Th
 
 The rm_methods workflow drops files into xochitl's user content directory using the same format as official reMarkable methods templates. This means xochitl treats them as native content and **syncs them across paired devices** via the reMarkable cloud.
 
+> **No Connect subscription required.** The cloud sync mechanism used by rm_methods templates is built into every reMarkable device. It works regardless of whether you have a Connect subscription — the sync happens through the same channel that official reMarkable methods templates use.
+
+> [!WARNING]
+> **Sync behavior is reverse-engineered and not guaranteed by reMarkable.** The rm_methods format mimics official reMarkable methods templates based on observation of firmware 3.x behavior. reMarkable has not documented or endorsed this approach. Any firmware update could change the sync mechanism, file format expectations, or metadata requirements — potentially breaking sync or causing templates to disappear. **Always keep local backups** and test after firmware updates before deploying new templates.
+
 > **Browser-based alternative:** The **Device & Sync** page provides browser-based equivalents for pull, deploy, and rollback operations. The CLI targets below are for developer/scripting workflows.
 
 ### Happy path
@@ -150,7 +155,9 @@ On the very first `make deploy-rm-methods`, the backup step captures `rm-methods
 
 ## How rm_methods sync works
 
-The rm_methods format enables cloud sync by mimicking the exact file structure and metadata that official reMarkable methods templates use. Four format choices make this work:
+The rm_methods format enables cloud sync by mimicking the exact file structure and metadata that official reMarkable methods templates use. **No Connect subscription is needed** — the sync mechanism is part of xochitl's built-in cloud infrastructure, the same one that syncs notebooks and official methods templates. Your custom templates sync to all paired devices automatically, just like the ones reMarkable ships.
+
+Four format choices make this work:
 
 1. **UUID filenames** — xochitl identifies content items by UUID. The three-file triplet (`<uuid>.template`, `.metadata`, `.content`) is how xochitl stores all user content (notebooks, PDFs, templates). Without UUID naming, xochitl ignores the files entirely.
 
@@ -160,7 +167,8 @@ The rm_methods format enables cloud sync by mimicking the exact file structure a
 
 4. **`iconData` and `labels` in template body** — the template picker reads these directly from the `.template` file. Without `iconData`, the template appears with a blank thumbnail. Without `labels`, it's uncategorized in the picker.
 
-> **Caveat:** This is reverse-engineered behavior based on examining official rm_methods template files on the device. reMarkable could change the format in firmware updates. The sync behavior with custom content using `"com.remarkable.methods"` as the source is undocumented — it works as of firmware 3.x but there are no guarantees.
+> [!CAUTION]
+> **This is reverse-engineered behavior.** Everything described above is based on examining official rm_methods template files on the device — it is not documented or supported by reMarkable. The `"com.remarkable.methods"` source value, UUID file naming convention, and three-file triplet structure all come from observation of firmware 3.x behavior. reMarkable could change any of these in a firmware update, which could break sync, cause templates to disappear, or require format changes. Test on a single device first after any firmware update.
 
 ---
 
@@ -271,7 +279,10 @@ For programmatic use: `POST /api/restore?mode=merge` (or `mode=replace` to overw
 
 ## Caveats
 
-- **Firmware updates wipe system templates.** After a firmware update, the device restores its default `/usr/share/remarkable/templates/` directory. For classic deploys, run `make pull` + `make deploy` again. rm_methods templates in the user content directory are unaffected.
+> [!WARNING]
+> **All device sync functionality depends on reMarkable's undocumented internal behavior.** The rm_methods format, cloud sync mechanism, and file structure conventions described in this document are reverse-engineered from firmware 3.x. reMarkable could change any of these at any time without notice. Always keep local backups and verify behavior after firmware updates.
+
+- **Firmware updates wipe system templates.** After a firmware update, the device restores its default `/usr/share/remarkable/templates/` directory. For classic deploys, run `make pull` + `make deploy` again. rm_methods templates in the user content directory are unaffected — but firmware changes could alter how they're handled.
 - **A malformed `templates.json` breaks the classic template picker.** If the picker shows nothing after a classic deploy, `make rollback` to restore the last known-good state. This doesn't apply to rm_methods (no `templates.json` involved).
 - **Always backup before manual pushes.** `make deploy` and `make deploy-rm-methods` do this automatically, but if you push files by hand, back up first.
 - **`rsync --delete` in classic deploy removes device-side templates not in `dist-deploy/`.** This is intentional — it keeps the device in sync with your repo. If you want to keep device-only templates, `make pull` first so they're included in the merge.

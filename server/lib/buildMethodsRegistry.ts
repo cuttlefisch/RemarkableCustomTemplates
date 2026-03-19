@@ -16,6 +16,7 @@ export interface BuildMethodsRegistryOptions {
   manifestPath?: string
   deployedManifestPath?: string
   deviceManifestUuids?: string[]
+  debugUuids?: string[]
 }
 
 export interface BuildMethodsRegistryResult {
@@ -29,10 +30,11 @@ function inferOrientation(templateBody: Record<string, unknown>): string {
 }
 
 export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): Promise<BuildMethodsRegistryResult> {
-  const { tempDir, outputDir, manifestPath, deployedManifestPath, deviceManifestUuids } = opts
+  const { tempDir, outputDir, manifestPath, deployedManifestPath, deviceManifestUuids, debugUuids } = opts
 
   // Collect known custom UUIDs from manifests
   const customUuids = new Set<string>()
+  const debugUuidSet = new Set<string>(debugUuids ?? [])
   if (manifestPath) {
     for (const uuid of readManifestUuids(manifestPath)) customUuids.add(uuid)
   }
@@ -85,8 +87,11 @@ export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): P
       }
     }
 
-    // Determine origin
-    const origin = customUuids.has(uuid) ? 'custom-methods' : 'official-methods'
+    // Determine origin — UUID in a known manifest OR "Custom" label in template body
+    // Debug UUIDs are excluded from custom classification even if they appear in manifests
+    const hasCustomLabel = labels.some(l => l.toLowerCase() === 'custom')
+    const isDebug = debugUuidSet.has(uuid)
+    const origin = (!isDebug && (customUuids.has(uuid) || hasCustomLabel)) ? 'custom-methods' : 'official-methods'
 
     // Copy template file to output
     if (existsSync(tplPath)) {

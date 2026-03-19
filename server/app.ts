@@ -62,6 +62,7 @@ export async function createApp(config: ServerConfig) {
         root: distPath,
         prefix: '/',
         wildcard: false,
+        globIgnore: ['templates/**'],
       })
 
       // SPA fallback — serve index.html for non-API, non-template routes

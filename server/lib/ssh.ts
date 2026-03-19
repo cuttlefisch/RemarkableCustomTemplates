@@ -7,12 +7,15 @@ import { Client } from 'ssh2'
 import { readFileSync } from 'node:fs'
 
 export interface DeviceConfig {
+  id: string                     // auto-generated UUID
+  nickname: string               // user-chosen display name
   deviceIp: string
   sshPort: number                // default 22
   authMethod: 'password' | 'key'
   sshPassword?: string           // cleared after key setup
-  privateKeyPath?: string        // data/ssh/id_remarkable
+  privateKeyPath?: string        // data/ssh/<deviceId>/id_remarkable
   lastConnected?: string         // ISO timestamp
+  deviceModel?: string           // cached from test-connection
 }
 
 export interface ExecResult {

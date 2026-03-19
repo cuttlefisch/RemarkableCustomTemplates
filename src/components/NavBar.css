@@ -6,27 +6,79 @@
   gap: 2px;
   height: 36px;
   padding: 0 12px;
-  background: #1c1c1e;
-  border-bottom: 1px solid #000;
+  background: var(--color-navbar-bg);
+  border-bottom: 1px solid var(--color-navbar-border);
   flex-shrink: 0;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .nav-link {
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
-  color: #8e8e93;
+  color: var(--color-text-navbar);
   text-decoration: none;
   border-radius: 4px;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .nav-link:hover {
-  color: #ebebf5;
-  background: #2c2c2e;
+  color: var(--color-text-navbar-hover);
+  background: var(--color-navbar-hover-bg);
 }
 
 .nav-link.active {
-  color: #4da3ff;
-  background: #0a3466;
+  color: var(--color-text-navbar-active);
+  background: var(--color-navbar-active-bg);
+}
+
+.nav-link.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto; /* keep click handler to preventDefault */
+}
+
+.nav-link.disabled:hover {
+  background: none;
+  color: var(--color-text-navbar);
+}
+
+.nav-busy-hint {
+  font-size: 11px;
+  color: var(--color-warning, #d29922);
+  margin-left: 8px;
+  animation: pulse-hint 2s ease-in-out infinite;
+}
+
+@keyframes pulse-hint {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Theme switcher ─────────────────────────────────────────────────────── */
+
+.theme-switcher {
+  margin-left: auto;
+}
+
+.theme-switcher select {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-sidebar-btn-bg);
+  color: var(--color-sidebar-btn-text);
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  outline: none;
+}
+
+.theme-switcher select:hover {
+  background: var(--color-sidebar-btn-hover-bg);
+  color: var(--color-sidebar-btn-hover-text);
+}
+
+.theme-switcher select:focus {
+  border-color: var(--color-accent);
 }

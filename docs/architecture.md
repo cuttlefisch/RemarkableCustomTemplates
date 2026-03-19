@@ -12,15 +12,18 @@ remarkable_templates/
 │   ├── config.ts        ← DATA_DIR-based path resolution
 │   ├── routes/          ← API route handlers
 │   │   └── device/      ← SSH device operations (config, pull, deploy, rollback)
-│   ├── lib/             ← ssh.ts, sftp.ts, pathSecurity.ts, manifestUuids.ts, buildMethodsRegistry.ts
+│   ├── lib/             ← ssh.ts, sftp.ts, pathSecurity.ts, manifestUuids.ts, buildMethodsRegistry.ts,
+│   │                       deviceStore.ts, deviceManifest.ts, ndjsonStream.ts, sshErrors.ts
 │   └── __tests__/       ← server tests
 ├── src/
 │   ├── types/       ← template.ts, registry.ts
 │   ├── lib/         ← expression.ts, parser.ts, registry.ts, renderer.ts, customTemplates.ts, color.ts,
 │   │                   backup.ts, methodsTemplates.ts, rmMethods.ts, iconGenerator.ts
 │   ├── components/  ← TemplateCanvas.tsx, TemplateEditor.tsx, NavBar.tsx, CanvasErrorBoundary.tsx
+│   │   └── device/  ← DeviceConnectionCard.tsx, DeviceSyncCard.tsx, DeviceBackupsCard.tsx
 │   ├── pages/       ← TemplatesPage.tsx, DevicePage.tsx
-│   ├── hooks/       ← useRegistry.ts
+│   ├── hooks/       ← useRegistry.ts, useDevices.ts, useTheme.ts
+│   ├── themes/      ← themes.ts, tokens.css, palettes/ (10 theme palette files)
 │   └── __tests__/   ← Vitest test suite
 ├── public/
 │   └── templates/
@@ -58,11 +61,13 @@ server/routes/
 ├── export.ts            ← GET /api/export-templates, /api/export-rm-methods
 ├── backup.ts            ← GET /api/backup, POST /api/restore
 └── device/
-    ├── config.ts        ← GET/POST /api/device/config, test-connection, setup-keys
-    ├── pull.ts          ← POST /api/device/pull-official, pull-methods
-    ├── deploy.ts        ← POST /api/device/deploy-methods, deploy-classic
-    ├── rollback.ts      ← POST /api/device/rollback-methods, rollback-original, rollback-classic
-    └── backups.ts       ← GET /api/device/backups
+    ├── config.ts        ← CRUD /api/devices, /api/devices/:id, /api/devices/active, test-connection, setup-keys
+    ├── pull.ts          ← POST /api/devices/:id/pull-official, pull-methods
+    ├── deploy.ts        ← POST /api/devices/:id/deploy-methods, deploy-classic
+    ├── rollback.ts      ← POST /api/devices/:id/rollback-methods, rollback-original, rollback-classic
+    ├── backups.ts       ← GET /api/devices/:id/backups
+    ├── syncStatus.ts    ← POST /api/devices/:id/sync-status
+    └── removeAll.ts     ← POST /api/devices/:id/remove-all-preview, remove-all-execute
 ```
 
 ## Data flow
@@ -116,7 +121,7 @@ Custom templates use a separate `custom-registry.json` loaded independently by t
 Two pages:
 
 - **Templates** (`/`) — sidebar with source filter chips (Classic / Methods), category, orientation, and name search. Main area shows SVG canvas preview with Monaco JSON editor.
-- **Device & Sync** (`/device`) — SSH setup wizard, pull/deploy/rollback controls, backup/restore, device connection status.
+- **Device & Sync** (`/device`) — Multi-device management with tab selector, SSH connection/key setup, pull/deploy/rollback controls, sync status comparison, selective deploy, remove-all with backup, and backup/restore.
 
 ## Dev commands
 

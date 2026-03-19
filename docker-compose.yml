@@ -6,5 +6,7 @@ services:
     volumes:
       - remarkable-data:/data
 
+# Named volume persists across container rebuilds.
+# To fully reset (destroy all templates/backups): docker compose down -v
 volumes:
   remarkable-data:

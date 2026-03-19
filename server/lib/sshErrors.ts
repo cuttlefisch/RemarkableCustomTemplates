@@ -5,6 +5,7 @@
 export interface FriendlyError {
   message: string
   hint: string
+  rawError: string
 }
 
 const patterns: { test: RegExp; message: string; hint: string }[] = [
@@ -50,12 +51,13 @@ export function formatSshError(raw: string | Error): FriendlyError {
 
   for (const { test, message, hint } of patterns) {
     if (test.test(rawStr)) {
-      return { message, hint }
+      return { message, hint, rawError: rawStr }
     }
   }
 
   return {
     message: 'Connection error',
-    hint: `Check that your device is awake and connected. Raw: ${rawStr}`,
+    hint: 'Check that your device is awake and connected.',
+    rawError: rawStr,
   }
 }

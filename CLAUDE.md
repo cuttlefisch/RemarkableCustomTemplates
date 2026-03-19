@@ -48,17 +48,23 @@ server/
     export.ts        — GET /api/export-templates, /api/export-rm-methods
     backup.ts        — GET /api/backup, POST /api/restore
     device/
-      config.ts      — GET/POST /api/device/config, test-connection, setup-keys
-      pull.ts        — POST /api/device/pull-official, pull-methods
-      deploy.ts      — POST /api/device/deploy-methods, deploy-classic
-      rollback.ts    — POST /api/device/rollback-methods, rollback-original, rollback-classic
-      backups.ts     — GET /api/device/backups
+      config.ts      — CRUD /api/devices, /api/devices/:id, /api/devices/active, test-connection, setup-keys
+      pull.ts        — POST /api/devices/:id/pull-official, pull-methods
+      deploy.ts      — POST /api/devices/:id/deploy-methods, deploy-classic
+      rollback.ts    — POST /api/devices/:id/rollback-methods, rollback-original, rollback-classic
+      backups.ts     — GET /api/devices/:id/backups
+      syncStatus.ts  — POST /api/devices/:id/sync-status
+      removeAll.ts   — POST /api/devices/:id/remove-all-preview, remove-all-execute, GET backup download
   lib/
     pathSecurity.ts  — assertWithin() path traversal guard
     ssh.ts           — programmatic SSH via ssh2 (no ~/.ssh/config needed)
     sftp.ts          — SFTP file transfer helpers
     manifestUuids.ts — manifest UUID utilities (replaces Python script)
     buildMethodsRegistry.ts — build methods registry (replaces Python script)
+    deviceStore.ts   — multi-device JSON store with migration
+    deviceManifest.ts — read/write device manifest via SFTP
+    ndjsonStream.ts  — NDJSON streaming for long-running operations
+    sshErrors.ts     — SSH error formatting with user-friendly hints
 ```
 
 ### Data flow
@@ -107,7 +113,11 @@ The dev server merges `debug-registry.json` + `methods-registry.json` + official
 
 ### UI structure
 
-Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a sidebar listing all templates with source filter chips (Classic / Methods) that filter by `origin` / `isCustom`, plus category, orientation, and name search filters.
+Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a sidebar listing all templates with source filter chips (Classic / Methods) that filter by `origin` / `isCustom`, plus category, orientation, and name search filters. The Device page supports multi-device management with tab-based device selection, per-device SSH key setup, sync status comparison, selective deploy, and remove-all with backup.
+
+### Themes (`src/themes/`)
+
+10 themes (4 light, 6 dark) based on popular editor colorschemes (GitHub Light, One Light/Dark, Dracula, Gruvbox, Nord, Solarized, Tokyo Night). Each theme defines ~130 CSS custom properties plus a custom Monaco `IStandaloneThemeData` for the JSON editor. Theme selection persists via localStorage. Monaco `defineTheme` only accepts hex/hex8 color format — never use `rgba()` in `monacoTheme.colors`.
 
 ### Template files
 

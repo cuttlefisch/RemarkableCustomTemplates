@@ -7,6 +7,24 @@
 
 import { resolve } from 'node:path'
 
+export interface DevicePaths {
+  backupDir: string           // rm-methods-backups/<deviceId>/
+  deployedManifest: string    // rm-methods-backups/<deviceId>/.deployed-manifest
+  originalBackup: string      // rm-methods-backups/<deviceId>/.original
+  sshDir: string              // data/ssh/<deviceId>/
+}
+
+/** Resolve per-device paths for backups, manifests, and SSH keys. */
+export function resolveDevicePaths(config: ServerConfig, deviceId: string): DevicePaths {
+  const backupDir = resolve(config.rmMethodsBackupDir, deviceId)
+  return {
+    backupDir,
+    deployedManifest: resolve(backupDir, '.deployed-manifest'),
+    originalBackup: resolve(backupDir, '.original'),
+    sshDir: resolve(config.sshDir, deviceId),
+  }
+}
+
 export interface ServerConfig {
   /** Root directory for all data files */
   dataDir: string
@@ -28,6 +46,7 @@ export interface ServerConfig {
   rmMethodsBackupDir: string
   rmMethodsDeployedManifest: string
   rmMethodsOriginalBackup: string
+  appBackupsDir: string
   deviceConfigPath: string
   sshDir: string
 }
@@ -55,6 +74,7 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     rmMethodsBackupDir: resolve(dataDir, 'rm-methods-backups'),
     rmMethodsDeployedManifest: resolve(dataDir, 'rm-methods-backups/.deployed-manifest'),
     rmMethodsOriginalBackup: resolve(dataDir, 'rm-methods-backups/.original'),
+    appBackupsDir: resolve(dataDir, 'data/backups'),
     deviceConfigPath: resolve(dataDir, 'data/device-config.json'),
     sshDir: resolve(dataDir, 'data/ssh'),
   }

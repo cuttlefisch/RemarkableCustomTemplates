@@ -133,7 +133,7 @@ export function validateBackupContents(files: Record<string, Uint8Array>): Backu
     }
 
     if (!entry.rmMethodsId) {
-      warnings.push(`Entry "${entry.name}" is missing rmMethodsId — device sync may not work`)
+      warnings.push(`"${entry.name}" has no rmMethodsId yet — it will be assigned on first deploy`)
     }
   }
 

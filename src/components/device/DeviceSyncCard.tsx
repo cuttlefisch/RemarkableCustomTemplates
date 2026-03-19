@@ -1,11 +1,15 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { ErrorDetails } from './ErrorDetails'
+import { useBusy } from '../../hooks/useBusy'
 
 interface Props {
+  deviceId: string | null
+  deviceName: string
   configured: boolean
   onSyncComplete?: () => void
 }
 
-type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string; hint?: string }
+type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string; hint?: string; rawError?: string }
 
 interface ProgressState {
   phase: string
@@ -55,35 +59,44 @@ interface SyncStatusResponse {
   checkedAt: string
 }
 
-function useSyncStatus() {
+function useSyncStatus(deviceId: string | null) {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<SyncStatusResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; hint?: string; rawError?: string } | null>(null)
 
   const check = useCallback(async () => {
+    if (!deviceId) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/device/sync-status', { method: 'POST' })
-      const data = await res.json()
+      const res = await fetch(`/api/devices/${deviceId}/sync-status`, { method: 'POST' })
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
-        setError((data as { error: string }).error ?? `HTTP ${res.status}`)
+        const msg = (data.error as string) ?? `HTTP ${res.status}`
+        const rawError = data.rawError as string | undefined
+        console.error('[sync-status]', rawError ?? msg)
+        setError({ message: msg, hint: data.hint as string | undefined, rawError })
         setStatus(null)
       } else {
-        setStatus(data as SyncStatusResponse)
+        setStatus(data as unknown as SyncStatusResponse)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[sync-status]', msg)
+      setError({ message: msg, rawError: msg })
       setStatus(null)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [deviceId])
 
   const clear = useCallback(() => {
     setStatus(null)
     setError(null)
   }, [])
+
+  // Clear status when device changes
+  useEffect(() => { clear() }, [deviceId, clear])
 
   return { loading, status, error, check, clear }
 }
@@ -121,7 +134,7 @@ async function readNdjsonStream(
       } else if (event.type === 'done') {
         finalData = event
       } else if (event.type === 'error') {
-        throw { error: event.error as string, hint: event.hint as string | undefined }
+        throw { error: event.error as string, hint: event.hint as string | undefined, rawError: event.rawError as string | undefined }
       }
     }
   }
@@ -129,7 +142,7 @@ async function readNdjsonStream(
   return finalData
 }
 
-function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: () => void }) {
+function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: () => void; bodyFn?: () => Record<string, unknown> | undefined }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<OpResult | null>(null)
   const [progress, setProgress] = useState<ProgressState | null>(null)
@@ -140,7 +153,13 @@ function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: (
     setResult(null)
     setProgress(null)
     try {
-      const res = await fetch(url, { method: 'POST' })
+      const body = options?.bodyFn?.()
+      const fetchOptions: RequestInit = { method: 'POST' }
+      if (body) {
+        fetchOptions.headers = { 'Content-Type': 'application/json' }
+        fetchOptions.body = JSON.stringify(body)
+      }
+      const res = await fetch(url, fetchOptions)
       const contentType = res.headers.get('content-type') ?? ''
 
       let data: Record<string, unknown>
@@ -150,7 +169,10 @@ function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: (
         data = (await res.json()) as Record<string, unknown>
         if (!res.ok) {
           const hint = data.hint as string | undefined
-          setResult({ ok: false, error: (data.error as string) ?? `HTTP ${res.status}`, hint })
+          const rawError = data.rawError as string | undefined
+          const error = (data.error as string) ?? `HTTP ${res.status}`
+          console.error('[device-op]', url, rawError ?? error)
+          setResult({ ok: false, error, hint, rawError })
           return
         }
       }
@@ -168,10 +190,13 @@ function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: (
       options?.onSuccess?.()
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {
-        const streamErr = e as { error: string; hint?: string }
-        setResult({ ok: false, error: streamErr.error, hint: streamErr.hint })
+        const streamErr = e as { error: string; hint?: string; rawError?: string }
+        console.error('[device-op]', url, streamErr.rawError ?? streamErr.error)
+        setResult({ ok: false, error: streamErr.error, hint: streamErr.hint, rawError: streamErr.rawError })
       } else {
-        setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('[device-op]', url, msg)
+        setResult({ ok: false, error: msg, rawError: msg })
       }
     } finally {
       setLoading(false)
@@ -238,55 +263,61 @@ function OpButton({
       {op.loading && (
         <ProgressBar progress={op.progress} label={loadingLabel} />
       )}
-      {op.result && (
-        <div className={`device-op-result ${op.result.ok ? '' : 'error'}`}>
-          <p style={{ margin: 0 }}>{op.result.ok ? op.result.message : op.result.error}</p>
-          {!op.result.ok && op.result.hint && (
-            <p className="device-error-hint">{op.result.hint}</p>
-          )}
+      {op.result && !op.result.ok && (
+        <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} />
+      )}
+      {op.result?.ok && (
+        <div className="device-op-result">
+          <p style={{ margin: 0 }}>{op.result.message}</p>
         </div>
       )}
     </div>
   )
 }
 
-function useRemoveAll() {
+function useRemoveAll(deviceId: string | null) {
   const [phase, setPhase] = useState<RemoveAllPhase>('idle')
   const [preview, setPreview] = useState<RemoveAllPreview | null>(null)
   const [result, setResult] = useState<RemoveAllResult | null>(null)
-  const [errorMsg, setErrorMsg] = useState('')
+  const [errorInfo, setErrorInfo] = useState<{ message: string; hint?: string; rawError?: string } | null>(null)
   const [progress, setProgress] = useState<ProgressState | null>(null)
 
+  function setError(message: string, hint?: string, rawError?: string) {
+    console.error('[remove-all]', rawError ?? message)
+    setErrorInfo({ message, hint, rawError })
+    setPhase('error')
+  }
+
   const loadPreview = useCallback(async () => {
+    if (!deviceId) return
     setPhase('loading-preview')
-    setErrorMsg('')
+    setErrorInfo(null)
     try {
-      const res = await fetch('/api/device/remove-all-preview', { method: 'POST' })
-      const data = await res.json() as RemoveAllPreview & { hint?: string }
+      const res = await fetch(`/api/devices/${deviceId}/remove-all-preview`, { method: 'POST' })
+      const data = await res.json() as Record<string, unknown>
       if (!res.ok) {
-        setErrorMsg((data as unknown as { error: string }).error ?? `HTTP ${res.status}`)
-        setPhase('error')
+        setError((data.error as string) ?? `HTTP ${res.status}`, data.hint as string | undefined, data.rawError as string | undefined)
         return
       }
-      if (data.count === 0 && data.error) {
-        setErrorMsg(data.error)
-        setPhase('error')
+      const preview = data as unknown as RemoveAllPreview
+      if (preview.count === 0 && preview.error) {
+        setError(preview.error)
         return
       }
-      setPreview(data)
+      setPreview(preview)
       setPhase('preview')
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e))
-      setPhase('error')
+      setError(e instanceof Error ? e.message : String(e))
     }
-  }, [])
+  }, [deviceId])
 
   const execute = useCallback(async () => {
+    if (!deviceId) return
     setPhase('executing')
-    setErrorMsg('')
+    setErrorInfo(null)
     setProgress(null)
     try {
-      const res = await fetch('/api/device/remove-all-execute', { method: 'POST' })
+      const res = await fetch(`/api/devices/${deviceId}/remove-all-execute`, { method: 'POST' })
       const contentType = res.headers.get('content-type') ?? ''
 
       let data: Record<string, unknown>
@@ -295,8 +326,7 @@ function useRemoveAll() {
       } else {
         data = (await res.json()) as Record<string, unknown>
         if (!res.ok) {
-          setErrorMsg((data.error as string) ?? `HTTP ${res.status}`)
-          setPhase('error')
+          setError((data.error as string) ?? `HTTP ${res.status}`, data.hint as string | undefined, data.rawError as string | undefined)
           return
         }
       }
@@ -305,26 +335,72 @@ function useRemoveAll() {
       setPhase('done')
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {
-        setErrorMsg((e as { error: string }).error)
+        const streamErr = e as { error: string; hint?: string; rawError?: string }
+        setError(streamErr.error, streamErr.hint, streamErr.rawError)
       } else {
-        setErrorMsg(e instanceof Error ? e.message : String(e))
+        setError(e instanceof Error ? e.message : String(e))
       }
-      setPhase('error')
     } finally {
       setProgress(null)
     }
-  }, [])
+  }, [deviceId])
 
   const reset = useCallback(() => {
     setPhase('idle')
     setPreview(null)
     setResult(null)
-    setErrorMsg('')
+    setErrorInfo(null)
     setProgress(null)
   }, [])
 
-  return { phase, preview, result, errorMsg, progress, loadPreview, execute, reset }
+  return { phase, preview, result, errorInfo, progress, loadPreview, execute, reset }
 }
+
+// ---------------------------------------------------------------------------
+// Selective deploy
+// ---------------------------------------------------------------------------
+
+function useSelectiveDeploy() {
+  const [showSelector, setShowSelector] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  function toggleTemplate(uuid: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(uuid)) next.delete(uuid)
+      else next.add(uuid)
+      return next
+    })
+  }
+
+  function selectAll(uuids: string[]) {
+    setSelectedIds(new Set(uuids))
+  }
+
+  function deselectAll() {
+    setSelectedIds(new Set())
+  }
+
+  function reset() {
+    setShowSelector(false)
+    setSelectedIds(new Set())
+  }
+
+  return {
+    showSelector,
+    setShowSelector,
+    selectedIds,
+    toggleTemplate,
+    selectAll,
+    deselectAll,
+    reset,
+    getTemplateIds: () => showSelector ? Array.from(selectedIds) : undefined,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sync status UI
+// ---------------------------------------------------------------------------
 
 const SYNC_BADGE_LABELS: Record<SyncState, string> = {
   synced: 'Synced',
@@ -389,14 +465,17 @@ function ClassicSyncStatusSection({ classic }: { classic: ClassicSyncStatus | nu
   )
 }
 
-function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSyncStatus> }) {
+function SyncStatusSection({ syncStatus, autoRefreshed }: { syncStatus: ReturnType<typeof useSyncStatus>; autoRefreshed: boolean }) {
   const { loading, status, error, check } = syncStatus
 
   const allSynced = status && status.summary.total > 0 && status.summary.synced === status.summary.total
 
   return (
-    <div className="device-op-section">
-      <h3 className="device-op-section-title">Sync Status</h3>
+    <div className={`device-op-section${autoRefreshed ? ' sync-auto-refreshed' : ''}`}>
+      <h3 className="device-op-section-title">
+        Sync Status
+        {autoRefreshed && <span className="sync-auto-refreshed-badge">Updated</span>}
+      </h3>
       <p className="device-op-desc">Compare your local templates against what's deployed on the device.</p>
 
       <button
@@ -408,8 +487,8 @@ function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSy
       </button>
 
       {error && (
-        <div className="device-op-result error" style={{ marginTop: 8 }}>
-          <p style={{ margin: 0 }}>{error}</p>
+        <div style={{ marginTop: 8 }}>
+          <ErrorDetails error={error.message} hint={error.hint} rawError={error.rawError} />
         </div>
       )}
 
@@ -460,27 +539,194 @@ function SyncStatusSection({ syncStatus }: { syncStatus: ReturnType<typeof useSy
   )
 }
 
-export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
+// ---------------------------------------------------------------------------
+// Selective deploy template list
+// ---------------------------------------------------------------------------
+
+function SelectiveDeploySection({
+  syncStatus,
+  selective,
+}: {
+  syncStatus: ReturnType<typeof useSyncStatus>
+  selective: ReturnType<typeof useSelectiveDeploy>
+}) {
+  const templates = syncStatus.status?.templates ?? []
+  const deployableTemplates = templates.filter(t => t.state !== 'device-only')
+
+  // Auto-select all when sync data arrives while selector is open with nothing selected
+  const prevTemplateCount = useRef(0)
+  useEffect(() => {
+    if (selective.showSelector && deployableTemplates.length > 0 && prevTemplateCount.current === 0 && selective.selectedIds.size === 0) {
+      selective.selectAll(deployableTemplates.map(t => t.uuid))
+    }
+    prevTemplateCount.current = deployableTemplates.length
+  }, [deployableTemplates.length, selective])
+
+  if (!selective.showSelector) {
+    return (
+      <button
+        className="device-form-help-toggle"
+        onClick={() => {
+          selective.setShowSelector(true)
+          if (deployableTemplates.length > 0) {
+            // Pre-select all deployable templates
+            selective.selectAll(deployableTemplates.map(t => t.uuid))
+          } else if (!syncStatus.status && !syncStatus.loading) {
+            // No sync data yet — fetch it so the template list populates
+            syncStatus.check()
+          }
+        }}
+        style={{ marginTop: 4 }}
+        disabled={syncStatus.loading}
+      >
+        {syncStatus.loading ? 'Loading templates...' : 'Select specific templates to deploy'}
+      </button>
+    )
+  }
+
+  if (syncStatus.loading && deployableTemplates.length === 0) {
+    return (
+      <div className="selective-deploy" style={{ marginTop: 8 }}>
+        <ProgressBar progress={null} label="Checking sync status..." />
+        <button className="device-form-help-toggle" onClick={selective.reset} style={{ marginTop: 4 }}>Cancel</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="selective-deploy" style={{ marginTop: 8 }}>
+      <div className="selective-deploy-controls">
+        <button
+          className="device-form-help-toggle"
+          onClick={() => selective.selectAll(deployableTemplates.map(t => t.uuid))}
+        >
+          Select All
+        </button>
+        <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> | </span>
+        <button
+          className="device-form-help-toggle"
+          onClick={selective.deselectAll}
+        >
+          Deselect All
+        </button>
+        <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> | </span>
+        <button
+          className="device-form-help-toggle"
+          onClick={selective.reset}
+        >
+          Cancel
+        </button>
+      </div>
+
+      <div className="sync-status-list" style={{ marginTop: 6, maxHeight: 200 }}>
+        {deployableTemplates.map(t => (
+          <label key={t.uuid} className="sync-status-entry" style={{ cursor: 'pointer' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <input
+                type="checkbox"
+                checked={selective.selectedIds.has(t.uuid)}
+                onChange={() => selective.toggleTemplate(t.uuid)}
+              />
+              <span className="sync-status-name">{t.name}</span>
+            </span>
+            <SyncBadge state={t.state} />
+          </label>
+        ))}
+      </div>
+
+      {selective.selectedIds.size > 0 && (
+        <p className="device-card-hint" style={{ marginTop: 4 }}>
+          {selective.selectedIds.size} template{selective.selectedIds.size !== 1 ? 's' : ''} selected for deploy
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
   const [showPullHelp, setShowPullHelp] = useState(false)
-  const syncStatus = useSyncStatus()
-  const pullOfficial = useDeviceOp('/api/device/pull-official', { onSuccess: onSyncComplete })
-  const pullMethods = useDeviceOp('/api/device/pull-methods', { onSuccess: onSyncComplete })
-  const deployMethods = useDeviceOp('/api/device/deploy-methods')
-  const deployClassic = useDeviceOp('/api/device/deploy-classic')
+  const [autoRefreshed, setAutoRefreshed] = useState(false)
+  const autoRefreshTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const syncStatus = useSyncStatus(deviceId)
+  const selective = useSelectiveDeploy()
+
+  const syncCheckRef = useRef(syncStatus.check)
+  useEffect(() => { syncCheckRef.current = syncStatus.check }, [syncStatus.check])
+
+  // Cleanup timers on unmount
+  useEffect(() => () => clearTimeout(autoRefreshTimer.current), [])
+
+  const triggerAutoRefresh = useCallback(() => {
+    // Small delay so the user sees the op result first, then sync refreshes
+    setTimeout(() => {
+      syncCheckRef.current()
+      setAutoRefreshed(true)
+      clearTimeout(autoRefreshTimer.current)
+      autoRefreshTimer.current = setTimeout(() => setAutoRefreshed(false), 3000)
+    }, 500)
+    onSyncComplete?.()
+  }, [onSyncComplete])
+
+  const pullOfficial = useDeviceOp(
+    deviceId ? `/api/devices/${deviceId}/pull-official` : '',
+    { onSuccess: triggerAutoRefresh },
+  )
+  const pullMethods = useDeviceOp(
+    deviceId ? `/api/devices/${deviceId}/pull-methods` : '',
+    { onSuccess: triggerAutoRefresh },
+  )
+  const deployMethods = useDeviceOp(
+    deviceId ? `/api/devices/${deviceId}/deploy-methods` : '',
+    { onSuccess: triggerAutoRefresh, bodyFn: () => {
+      const ids = selective.getTemplateIds()
+      return ids ? { templateIds: ids } : undefined
+    }},
+  )
+  const deployClassic = useDeviceOp(
+    deviceId ? `/api/devices/${deviceId}/deploy-classic` : '',
+    { onSuccess: triggerAutoRefresh },
+  )
   const rollbackMethods = useDeviceOp(
-    '/api/device/rollback-methods',
-    { confirmMsg: 'Rollback to the most recent backup? This will restart the device UI.' },
+    deviceId ? `/api/devices/${deviceId}/rollback-methods` : '',
+    { confirmMsg: `Rollback ${deviceName} to the most recent backup? This will restart the device UI.`, onSuccess: triggerAutoRefresh },
   )
   const rollbackOriginal = useDeviceOp(
-    '/api/device/rollback-original',
-    { confirmMsg: 'Remove all custom templates from device? This will restart the device UI.' },
+    deviceId ? `/api/devices/${deviceId}/rollback-original` : '',
+    { confirmMsg: `Restore ${deviceName} to its original state? This will restart the device UI.`, onSuccess: triggerAutoRefresh },
   )
   const rollbackClassic = useDeviceOp(
-    '/api/device/rollback-classic',
-    { confirmMsg: 'Restore from the latest classic backup on device? This will restart the device UI.' },
+    deviceId ? `/api/devices/${deviceId}/rollback-classic` : '',
+    { confirmMsg: `Restore ${deviceName} from the latest classic backup? This will restart the device UI.`, onSuccess: triggerAutoRefresh },
   )
-  const removeAll = useRemoveAll()
+  const removeAll = useRemoveAll(deviceId)
+
+  // Prevent concurrent device operations
+  const anyOpRunning =
+    pullOfficial.loading || pullMethods.loading ||
+    deployMethods.loading || deployClassic.loading ||
+    rollbackMethods.loading || rollbackOriginal.loading || rollbackClassic.loading ||
+    removeAll.phase === 'executing' || removeAll.phase === 'loading-preview'
+
+  // Block page navigation while an operation is in flight
+  const { setBusy } = useBusy()
+  useEffect(() => {
+    setBusy(anyOpRunning)
+    return () => setBusy(false)
+  }, [anyOpRunning, setBusy])
+
+  // Auto-refresh sync status when removeAll completes
+  const prevRemovePhase = useRef(removeAll.phase)
+  useEffect(() => {
+    if (prevRemovePhase.current === 'executing' && removeAll.phase === 'done') {
+      triggerAutoRefresh()
+    }
+    prevRemovePhase.current = removeAll.phase
+  }, [removeAll.phase, triggerAutoRefresh])
 
   return (
     <section className="device-card">
@@ -506,11 +752,11 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
               </div>
             )}
 
-            <SyncStatusSection syncStatus={syncStatus} />
+            <SyncStatusSection syncStatus={syncStatus} autoRefreshed={autoRefreshed} />
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title">Pull from Device</h3>
-              <p className="device-op-desc">Download templates from your device to browse or use as a starting point for custom templates.</p>
+              <h3 className="device-op-section-title">Pull from {deviceName}</h3>
+              <p className="device-op-desc">Download templates from {deviceName} to browse or use as a starting point for custom templates.</p>
               <button
                 className="device-form-help-toggle"
                 onClick={() => setShowPullHelp(!showPullHelp)}
@@ -528,37 +774,48 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
               )}
               <div className="device-card-btn-row">
                 <OpButton
-                  label="Pull Methods Templates"
-                  loadingLabel="Pulling..."
+                  label={`Pull Methods from ${deviceName}`}
+                  loadingLabel={`Pulling from ${deviceName}...`}
                   op={pullMethods}
-                  title="Download methods templates (official + custom) from the device"
+                  disabled={anyOpRunning}
+                  title={`Download methods templates (official + custom) from ${deviceName}`}
                 />
                 <OpButton
-                  label="Pull Classic Templates"
-                  loadingLabel="Pulling..."
+                  label={`Pull Classic from ${deviceName}`}
+                  loadingLabel={`Pulling from ${deviceName}...`}
                   op={pullOfficial}
                   variant="secondary"
-                  title="Download classic templates from /usr/share/remarkable/templates/"
+                  disabled={anyOpRunning}
+                  title={`Download classic templates from ${deviceName}`}
                 />
               </div>
             </div>
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title">Deploy to Device</h3>
-              <p className="device-op-desc">Push your custom templates to the device. The device UI will restart.</p>
-              <div className="device-card-btn-row">
+              <h3 className="device-op-section-title">Deploy to {deviceName}</h3>
+              <p className="device-op-desc">Push your custom templates to {deviceName}. The device UI will restart.</p>
+
+              <SelectiveDeploySection syncStatus={syncStatus} selective={selective} />
+
+              <div className="device-card-btn-row" style={{ marginTop: 8 }}>
                 <OpButton
-                  label="Deploy via rm_methods"
-                  loadingLabel="Deploying..."
+                  label={selective.showSelector && selective.selectedIds.size > 0
+                    ? `Deploy ${selective.selectedIds.size} template${selective.selectedIds.size !== 1 ? 's' : ''} to ${deviceName}`
+                    : `Deploy to ${deviceName}`}
+                  loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployMethods}
-                  title="Build and push templates in methods format — syncs across paired devices"
+                  disabled={anyOpRunning || (selective.showSelector && selective.selectedIds.size === 0)}
+                  title={selective.showSelector && selective.selectedIds.size === 0
+                    ? 'Select at least one template to deploy'
+                    : `Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
                 />
                 <OpButton
-                  label="Deploy Classic"
-                  loadingLabel="Deploying..."
+                  label={`Classic Deploy to ${deviceName}`}
+                  loadingLabel={`Deploying to ${deviceName}...`}
                   op={deployClassic}
                   variant="secondary"
-                  title="Push classic templates to /usr/share/remarkable/templates/ — single device only, wiped on firmware updates"
+                  disabled={anyOpRunning}
+                  title={`Push classic templates to ${deviceName} — single device only, wiped on firmware updates`}
                 />
               </div>
               <p className="device-card-hint">
@@ -570,49 +827,53 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
             </div>
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title">Rollback</h3>
-              <p className="device-op-desc">Revert to a previous deployment if something goes wrong.</p>
+              <h3 className="device-op-section-title">Rollback {deviceName}</h3>
+              <p className="device-op-desc">Revert {deviceName} to a previous deployment if something goes wrong.</p>
               <div className="device-card-btn-row">
                 <OpButton
                   label="Rollback to Previous"
-                  loadingLabel="Rolling back..."
+                  loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackMethods}
                   variant="danger"
-                  title="Revert to the state before your last rm_methods deploy"
+                  disabled={anyOpRunning}
+                  title={`Revert ${deviceName} to the state before your last deploy`}
                 />
                 <OpButton
                   label="Rollback to Original"
-                  loadingLabel="Rolling back..."
+                  loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackOriginal}
                   variant="danger"
-                  title="Remove all custom methods templates from the device"
+                  disabled={anyOpRunning}
+                  title={`Restore ${deviceName} to its pre-app state`}
                 />
                 <OpButton
                   label="Rollback Classic"
-                  loadingLabel="Rolling back..."
+                  loadingLabel={`Rolling back ${deviceName}...`}
                   op={rollbackClassic}
                   variant="danger"
-                  title="Restore the most recent classic template backup on the device"
+                  disabled={anyOpRunning}
+                  title={`Restore ${deviceName} from the most recent classic template backup`}
                 />
               </div>
             </div>
 
             <div className="device-op-section">
-              <h3 className="device-op-section-title" style={{ color: '#c62828' }}>Danger Zone</h3>
-              <p className="device-op-desc">Remove all custom templates deployed via this app. Official reMarkable templates are preserved. A backup is created automatically before removal.</p>
+              <h3 className="device-op-section-title" style={{ color: 'var(--color-error-text)' }}>Danger Zone</h3>
+              <p className="device-op-desc">Remove all custom templates from {deviceName} deployed via this app. Official reMarkable templates are preserved. A backup is created automatically before removal.</p>
 
               {removeAll.phase === 'idle' && (
                 <button
                   className="device-card-btn device-card-btn-danger"
                   onClick={removeAll.loadPreview}
+                  disabled={anyOpRunning}
                 >
-                  Remove All Custom Templates from Device
+                  Remove All Custom Templates from {deviceName}
                 </button>
               )}
 
               {removeAll.phase === 'loading-preview' && (
                 <button className="device-card-btn device-card-btn-danger" disabled>
-                  Scanning device...
+                  Scanning {deviceName}...
                 </button>
               )}
 
@@ -660,10 +921,10 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
                       {removeAll.result.steps.map((s, i) => <li key={i}>{s}</li>)}
                     </ul>
                   )}
-                  {removeAll.result.backupFilename && (
+                  {removeAll.result.backupFilename && deviceId && (
                     <p style={{ margin: '8px 0 0', fontSize: 12 }}>
                       <a
-                        href={`/api/device/remove-all-backup/${removeAll.result.backupFilename}`}
+                        href={`/api/devices/${deviceId}/remove-all-backup/${removeAll.result.backupFilename}`}
                         download
                       >
                         Download backup ZIP
@@ -680,18 +941,17 @@ export function DeviceSyncCard({ configured, onSyncComplete }: Props) {
                 </div>
               )}
 
-              {removeAll.phase === 'error' && (
+              {removeAll.phase === 'error' && removeAll.errorInfo && (
                 <div>
-                  <div className="device-op-result error">
-                    <p style={{ margin: 0 }}>{removeAll.errorMsg}</p>
-                  </div>
-                  <button
-                    className="device-card-btn device-card-btn-secondary"
-                    onClick={removeAll.reset}
-                    style={{ marginTop: 8 }}
-                  >
-                    Dismiss
-                  </button>
+                  <ErrorDetails error={removeAll.errorInfo.message} hint={removeAll.errorInfo.hint} rawError={removeAll.errorInfo.rawError}>
+                    <button
+                      className="device-card-btn device-card-btn-secondary"
+                      onClick={removeAll.reset}
+                      style={{ marginTop: 8 }}
+                    >
+                      Dismiss
+                    </button>
+                  </ErrorDetails>
                 </div>
               )}
             </div>

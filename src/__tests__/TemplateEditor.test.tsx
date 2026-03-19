@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { TemplateEditor } from '../components/TemplateEditor'
+import { ThemeContext } from '../hooks/useTheme'
+import { themes } from '../themes/themes'
 
 // ─── Mock Monaco ───────────────────────────────────────────────────────────────
 // Monaco requires a real browser DOM and worker threads. We replace it with a
@@ -39,7 +41,12 @@ function renderEditor(overrides: Partial<React.ComponentProps<typeof TemplateEdi
     onClose: vi.fn(),
     existingNames: [],
   }
-  return render(<TemplateEditor {...defaults} {...overrides} />)
+  const themeCtx = { theme: themes[0], setTheme: vi.fn(), themes }
+  return render(
+    <ThemeContext.Provider value={themeCtx}>
+      <TemplateEditor {...defaults} {...overrides} />
+    </ThemeContext.Provider>
+  )
 }
 
 // ─── Toolbar rendering ────────────────────────────────────────────────────────
