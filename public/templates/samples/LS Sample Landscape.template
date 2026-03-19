@@ -1,0 +1,50 @@
+{
+  "name": "Sample Landscape",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "landscape",
+  "constants": [
+    { "margin": 80 },
+    { "cols": 4 },
+    { "colW": "(templateWidth - margin * 2) / cols" },
+    { "headerH": 60 },
+    { "bodyY": "margin + headerH" }
+  ],
+  "items": [
+    {
+      "id": "title",
+      "type": "text",
+      "text": "Landscape Columns",
+      "fontSize": 36,
+      "position": { "x": "templateWidth / 2 - textWidth / 2", "y": "margin + 20" }
+    },
+    {
+      "id": "header-line",
+      "type": "path",
+      "data": ["M", "margin", "bodyY", "L", "templateWidth - margin", "bodyY"],
+      "strokeColor": "#000000",
+      "strokeWidth": 2
+    },
+    {
+      "id": "columns",
+      "type": "group",
+      "boundingBox": {
+        "x": "margin",
+        "y": "bodyY",
+        "width": "colW",
+        "height": "templateHeight - margin - bodyY"
+      },
+      "repeat": { "columns": "cols" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", "parentWidth", 0, "L", "parentWidth", "parentHeight"],
+          "strokeColor": "#cccccc",
+          "strokeWidth": 1
+        }
+      ]
+    }
+  ]
+}

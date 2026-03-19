@@ -57,6 +57,7 @@ export function DevicePage() {
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}
           onError={setError}
+          onRefreshRegistry={refreshRegistry}
         />
         <DeviceBackupsCard
           deviceId={deviceId}

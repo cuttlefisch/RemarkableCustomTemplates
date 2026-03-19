@@ -1,0 +1,42 @@
+{
+  "name": "Sample Grid",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "portrait",
+  "constants": [
+    { "margin": 60 },
+    { "cellW": "(templateWidth - margin * 2) / 12" },
+    { "cellH": "cellW" },
+    { "gridY": "margin + 80" }
+  ],
+  "items": [
+    {
+      "id": "title",
+      "type": "text",
+      "text": "Grid Template",
+      "fontSize": 36,
+      "position": { "x": "templateWidth / 2 - textWidth / 2", "y": "margin + 20" }
+    },
+    {
+      "id": "grid",
+      "type": "group",
+      "boundingBox": {
+        "x": "margin",
+        "y": "gridY",
+        "width": "cellW",
+        "height": "cellH"
+      },
+      "repeat": { "columns": 12, "rows": "down" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 0, 0, "L", "parentWidth", 0, "L", "parentWidth", "parentHeight", "L", 0, "parentHeight", "Z"],
+          "strokeColor": "#cccccc",
+          "strokeWidth": 0.5
+        }
+      ]
+    }
+  ]
+}

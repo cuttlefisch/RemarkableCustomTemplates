@@ -41,6 +41,9 @@ export interface ServerConfig {
   debugRegistry: string
   methodsDir: string
   methodsRegistry: string
+  samplesDir: string
+  samplesRegistry: string
+  hiddenSamplesPath: string
   classicDistDir: string
   rmMethodsDistDir: string
   rmMethodsBackupDir: string
@@ -69,6 +72,9 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     debugRegistry: resolve(templatesDir, 'debug/debug-registry.json'),
     methodsDir: resolve(templatesDir, 'methods'),
     methodsRegistry: resolve(templatesDir, 'methods/methods-registry.json'),
+    samplesDir: resolve(templatesDir, 'samples'),
+    samplesRegistry: resolve(templatesDir, 'samples/samples-registry.json'),
+    hiddenSamplesPath: resolve(templatesDir, 'custom/hidden-samples.json'),
     classicDistDir: resolve(dataDir, 'dist-deploy'),
     rmMethodsDistDir: resolve(dataDir, 'rm-methods-dist'),
     rmMethodsBackupDir: resolve(dataDir, 'rm-methods-backups'),

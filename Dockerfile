@@ -36,11 +36,14 @@ COPY --from=builder /app/src/types ./src/types
 
 # Create data directory
 RUN mkdir -p /data/public/templates/custom /data/public/templates/methods \
-    /data/public/templates/debug \
+    /data/public/templates/debug /data/public/templates/samples \
     /data/rm-methods-dist /data/rm-methods-backups /data/data/ssh
 
 # Copy debug templates into the data directory (where the server expects them)
 COPY --from=builder /app/public/templates/debug /data/public/templates/debug
+
+# Copy sample templates into the data directory
+COPY --from=builder /app/public/templates/samples /data/public/templates/samples
 
 ENV NODE_ENV=production
 ENV DATA_DIR=/data

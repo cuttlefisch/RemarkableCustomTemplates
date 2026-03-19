@@ -1,0 +1,56 @@
+{
+  "name": "Sample Lined",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "portrait",
+  "constants": [
+    { "margin": 100 },
+    { "lineSpacing": 40 },
+    { "headerY": 120 },
+    { "linesY": "headerY + 60" }
+  ],
+  "items": [
+    {
+      "id": "title",
+      "type": "text",
+      "text": "Lined Template",
+      "fontSize": 32,
+      "position": { "x": "margin", "y": "headerY" }
+    },
+    {
+      "id": "header-line",
+      "type": "path",
+      "data": ["M", "margin", "linesY - 10", "L", "templateWidth - margin", "linesY - 10"],
+      "strokeColor": "#000000",
+      "strokeWidth": 2
+    },
+    {
+      "id": "lines",
+      "type": "group",
+      "boundingBox": {
+        "x": "margin",
+        "y": "linesY",
+        "width": "templateWidth - margin * 2",
+        "height": "lineSpacing"
+      },
+      "repeat": { "rows": "down" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 0, "parentHeight", "L", "parentWidth", "parentHeight"],
+          "strokeColor": "#aaaaaa",
+          "strokeWidth": 1
+        }
+      ]
+    },
+    {
+      "id": "left-margin",
+      "type": "path",
+      "data": ["M", "margin - 20", "linesY", "L", "margin - 20", "templateHeight - margin"],
+      "strokeColor": "#cc0000",
+      "strokeWidth": 1
+    }
+  ]
+}

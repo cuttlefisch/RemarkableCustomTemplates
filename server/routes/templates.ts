@@ -54,6 +54,24 @@ export default function templateRoutes(app: FastifyInstance, config: ServerConfi
       return reply.type(ct).send(readFileSync(debugPath))
     }
 
+    // Samples templates
+    const samplesMatch = filename.match(/^samples\/(.+)$/)
+    if (samplesMatch) {
+      const samplesFile = samplesMatch[1]
+      let samplesPath: string
+      try {
+        samplesPath = resolve(config.samplesDir, samplesFile)
+        assertWithin(config.samplesDir, samplesPath)
+      } catch {
+        return reply.status(400).send({ error: 'Invalid path' })
+      }
+      if (!existsSync(samplesPath)) {
+        return reply.status(404).send({ error: 'Not found' })
+      }
+      const ct = samplesFile.endsWith('.json') ? 'application/json' : 'application/octet-stream'
+      return reply.type(ct).send(readFileSync(samplesPath))
+    }
+
     // Methods templates
     const methodsMatch = filename.match(/^methods\/(.+)$/)
     if (methodsMatch) {
@@ -77,6 +95,17 @@ export default function templateRoutes(app: FastifyInstance, config: ServerConfi
       const debugTemplates = existsSync(config.debugRegistry)
         ? (JSON.parse(readFileSync(config.debugRegistry, 'utf8')) as { templates: unknown[] }).templates
         : []
+
+      // Samples: load registry and filter out hidden entries
+      let samplesTemplates: unknown[] = []
+      if (existsSync(config.samplesRegistry)) {
+        const allSamples = (JSON.parse(readFileSync(config.samplesRegistry, 'utf8')) as { templates: Array<{ filename: string }> }).templates
+        const hidden: string[] = existsSync(config.hiddenSamplesPath)
+          ? JSON.parse(readFileSync(config.hiddenSamplesPath, 'utf8'))
+          : []
+        samplesTemplates = allSamples.filter(t => !hidden.includes(t.filename))
+      }
+
       const methodsTemplates = existsSync(config.methodsRegistry)
         ? (JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as { templates: unknown[] }).templates
         : []
@@ -85,7 +114,7 @@ export default function templateRoutes(app: FastifyInstance, config: ServerConfi
       const officialTemplates = hasOfficial
         ? (JSON.parse(readFileSync(officialPath, 'utf8')) as { templates: unknown[] }).templates
         : []
-      const allTemplates = [...debugTemplates, ...methodsTemplates, ...officialTemplates]
+      const allTemplates = [...debugTemplates, ...samplesTemplates, ...methodsTemplates, ...officialTemplates]
       if (allTemplates.length > 0 || hasOfficial) {
         return reply.send({ templates: allTemplates })
       }

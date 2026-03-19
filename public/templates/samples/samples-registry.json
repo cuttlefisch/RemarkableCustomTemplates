@@ -1,0 +1,33 @@
+{
+  "templates": [
+    {
+      "name": "Sample Grid",
+      "filename": "samples/P Sample Grid",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0001-4000-8000-000000000001"
+    },
+    {
+      "name": "Sample Lined",
+      "filename": "samples/P Sample Lined",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0002-4000-8000-000000000002"
+    },
+    {
+      "name": "Sample Dotted",
+      "filename": "samples/P Sample Dotted",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0003-4000-8000-000000000003"
+    },
+    {
+      "name": "Sample Landscape",
+      "filename": "samples/LS Sample Landscape",
+      "iconCode": "\ue9d8",
+      "landscape": true,
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0004-4000-8000-000000000004"
+    }
+  ]
+}
