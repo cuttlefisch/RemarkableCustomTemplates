@@ -161,7 +161,7 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
         client = await connect(deviceConfig)
         const [modelResult, fwResult] = await Promise.all([
           exec(client, 'cat /sys/devices/soc0/machine'),
-          exec(client, 'grep REMARKABLE_RELEASE_VERSION /etc/os-release | cut -d= -f2'),
+          exec(client, 'grep -E "^IMG_VERSION=" /etc/os-release | cut -d= -f2 | tr -d \'"\''),
         ])
 
         const now = new Date().toISOString()

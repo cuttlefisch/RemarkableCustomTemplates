@@ -106,11 +106,11 @@ function handleExec(
       return
     }
 
-    if (command.includes('grep REMARKABLE_RELEASE_VERSION')) {
+    if (command.includes('IMG_VERSION') && command.includes('/etc/os-release')) {
       const localPath = mapPath(fsRoot, '/etc/os-release')
       if (existsSync(localPath)) {
         const content = readFileSync(localPath, 'utf8')
-        const match = content.match(/REMARKABLE_RELEASE_VERSION=(.+)/)
+        const match = content.match(/IMG_VERSION="?([^"\n]+)"?/)
         if (match) {
           channel.write(match[1].trim())
           channel.exit(0)

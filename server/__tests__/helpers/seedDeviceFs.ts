@@ -13,7 +13,7 @@ export function seedBaseFs(fsRoot: string) {
   mkdirSync(resolve(fsRoot, 'sys/devices/soc0'), { recursive: true })
   writeFileSync(resolve(fsRoot, 'sys/devices/soc0/machine'), 'reMarkable 2.0\n')
   mkdirSync(resolve(fsRoot, 'etc'), { recursive: true })
-  writeFileSync(resolve(fsRoot, 'etc/os-release'), 'REMARKABLE_RELEASE_VERSION=3.15.4.2\n')
+  writeFileSync(resolve(fsRoot, 'etc/os-release'), 'ID=codex\nIMG_VERSION="3.26.0.68"\n')
 }
 
 /** Write UUID triplets (.template, .metadata, .content) + device manifest to the xochitl dir. */
