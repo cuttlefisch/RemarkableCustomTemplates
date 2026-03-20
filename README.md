@@ -4,6 +4,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen)](https://nodejs.org/)
+[![reMarkable Firmware](https://img.shields.io/badge/reMarkable_firmware-3.26.0.68-green)](https://support.remarkable.com/s/article/Software-release)
 
 A browser-based template editor for reMarkable tablets. Browse, preview, create, and deploy custom page templates — no command line needed.
 
@@ -71,6 +72,8 @@ This app focuses on native `.template` files — the format that gives you the b
 Navigate to the **Device & Sync** page in the app. The setup wizard handles SSH key generation, connection testing, and device configuration — all in your browser. You can manage multiple devices — each with its own connection, sync status, and deploy history.
 
 ![Sync status](docs/images/sync-status.png)
+
+**Multi-device users:** Pages render at the resolution of the device that created them — see [Page resolution and cross-device sync](docs/device-sync.md#page-resolution-and-cross-device-sync) for details.
 
 For CLI workflows and manual SSH setup, see [Device Sync](docs/device-sync.md).
 

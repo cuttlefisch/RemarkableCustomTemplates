@@ -8,6 +8,7 @@ export interface DeviceData {
   authMethod: 'password' | 'key'
   lastConnected?: string
   deviceModel?: string
+  firmwareVersion?: string
 }
 
 export interface UseDevices {
@@ -38,7 +39,7 @@ export interface UseDevices {
     sshPort: number
     authMethod: string
     sshPassword?: string
-  }) => Promise<{ ok: boolean; deviceModel?: string; error?: string; hint?: string; rawError?: string }>
+  }) => Promise<{ ok: boolean; deviceModel?: string; firmwareVersion?: string; error?: string; hint?: string; rawError?: string }>
   setupKeys: (id: string) => Promise<{ ok: boolean; error?: string; hint?: string; rawError?: string }>
 }
 
@@ -180,6 +181,7 @@ export function useDevices(): UseDevices {
       const data = (await res.json()) as {
         ok?: boolean
         deviceModel?: string
+        firmwareVersion?: string
         lastConnected?: string
         error?: string
         hint?: string
@@ -190,7 +192,7 @@ export function useDevices(): UseDevices {
         return { ok: false, error: data.error ?? `HTTP ${res.status}`, hint: data.hint, rawError: data.rawError }
       }
       await refresh()
-      return { ok: true, deviceModel: data.deviceModel }
+      return { ok: true, deviceModel: data.deviceModel, firmwareVersion: data.firmwareVersion }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[test-connection]', msg)

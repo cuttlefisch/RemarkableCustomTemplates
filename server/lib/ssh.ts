@@ -16,6 +16,7 @@ export interface DeviceConfig {
   privateKeyPath?: string        // data/ssh/<deviceId>/id_remarkable
   lastConnected?: string         // ISO timestamp
   deviceModel?: string           // cached from test-connection
+  firmwareVersion?: string       // cached from test-connection
 }
 
 export interface ExecResult {

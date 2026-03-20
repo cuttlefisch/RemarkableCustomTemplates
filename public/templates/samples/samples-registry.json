@@ -1,0 +1,54 @@
+{
+  "templates": [
+    {
+      "name": "Sample Grid",
+      "filename": "samples/P Sample Grid",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0001-4000-8000-000000000001"
+    },
+    {
+      "name": "Sample Lined",
+      "filename": "samples/P Sample Lined",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0002-4000-8000-000000000002"
+    },
+    {
+      "name": "Sample Dotted",
+      "filename": "samples/P Sample Dotted",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0003-4000-8000-000000000003"
+    },
+    {
+      "name": "Sample Landscape",
+      "filename": "samples/LS Sample Landscape",
+      "iconCode": "\ue9d8",
+      "landscape": true,
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0004-4000-8000-000000000004"
+    },
+    {
+      "name": "Sample Pride College Ruled",
+      "filename": "samples/P Sample Pride College Ruled",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-0005-4000-8000-000000000005"
+    },
+    {
+      "name": "Sample Golden Spiral",
+      "filename": "samples/P Sample Golden Spiral",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-000b-4000-8000-00000000000b"
+    },
+    {
+      "name": "Sample Color Cornell",
+      "filename": "samples/P Sample Color Cornell",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-000c-4000-8000-00000000000c"
+    }
+  ]
+}

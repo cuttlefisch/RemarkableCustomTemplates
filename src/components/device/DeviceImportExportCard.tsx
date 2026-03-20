@@ -1,15 +1,41 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface Props {
   officialTemplatesAvailable: boolean | null
   onStatus: (msg: string) => void
   onError: (msg: string) => void
+  onRefreshRegistry?: () => void
 }
 
-export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, onError }: Props) {
+export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, onError, onRefreshRegistry }: Props) {
   const [importing, setImporting] = useState(false)
   const [showImportHelp, setShowImportHelp] = useState(false)
   const officialInputRef = useRef<HTMLInputElement>(null)
+  const [hiddenSamplesCount, setHiddenSamplesCount] = useState<number | null>(null)
+  const [restoringAllSamples, setRestoringAllSamples] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/sample-templates/hidden')
+      .then(r => r.json())
+      .then((data: { hidden: string[] }) => setHiddenSamplesCount(data.hidden.length))
+      .catch(() => setHiddenSamplesCount(0))
+  }, [])
+
+  async function handleRestoreAllSamples() {
+    setRestoringAllSamples(true)
+    try {
+      const res = await fetch('/api/sample-templates/restore-all', { method: 'POST' })
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      const data = await res.json() as { restored: number }
+      setHiddenSamplesCount(0)
+      onStatus(`Restored ${data.restored} sample template(s).`)
+      onRefreshRegistry?.()
+    } catch (e) {
+      onError(`Failed to restore samples: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setRestoringAllSamples(false)
+    }
+  }
 
   async function handleImportOfficial(files: FileList) {
     setImporting(true)
@@ -158,6 +184,31 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
           </div>
           {officialTemplatesAvailable !== true && (
             <p className="device-card-hint">Import classic templates first to enable ZIP export.</p>
+          )}
+        </div>
+
+        <div className="device-op-section">
+          <h3 className="device-op-section-title">Sample Templates</h3>
+          <p className="device-card-desc">
+            Sample templates showcase the template format's features. Hidden samples can be restored here.
+          </p>
+          {hiddenSamplesCount === null ? (
+            <p className="device-card-hint">Loading...</p>
+          ) : hiddenSamplesCount === 0 ? (
+            <p className="device-card-hint">All sample templates are visible.</p>
+          ) : (
+            <>
+              <p className="device-card-hint">
+                {hiddenSamplesCount} sample template{hiddenSamplesCount !== 1 ? 's' : ''} hidden.
+              </p>
+              <button
+                className="device-card-btn"
+                onClick={handleRestoreAllSamples}
+                disabled={restoringAllSamples}
+              >
+                {restoringAllSamples ? 'Restoring...' : 'Restore All Samples'}
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -1,0 +1,49 @@
+{
+  "name": "Sample Dotted",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "portrait",
+  "constants": [
+    { "dotSpacing": 40 },
+    { "dotR": 1.5 }
+  ],
+  "items": [
+    {
+      "id": "dots",
+      "type": "group",
+      "boundingBox": {
+        "x": "paperOriginX",
+        "y": "paperOriginY",
+        "width": "dotSpacing",
+        "height": "dotSpacing"
+      },
+      "repeat": { "columns": "infinite", "rows": "infinite" },
+      "children": [
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 2 + dotR", "parentHeight / 2",
+            "C", "parentWidth / 2 + dotR", "parentHeight / 2 + dotR * 0.552",
+                 "parentWidth / 2 + dotR * 0.552", "parentHeight / 2 + dotR",
+                 "parentWidth / 2", "parentHeight / 2 + dotR",
+            "C", "parentWidth / 2 - dotR * 0.552", "parentHeight / 2 + dotR",
+                 "parentWidth / 2 - dotR", "parentHeight / 2 + dotR * 0.552",
+                 "parentWidth / 2 - dotR", "parentHeight / 2",
+            "C", "parentWidth / 2 - dotR", "parentHeight / 2 - dotR * 0.552",
+                 "parentWidth / 2 - dotR * 0.552", "parentHeight / 2 - dotR",
+                 "parentWidth / 2", "parentHeight / 2 - dotR",
+            "C", "parentWidth / 2 + dotR * 0.552", "parentHeight / 2 - dotR",
+                 "parentWidth / 2 + dotR", "parentHeight / 2 - dotR * 0.552",
+                 "parentWidth / 2 + dotR", "parentHeight / 2",
+            "Z"
+          ],
+          "fillColor": "#888888",
+          "strokeColor": "#888888",
+          "strokeWidth": 0.5
+        }
+      ]
+    }
+  ]
+}

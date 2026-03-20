@@ -33,7 +33,7 @@ interface TemplatesPageProps {
 }
 
 export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
-  const { registry, setCustomRegistry, loadingRegistry, officialTemplatesAvailable, mergedRegistry, existingCustomNames } = useRegistryContext()
+  const { registry, setCustomRegistry, loadingRegistry, officialTemplatesAvailable, mergedRegistry, existingCustomNames, refreshRegistry } = useRegistryContext()
 
   const [selected, setSelected] = useState<TemplateRegistryEntry | null>(null)
   const [template, setTemplate] = useState<RemarkableTemplate | null>(null)
@@ -56,7 +56,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOrientation, setFilterOrientation] = useState<'all' | 'portrait' | 'landscape'>('all')
-  const [filterSource, setFilterSource] = useState<'methods' | 'official' | null>(null)
+  const [filterSource, setFilterSource] = useState<'methods' | 'official' | 'samples' | null>(null)
 
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -118,7 +118,8 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       if (filterOrientation === 'portrait' && t.landscape === true) return false
       if (filterOrientation === 'landscape' && t.landscape !== true) return false
       if (filterSource === 'methods' && !t.origin) return false
-      if (filterSource === 'official' && (t.isCustom || t.origin === 'custom-methods' || t.categories.includes('Debug'))) return false
+      if (filterSource === 'samples' && !t.categories.includes('Samples')) return false
+      if (filterSource === 'official' && (t.isCustom || t.origin === 'custom-methods' || t.categories.includes('Debug') || t.categories.includes('Samples'))) return false
       return true
     })
     .sort((a, b) => {
@@ -216,6 +217,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       const res = await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       setCustomRegistry(prev => removeEntry(prev, selected.filename))
+      refreshRegistry()
       setSelected(null)
       setTemplate(null)
       setEditorOpen(false)
@@ -294,6 +296,24 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       setSelected(entry)
     } catch (e) {
       setSidebarError(`Failed to import: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  async function handleHideSample(filename: string) {
+    try {
+      const res = await fetch('/api/sample-templates/hide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename }),
+      })
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      refreshRegistry()
+      if (selected?.filename === filename) {
+        setSelected(null)
+        setTemplate(null)
+      }
+    } catch (e) {
+      setSidebarError(`Failed to hide: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -416,6 +436,10 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
               className={`cat-chip source-chip${filterSource === 'methods' ? ' active' : ''}`}
               onClick={() => setFilterSource(filterSource === 'methods' ? null : 'methods')}
             >Methods</button>
+            <button
+              className={`cat-chip source-chip${filterSource === 'samples' ? ' active' : ''}`}
+              onClick={() => setFilterSource(filterSource === 'samples' ? null : 'samples')}
+            >Samples</button>
           </div>
           {allCategories.length > 0 && (
             <div className="cat-chips">
@@ -447,19 +471,33 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             </div>
           )}
           {filteredTemplates.map(entry => (
-            <button
+            <div
               key={`${entry.filename}::${entry.landscape ?? false}`}
               className={`template-btn${selected?.filename === entry.filename && selected?.landscape === entry.landscape ? ' selected' : ''}`}
               onClick={() => setSelected(entry)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(entry) }}
             >
               <span className="template-btn-name">{entry.name}</span>
-              <span
-                className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}
-                title={`${entry.landscape ? 'Landscape' : 'Portrait'}${entry.isCustom ? ' (Custom)' : entry.origin === 'official-methods' ? ' (Methods)' : entry.origin === 'custom-methods' ? ' (Methods — custom)' : ' (Classic)'}`}
-              >
-                {entry.landscape ? 'LS' : 'P'}
+              <span className="template-btn-right">
+                {entry.categories.includes('Samples') && !entry.isCustom && (
+                  <button
+                    className="sample-hide-btn"
+                    title="Hide this sample"
+                    onClick={e => { e.stopPropagation(); handleHideSample(entry.filename) }}
+                  >
+                    ×
+                  </button>
+                )}
+                <span
+                  className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}
+                  title={`${entry.landscape ? 'Landscape' : 'Portrait'}${entry.isCustom ? ' (Custom)' : entry.origin === 'official-methods' ? ' (Methods)' : entry.origin === 'custom-methods' ? ' (Methods — custom)' : entry.categories.includes('Samples') ? ' (Sample)' : ' (Classic)'}`}
+                >
+                  {entry.landscape ? 'LS' : 'P'}
+                </span>
               </span>
-            </button>
+            </div>
           ))}
         </div>
       </aside>
@@ -510,6 +548,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                   {selected.landscape ? 'Landscape' : 'Portrait'}
                 </button>
                 {selected.isCustom && <span className="tag tag-custom">Custom</span>}
+                {selected.categories.includes('Samples') && <span className="tag tag-methods">Sample</span>}
                 {selected.origin === 'official-methods' && <span className="tag tag-methods">Methods</span>}
                 {selected.origin === 'custom-methods' && <span className="tag tag-methods">Methods (custom)</span>}
                 {(template?.categories ?? selected.categories)

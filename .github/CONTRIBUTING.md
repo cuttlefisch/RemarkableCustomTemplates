@@ -65,6 +65,11 @@ Add tests to the appropriate file in `src/__tests__/`. Each test file mirrors a 
 | `server/__tests__/pathSecurity.test.ts` | `server/lib/pathSecurity.ts` |
 | `server/__tests__/manifestUuids.test.ts` | `server/lib/manifestUuids.ts` |
 | `server/__tests__/buildMethodsRegistry.test.ts` | `server/lib/buildMethodsRegistry.ts` |
+| `server/__tests__/deviceIntegration.test.ts` | `server/routes/device/*.ts` (SSH integration) |
+| `server/__tests__/deviceRoutes.test.ts` | `server/routes/device/config.ts` (CRUD, no SSH) |
+| `server/__tests__/sampleTemplates.test.ts` | `server/routes/sampleTemplates.ts` |
+| `server/__tests__/removeAll.test.ts` | `server/routes/device/removeAll.ts` |
+| `server/__tests__/syncStatus.test.ts` | `server/lib/syncStatus.ts` |
 
 ## Adding a Template File
 
@@ -75,10 +80,65 @@ To add a template manually (advanced):
 2. Add an entry to `public/templates/custom/custom-registry.json` with `"isCustom": true` and a `"custom/"` filename prefix
 3. Restart the dev server to pick up the new file
 
+## When to rebuild Docker
+
+In dev mode (`pnpm dev`), Vite hot-reloads frontend changes and proxies API requests to Fastify. Most changes are reflected immediately. Docker bakes everything into the image at build time, so certain changes require `docker compose down -v && docker compose up --build -d`:
+
+| What changed | Dev server | Docker rebuild needed? |
+|---|---|---|
+| Frontend code (`src/`) | Hot reload | Yes — `vite build` output is baked into image |
+| Server routes (`server/routes/`) | Restart `pnpm server:dev` | Yes — server code is copied at build |
+| Server libs (`server/lib/`) | Restart `pnpm server:dev` | Yes |
+| Template files (`public/templates/`) | Immediate (Vite static) | Yes — copied into image + pristine backup |
+| Registry JSON files | Immediate | Yes |
+| `Dockerfile` or `docker-compose.yml` | N/A | Yes |
+| Test files (`__tests__/`) | N/A | No — tests aren't in the image |
+| Docs (`docs/`, `README.md`) | N/A | No |
+| `package.json` / `pnpm-lock.yaml` | `pnpm install` | Yes — dependencies are installed at build |
+
+> **Tip:** Always use `docker compose down -v` (with `-v`) to remove stale volumes. Without it, the persistent data volume may mask changes to default template files or registries.
+
 ## Pull Request Checklist
 
-- [ ] All tests pass: `pnpm test`
-- [ ] Lint is clean: `pnpm lint`
-- [ ] Build succeeds: `pnpm build`
+### Automated checks (must all pass)
+
+- [ ] `pnpm test` — all tests pass (includes SSH integration tests)
+- [ ] `pnpm lint` — no errors (warnings acceptable if pre-existing)
+- [ ] `pnpm build` — clean TypeScript compilation + Vite build
+
+### Manual verification
+
+**Template rendering** (if template format, parser, expression, or renderer changed):
+- [ ] Preview a template at each device resolution (RM 1/2, Paper Pro, Paper Pro Move)
+- [ ] Verify expression-based templates adapt to different resolutions
+- [ ] Test color inversion (foreground/background swap)
+
+**Template CRUD** (if custom template routes, registry, or editor changed):
+- [ ] Create a new template from scratch
+- [ ] Fork an existing template (Save as New)
+- [ ] Edit and save changes to a custom template
+- [ ] Delete a custom template
+- [ ] Verify registry updates correctly
+
+**Device operations** (if device routes, SSH, SFTP, or manifest logic changed):
+- [ ] Test connection to a device (or verify integration tests cover the change)
+- [ ] Deploy templates (methods format) and verify they appear on device
+- [ ] Check sync status accuracy
+- [ ] Rollback to previous state
+
+**Sample templates** (if sample template files or hide/restore logic changed):
+- [ ] Verify sample templates appear in sidebar
+- [ ] Hide a sample template, verify it disappears
+- [ ] Restore hidden templates
+
+**Docker** (if Dockerfile, docker-compose, or server entry point changed):
+- [ ] `docker compose up --build -d` — container starts and serves on port 3000
+- [ ] Verify `/templates/templates.json` returns valid registry
+- [ ] Verify `/api/devices` returns valid response
+- [ ] `docker compose down -v` cleans up
+
+### Code quality
+
 - [ ] New behavior has a test
 - [ ] No test mocks that could mask real failures
+- [ ] No hardcoded device IPs, passwords, or secrets

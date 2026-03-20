@@ -170,6 +170,14 @@ Four format choices make this work:
 > [!CAUTION]
 > **This is reverse-engineered behavior.** Everything described above is based on examining official rm_methods template files on the device — it is not documented or supported by reMarkable. The `"com.remarkable.methods"` source value, UUID file naming convention, and three-file triplet structure all come from observation of firmware 3.x behavior. reMarkable could change any of these in a firmware update, which could break sync, cause templates to disappear, or require format changes. Test on a single device first after any firmware update.
 
+### Page resolution and cross-device sync
+
+When a page is created on a reMarkable device, it is stamped with the creating device's screen dimensions (`templateWidth` × `templateHeight`). These dimensions are stored in the page data and persist permanently — even after the notebook syncs to a different device model.
+
+For example, a page created on a Paper Pro (1620×2160) retains those dimensions when viewed on a Paper Pro Move (954×1696). The template is not re-rendered at the viewing device's native resolution. This is expected behavior and does not require any correction during deployment.
+
+Templates that use expression-based scaling (e.g. `"templateWidth / 1404 * 60"`) adapt naturally because expressions are evaluated at page creation time using the creating device's constants.
+
 ---
 
 ## Alternative: Classic deploy (no sync)

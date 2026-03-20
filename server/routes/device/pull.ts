@@ -125,13 +125,22 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         debugUuids = debugReg.templates.map(e => e.rmMethodsId).filter((id): id is string => !!id)
       } catch { /* no debug registry */ }
 
+      // Read sample registry UUIDs so they're excluded from methods registry
+      let sampleUuids: string[] = []
+      try {
+        const samplesReg = JSON.parse(readFileSync(config.samplesRegistry, 'utf8')) as {
+          templates: Array<{ rmMethodsId?: string }>
+        }
+        sampleUuids = samplesReg.templates.map(e => e.rmMethodsId).filter((id): id is string => !!id)
+      } catch { /* no samples registry */ }
+
       const result2 = await buildMethodsRegistry({
         tempDir: tmpDir,
         outputDir: config.methodsDir,
         manifestPath,
         deployedManifestPath,
         deviceManifestUuids,
-        debugUuids,
+        debugUuids: [...debugUuids, ...sampleUuids],
       })
 
       const imported = importCustomMethodsEntries(config)

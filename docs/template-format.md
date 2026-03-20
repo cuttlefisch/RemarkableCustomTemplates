@@ -87,6 +87,14 @@ Expressions support arithmetic (`+`, `-`, `*`, `/`), comparisons (`>`, `<`, `>=`
 
 `paperOriginX = templateWidth/2 − templateHeight/2`
 
+### Multi-device page resolution
+
+When a notebook page is created on a reMarkable device, it is stamped with that device's screen dimensions (`templateWidth` × `templateHeight`). These dimensions are stored in the page data and **persist permanently** — even when the notebook syncs to a different device model via the cloud.
+
+This means a page created on a Paper Pro (1620×2160) will render at Paper Pro dimensions when viewed on a Paper Pro Move (954×1696), and vice versa. The template is not re-rendered at the viewing device's native resolution. This is normal device behavior, not a bug.
+
+**Design tip:** Templates that use expression-based scaling (see below) adapt naturally across devices because the expressions are evaluated at page creation time using the creating device's constants. If you want a template to look good regardless of which device creates the page, use relative expressions rather than hardcoded pixel values.
+
 Templates that need to adapt layout across devices can use either approach:
 - **Ternary branching** — `"templateWidth > mobileMaxWidth ? bigValue : smallValue"` (common in official templates)
 - **Scale factors** — `{ "scaleX": "templateWidth / 1404" }`, then `{ "margin": "scaleX * 60" }` etc. (proportional scaling, fits all devices without branching)

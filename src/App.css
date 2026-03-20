@@ -339,6 +339,38 @@ body {
   white-space: nowrap;
 }
 
+.template-btn-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sample-hide-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: var(--color-sidebar-item-hover-bg);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.template-btn:hover .sample-hide-btn {
+  display: flex;
+}
+
+.sample-hide-btn:hover {
+  background: var(--color-danger-bg, #fee);
+  color: var(--color-danger-text, #c00);
+}
+
 /* ── Orientation badge ────────────────────────────────────────────────────── */
 
 .orient-badge {

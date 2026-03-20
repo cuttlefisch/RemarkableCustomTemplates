@@ -1,0 +1,137 @@
+{
+  "name": "Sample Pride College Ruled",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "portrait",
+  "constants": [
+    { "mobileMaxWidth": 1000 },
+    { "mobileMarginX": 438 },
+    { "marginX": "templateWidth > mobileMaxWidth ? 332 : mobileMarginX" },
+    { "lineSpacing": 32 },
+    { "linesY": 60 },
+    { "bandW": 12 },
+    { "stripeW": "bandW * 6" },
+    { "stripeX": "templateWidth / 2 - templateHeight / 2 + marginX - stripeW" },
+    { "lineColor": "#bbbbbb" },
+    { "redBand": "#cc2222" },
+    { "orangeBand": "#dd7722" },
+    { "yellowBand": "#ccaa22" },
+    { "greenBand": "#228833" },
+    { "blueBand": "#2244bb" },
+    { "purpleBand": "#772288" }
+  ],
+  "items": [
+    {
+      "id": "pride-stripe",
+      "type": "group",
+      "boundingBox": {
+        "x": "stripeX",
+        "y": 0,
+        "width": "stripeW",
+        "height": "templateHeight"
+      },
+      "repeat": { "rows": "down" },
+      "children": [
+        {
+          "type": "path",
+          "data": [
+            "M", 0, 0,
+            "L", "parentWidth / 6", 0,
+            "L", "parentWidth / 6", "parentHeight",
+            "L", 0, "parentHeight",
+            "Z"
+          ],
+          "fillColor": "redBand",
+          "strokeColor": "redBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6", 0,
+            "L", "parentWidth / 6 * 2", 0,
+            "L", "parentWidth / 6 * 2", "parentHeight",
+            "L", "parentWidth / 6", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "orangeBand",
+          "strokeColor": "orangeBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 2", 0,
+            "L", "parentWidth / 6 * 3", 0,
+            "L", "parentWidth / 6 * 3", "parentHeight",
+            "L", "parentWidth / 6 * 2", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "yellowBand",
+          "strokeColor": "yellowBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 3", 0,
+            "L", "parentWidth / 6 * 4", 0,
+            "L", "parentWidth / 6 * 4", "parentHeight",
+            "L", "parentWidth / 6 * 3", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "greenBand",
+          "strokeColor": "greenBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 4", 0,
+            "L", "parentWidth / 6 * 5", 0,
+            "L", "parentWidth / 6 * 5", "parentHeight",
+            "L", "parentWidth / 6 * 4", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "blueBand",
+          "strokeColor": "blueBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 5", 0,
+            "L", "parentWidth", 0,
+            "L", "parentWidth", "parentHeight",
+            "L", "parentWidth / 6 * 5", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "purpleBand",
+          "strokeColor": "purpleBand",
+          "strokeWidth": 0
+        }
+      ]
+    },
+    {
+      "id": "lines",
+      "type": "group",
+      "boundingBox": {
+        "x": "stripeX + stripeW + 14",
+        "y": "linesY",
+        "width": "templateHeight - marginX - 14",
+        "height": "lineSpacing"
+      },
+      "repeat": { "rows": "down" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 0, "parentHeight", "L", "parentWidth", "parentHeight"],
+          "strokeColor": "lineColor",
+          "strokeWidth": 0.5
+        }
+      ]
+    }
+  ]
+}
