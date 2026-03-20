@@ -80,6 +80,24 @@ To add a template manually (advanced):
 2. Add an entry to `public/templates/custom/custom-registry.json` with `"isCustom": true` and a `"custom/"` filename prefix
 3. Restart the dev server to pick up the new file
 
+## When to rebuild Docker
+
+In dev mode (`pnpm dev`), Vite hot-reloads frontend changes and proxies API requests to Fastify. Most changes are reflected immediately. Docker bakes everything into the image at build time, so certain changes require `docker compose down -v && docker compose up --build -d`:
+
+| What changed | Dev server | Docker rebuild needed? |
+|---|---|---|
+| Frontend code (`src/`) | Hot reload | Yes — `vite build` output is baked into image |
+| Server routes (`server/routes/`) | Restart `pnpm server:dev` | Yes — server code is copied at build |
+| Server libs (`server/lib/`) | Restart `pnpm server:dev` | Yes |
+| Template files (`public/templates/`) | Immediate (Vite static) | Yes — copied into image + pristine backup |
+| Registry JSON files | Immediate | Yes |
+| `Dockerfile` or `docker-compose.yml` | N/A | Yes |
+| Test files (`__tests__/`) | N/A | No — tests aren't in the image |
+| Docs (`docs/`, `README.md`) | N/A | No |
+| `package.json` / `pnpm-lock.yaml` | `pnpm install` | Yes — dependencies are installed at build |
+
+> **Tip:** Always use `docker compose down -v` (with `-v`) to remove stale volumes. Without it, the persistent data volume may mask changes to default template files or registries.
+
 ## Pull Request Checklist
 
 ### Automated checks (must all pass)

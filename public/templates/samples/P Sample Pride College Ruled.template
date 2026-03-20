@@ -13,7 +13,7 @@
     { "linesY": 60 },
     { "bandW": 12 },
     { "stripeW": "bandW * 6" },
-    { "stripeX": "templateWidth / 2 - templateHeight / 2 + marginX" },
+    { "stripeX": "templateWidth / 2 - templateHeight / 2 + marginX - stripeW" },
     { "lineColor": "#bbbbbb" },
     { "redBand": "#cc2222" },
     { "orangeBand": "#dd7722" },
@@ -32,6 +32,7 @@
         "width": "stripeW",
         "height": "templateHeight"
       },
+      "repeat": { "rows": "down" },
       "children": [
         {
           "type": "path",
@@ -117,9 +118,9 @@
       "id": "lines",
       "type": "group",
       "boundingBox": {
-        "x": "stripeX + stripeW + 10",
+        "x": "stripeX + stripeW + 14",
         "y": "linesY",
-        "width": "templateHeight - marginX - stripeW - 10",
+        "width": "templateHeight - marginX - 14",
         "height": "lineSpacing"
       },
       "repeat": { "rows": "down" },
