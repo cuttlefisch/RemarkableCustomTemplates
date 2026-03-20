@@ -113,11 +113,35 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
       const filePath = resolve(config.customDir, `${filename}.template`)
       assertWithin(config.customDir, filePath)
       if (existsSync(filePath)) unlinkSync(filePath)
+
+      // Capture rmMethodsId before removing from custom registry
       const registry = readRegistry(config)
+      const deletedEntry = (registry.templates as Array<{ filename: string; rmMethodsId?: string }>).find(
+        e => e.filename === `custom/${filename}`,
+      )
+      const rmMethodsId = deletedEntry?.rmMethodsId
+
       registry.templates = (registry.templates as Array<{ filename: string }>).filter(
         e => e.filename !== `custom/${filename}`,
       )
       writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
+
+      // Clean up methods-registry and methods template file
+      if (rmMethodsId && existsSync(config.methodsRegistry)) {
+        try {
+          const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8')) as {
+            templates: { rmMethodsId?: string }[]
+          }
+          methodsReg.templates = methodsReg.templates.filter(
+            e => e.rmMethodsId !== rmMethodsId,
+          )
+          writeFileSync(config.methodsRegistry, JSON.stringify(methodsReg, null, 2), 'utf8')
+        } catch { /* no methods registry */ }
+
+        const methodsFile = resolve(config.methodsDir, `${rmMethodsId}.template`)
+        if (existsSync(methodsFile)) unlinkSync(methodsFile)
+      }
+
       return reply.send({ ok: true })
     } catch (e) {
       return reply.status(400).send({ error: String(e) })

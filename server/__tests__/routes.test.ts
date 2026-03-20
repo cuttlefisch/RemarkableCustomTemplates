@@ -163,6 +163,36 @@ describe('server routes', () => {
   })
 
   describe('DELETE /api/custom-templates/:slug', () => {
+    it('deletes a custom template and cleans up methods-registry', async () => {
+      const uuid = 'test-uuid-1234'
+      // Seed custom registry with rmMethodsId
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [{ name: 'Test', filename: 'custom/P Test', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], rmMethodsId: uuid }],
+      }))
+      // Seed methods registry with matching entry
+      writeFileSync(config.methodsRegistry, JSON.stringify({
+        templates: [{ name: 'Test', filename: `methods/${uuid}`, iconCode: '\ue9d8', landscape: false, categories: ['Custom'], origin: 'custom-methods', rmMethodsId: uuid }],
+      }))
+      // Create both template files
+      writeFileSync(resolve(config.customDir, 'P Test.template'), '{"name":"Test"}')
+      writeFileSync(resolve(config.methodsDir, `${uuid}.template`), '{"name":"Test"}')
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'DELETE', url: '/api/custom-templates/P Test' })
+      expect(res.statusCode).toBe(200)
+
+      // Custom registry cleaned
+      const customReg = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(customReg.templates).toHaveLength(0)
+      // Methods registry cleaned
+      const methodsReg = JSON.parse(readFileSync(config.methodsRegistry, 'utf8'))
+      expect(methodsReg.templates).toHaveLength(0)
+      // Both template files removed
+      expect(existsSync(resolve(config.customDir, 'P Test.template'))).toBe(false)
+      expect(existsSync(resolve(config.methodsDir, `${uuid}.template`))).toBe(false)
+      await app.close()
+    })
+
     it('deletes a custom template', async () => {
       // Setup
       writeFileSync(resolve(config.customDir, 'P Test.template'), '{"name":"Test"}')

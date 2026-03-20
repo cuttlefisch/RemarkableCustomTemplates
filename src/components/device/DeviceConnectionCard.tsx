@@ -17,7 +17,7 @@ export function DeviceConnectionCard({ devicesState }: Props) {
   const [formPort, setFormPort] = useState(22)
   const [formPassword, setFormPassword] = useState('')
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; deviceModel?: string; error?: string; hint?: string; rawError?: string } | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; deviceModel?: string; firmwareVersion?: string; error?: string; hint?: string; rawError?: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [settingUpKeys, setSettingUpKeys] = useState(false)
   const [keyResult, setKeyResult] = useState<{ ok: boolean; error?: string; hint?: string; rawError?: string } | null>(null)
@@ -214,6 +214,9 @@ export function DeviceConnectionCard({ devicesState }: Props) {
             </span>
             {activeDevice.deviceModel && (
               <span className="device-connection-detail">{activeDevice.deviceModel}</span>
+            )}
+            {activeDevice.firmwareVersion && (
+              <span className="device-connection-detail">fw {activeDevice.firmwareVersion}</span>
             )}
             <span className="device-connection-badge">
               {activeDevice.authMethod === 'key' ? 'SSH Key' : 'Password'}

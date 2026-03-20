@@ -58,6 +58,7 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
         privateKeyPath: body.privateKeyPath,
         lastConnected: body.lastConnected,
         deviceModel: body.deviceModel,
+        firmwareVersion: body.firmwareVersion,
       }
       writeDevice(config.deviceConfigPath, device)
 
@@ -158,21 +159,27 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       let client: Awaited<ReturnType<typeof connect>> | null = null
       try {
         client = await connect(deviceConfig)
-        const result = await exec(client, 'cat /sys/devices/soc0/machine')
+        const [modelResult, fwResult] = await Promise.all([
+          exec(client, 'cat /sys/devices/soc0/machine'),
+          exec(client, 'grep REMARKABLE_RELEASE_VERSION /etc/os-release | cut -d= -f2'),
+        ])
 
         const now = new Date().toISOString()
-        const deviceModel = result.stdout.trim()
+        const deviceModel = modelResult.stdout.trim()
+        const firmwareVersion = fwResult.stdout.trim() || undefined
 
         // Update cached info on the saved device
         if (savedConfig) {
           savedConfig.lastConnected = now
           savedConfig.deviceModel = deviceModel
+          savedConfig.firmwareVersion = firmwareVersion
           writeDevice(config.deviceConfigPath, savedConfig)
         }
 
         return reply.send({
           ok: true,
           deviceModel,
+          firmwareVersion,
           lastConnected: now,
         })
       } finally {

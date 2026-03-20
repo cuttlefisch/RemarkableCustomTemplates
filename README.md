@@ -73,6 +73,8 @@ Navigate to the **Device & Sync** page in the app. The setup wizard handles SSH 
 
 ![Sync status](docs/images/sync-status.png)
 
+**Multi-device users:** Pages render at the resolution of the device that created them — see [Page resolution and cross-device sync](docs/device-sync.md#page-resolution-and-cross-device-sync) for details.
+
 For CLI workflows and manual SSH setup, see [Device Sync](docs/device-sync.md).
 
 ## Documentation

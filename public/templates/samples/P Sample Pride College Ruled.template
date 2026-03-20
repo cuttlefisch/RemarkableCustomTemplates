@@ -6,12 +6,14 @@
   "categories": ["Samples"],
   "orientation": "portrait",
   "constants": [
-    { "margin": "templateWidth * 0.07" },
+    { "mobileMaxWidth": 1000 },
+    { "mobileMarginX": 438 },
+    { "marginX": "templateWidth > mobileMaxWidth ? 332 : mobileMarginX" },
     { "lineSpacing": 32 },
     { "linesY": 60 },
-    { "bandW": "templateWidth * 0.008" },
+    { "bandW": 12 },
     { "stripeW": "bandW * 6" },
-    { "bandX": "margin - stripeW - bandW" },
+    { "stripeX": "templateWidth / 2 - templateHeight / 2 + marginX" },
     { "lineColor": "#bbbbbb" },
     { "redBand": "#cc2222" },
     { "orangeBand": "#dd7722" },
@@ -22,12 +24,102 @@
   ],
   "items": [
     {
+      "id": "pride-stripe",
+      "type": "group",
+      "boundingBox": {
+        "x": "stripeX",
+        "y": 0,
+        "width": "stripeW",
+        "height": "templateHeight"
+      },
+      "children": [
+        {
+          "type": "path",
+          "data": [
+            "M", 0, 0,
+            "L", "parentWidth / 6", 0,
+            "L", "parentWidth / 6", "parentHeight",
+            "L", 0, "parentHeight",
+            "Z"
+          ],
+          "fillColor": "redBand",
+          "strokeColor": "redBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6", 0,
+            "L", "parentWidth / 6 * 2", 0,
+            "L", "parentWidth / 6 * 2", "parentHeight",
+            "L", "parentWidth / 6", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "orangeBand",
+          "strokeColor": "orangeBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 2", 0,
+            "L", "parentWidth / 6 * 3", 0,
+            "L", "parentWidth / 6 * 3", "parentHeight",
+            "L", "parentWidth / 6 * 2", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "yellowBand",
+          "strokeColor": "yellowBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 3", 0,
+            "L", "parentWidth / 6 * 4", 0,
+            "L", "parentWidth / 6 * 4", "parentHeight",
+            "L", "parentWidth / 6 * 3", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "greenBand",
+          "strokeColor": "greenBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 4", 0,
+            "L", "parentWidth / 6 * 5", 0,
+            "L", "parentWidth / 6 * 5", "parentHeight",
+            "L", "parentWidth / 6 * 4", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "blueBand",
+          "strokeColor": "blueBand",
+          "strokeWidth": 0
+        },
+        {
+          "type": "path",
+          "data": [
+            "M", "parentWidth / 6 * 5", 0,
+            "L", "parentWidth", 0,
+            "L", "parentWidth", "parentHeight",
+            "L", "parentWidth / 6 * 5", "parentHeight",
+            "Z"
+          ],
+          "fillColor": "purpleBand",
+          "strokeColor": "purpleBand",
+          "strokeWidth": 0
+        }
+      ]
+    },
+    {
       "id": "lines",
       "type": "group",
       "boundingBox": {
-        "x": "margin",
+        "x": "stripeX + stripeW + 10",
         "y": "linesY",
-        "width": "templateWidth - margin * 2",
+        "width": "templateHeight - marginX - stripeW - 10",
         "height": "lineSpacing"
       },
       "repeat": { "rows": "down" },
@@ -39,90 +131,6 @@
           "strokeWidth": 0.5
         }
       ]
-    },
-    {
-      "id": "band-red",
-      "type": "path",
-      "data": [
-        "M", "bandX", 0,
-        "L", "bandX + bandW", 0,
-        "L", "bandX + bandW", "templateHeight",
-        "L", "bandX", "templateHeight",
-        "Z"
-      ],
-      "fillColor": "redBand",
-      "strokeColor": "redBand",
-      "strokeWidth": 0
-    },
-    {
-      "id": "band-orange",
-      "type": "path",
-      "data": [
-        "M", "bandX + bandW", 0,
-        "L", "bandX + bandW * 2", 0,
-        "L", "bandX + bandW * 2", "templateHeight",
-        "L", "bandX + bandW", "templateHeight",
-        "Z"
-      ],
-      "fillColor": "orangeBand",
-      "strokeColor": "orangeBand",
-      "strokeWidth": 0
-    },
-    {
-      "id": "band-yellow",
-      "type": "path",
-      "data": [
-        "M", "bandX + bandW * 2", 0,
-        "L", "bandX + bandW * 3", 0,
-        "L", "bandX + bandW * 3", "templateHeight",
-        "L", "bandX + bandW * 2", "templateHeight",
-        "Z"
-      ],
-      "fillColor": "yellowBand",
-      "strokeColor": "yellowBand",
-      "strokeWidth": 0
-    },
-    {
-      "id": "band-green",
-      "type": "path",
-      "data": [
-        "M", "bandX + bandW * 3", 0,
-        "L", "bandX + bandW * 4", 0,
-        "L", "bandX + bandW * 4", "templateHeight",
-        "L", "bandX + bandW * 3", "templateHeight",
-        "Z"
-      ],
-      "fillColor": "greenBand",
-      "strokeColor": "greenBand",
-      "strokeWidth": 0
-    },
-    {
-      "id": "band-blue",
-      "type": "path",
-      "data": [
-        "M", "bandX + bandW * 4", 0,
-        "L", "bandX + bandW * 5", 0,
-        "L", "bandX + bandW * 5", "templateHeight",
-        "L", "bandX + bandW * 4", "templateHeight",
-        "Z"
-      ],
-      "fillColor": "blueBand",
-      "strokeColor": "blueBand",
-      "strokeWidth": 0
-    },
-    {
-      "id": "band-purple",
-      "type": "path",
-      "data": [
-        "M", "bandX + bandW * 5", 0,
-        "L", "bandX + bandW * 6", 0,
-        "L", "bandX + bandW * 6", "templateHeight",
-        "L", "bandX + bandW * 5", "templateHeight",
-        "Z"
-      ],
-      "fillColor": "purpleBand",
-      "strokeColor": "purpleBand",
-      "strokeWidth": 0
     }
   ]
 }

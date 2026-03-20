@@ -1,0 +1,164 @@
+{
+  "name": "Sample Color Cornell",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": ["Samples"],
+  "orientation": "portrait",
+  "constants": [
+    { "mobileMaxWidth": 1000 },
+    { "margin": 40 },
+    { "headerH": 80 },
+    { "summaryH": 260 },
+    { "cueRatio": "templateWidth > mobileMaxWidth ? 0.3 : 0.32" },
+    { "cueW": "(templateWidth - margin * 2) * cueRatio" },
+    { "dividerX": "margin + cueW" },
+    { "notesX": "dividerX + 1" },
+    { "notesW": "templateWidth - margin - notesX" },
+    { "bodyTop": "margin + headerH" },
+    { "summaryTop": "templateHeight - margin - summaryH" },
+    { "lineSpacing": 34 },
+    { "cueLineSpacing": "lineSpacing * 2" },
+    { "noteLineCount": "(summaryTop - bodyTop) / lineSpacing - 1" },
+    { "cueLineCount": "(summaryTop - bodyTop) / cueLineSpacing - 1" },
+
+    { "headerBg": "#d5e8d4" },
+    { "cueBg": "#dae8fc" },
+    { "summaryBg": "#fff2cc" },
+    { "borderColor": "#4a5568" },
+    { "dividerColor": "#718096" },
+    { "noteLineColor": "#a0aec0" },
+    { "cueLineColor": "#90cdf4" }
+  ],
+  "items": [
+    {
+      "id": "header-bg",
+      "type": "path",
+      "data": [
+        "M", "margin", "margin",
+        "L", "templateWidth - margin", "margin",
+        "L", "templateWidth - margin", "bodyTop",
+        "L", "margin", "bodyTop",
+        "Z"
+      ],
+      "fillColor": "headerBg",
+      "strokeColor": "borderColor",
+      "strokeWidth": 1
+    },
+    {
+      "id": "cue-bg",
+      "type": "path",
+      "data": [
+        "M", "margin", "bodyTop",
+        "L", "dividerX", "bodyTop",
+        "L", "dividerX", "summaryTop",
+        "L", "margin", "summaryTop",
+        "Z"
+      ],
+      "fillColor": "cueBg",
+      "strokeColor": "borderColor",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "summary-bg",
+      "type": "path",
+      "data": [
+        "M", "margin", "summaryTop",
+        "L", "templateWidth - margin", "summaryTop",
+        "L", "templateWidth - margin", "templateHeight - margin",
+        "L", "margin", "templateHeight - margin",
+        "Z"
+      ],
+      "fillColor": "summaryBg",
+      "strokeColor": "borderColor",
+      "strokeWidth": 1
+    },
+    {
+      "id": "divider",
+      "type": "path",
+      "data": [
+        "M", "dividerX", "bodyTop",
+        "L", "dividerX", "summaryTop"
+      ],
+      "strokeColor": "dividerColor",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "note-lines",
+      "type": "group",
+      "boundingBox": {
+        "x": "notesX",
+        "y": "bodyTop + lineSpacing",
+        "width": "notesW",
+        "height": "lineSpacing"
+      },
+      "repeat": { "rows": "noteLineCount" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 8, "parentHeight", "L", "parentWidth - 8", "parentHeight"],
+          "strokeColor": "noteLineColor",
+          "strokeWidth": 0.5
+        }
+      ]
+    },
+    {
+      "id": "cue-lines",
+      "type": "group",
+      "boundingBox": {
+        "x": "margin",
+        "y": "bodyTop + cueLineSpacing",
+        "width": "cueW",
+        "height": "cueLineSpacing"
+      },
+      "repeat": { "rows": "cueLineCount" },
+      "children": [
+        {
+          "type": "path",
+          "data": ["M", 12, "parentHeight", "L", "parentWidth - 12", "parentHeight"],
+          "strokeColor": "cueLineColor",
+          "strokeWidth": 0.3
+        }
+      ]
+    },
+    {
+      "id": "outer-border",
+      "type": "path",
+      "data": [
+        "M", "margin", "margin",
+        "L", "templateWidth - margin", "margin",
+        "L", "templateWidth - margin", "templateHeight - margin",
+        "L", "margin", "templateHeight - margin",
+        "Z"
+      ],
+      "strokeColor": "borderColor",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "grid-left-marker",
+      "type": "path",
+      "data": [
+        "M", "paperOriginX", 0,
+        "L", "paperOriginX + 8", 0,
+        "L", "paperOriginX + 8", "templateHeight",
+        "L", "paperOriginX", "templateHeight",
+        "Z"
+      ],
+      "fillColor": "#fc8181",
+      "strokeWidth": 0
+    },
+    {
+      "id": "viewport-left-marker",
+      "type": "path",
+      "data": [
+        "M", 0, 0,
+        "L", 8, 0,
+        "L", 8, "templateHeight",
+        "L", 0, "templateHeight",
+        "Z"
+      ],
+      "fillColor": "#68d391",
+      "strokeWidth": 0
+    }
+  ]
+}

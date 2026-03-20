@@ -1,0 +1,2674 @@
+{
+  "name": "Calibration",
+  "author": "remarkable-templates",
+  "templateVersion": "1.0.0",
+  "formatVersion": 1,
+  "categories": [
+    "Debug"
+  ],
+  "orientation": "portrait",
+  "constants": [],
+  "items": [
+    {
+      "id": "border",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        0,
+        "L",
+        "templateWidth",
+        0,
+        "L",
+        "templateWidth",
+        "templateHeight",
+        "L",
+        0,
+        "templateHeight",
+        "Z"
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 3
+    },
+    {
+      "id": "center-cross-h",
+      "type": "path",
+      "data": [
+        "M",
+        "templateWidth / 2 - 40",
+        "templateHeight / 2",
+        "L",
+        "templateWidth / 2 + 40",
+        "templateHeight / 2"
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 2
+    },
+    {
+      "id": "center-cross-v",
+      "type": "path",
+      "data": [
+        "M",
+        "templateWidth / 2",
+        "templateHeight / 2 - 40",
+        "L",
+        "templateWidth / 2",
+        "templateHeight / 2 + 40"
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 2
+    },
+    {
+      "id": "hmajor-0",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        0,
+        "L",
+        2200,
+        0
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-25",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        25,
+        "L",
+        2200,
+        25
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-50",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        50,
+        "L",
+        2200,
+        50
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-75",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        75,
+        "L",
+        2200,
+        75
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-100",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        100,
+        "L",
+        2200,
+        100
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-125",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        125,
+        "L",
+        2200,
+        125
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-150",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        150,
+        "L",
+        2200,
+        150
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-175",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        175,
+        "L",
+        2200,
+        175
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-200",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        200,
+        "L",
+        2200,
+        200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-225",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        225,
+        "L",
+        2200,
+        225
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-250",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        250,
+        "L",
+        2200,
+        250
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-275",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        275,
+        "L",
+        2200,
+        275
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-300",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        300,
+        "L",
+        2200,
+        300
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-325",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        325,
+        "L",
+        2200,
+        325
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-350",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        350,
+        "L",
+        2200,
+        350
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-375",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        375,
+        "L",
+        2200,
+        375
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-400",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        400,
+        "L",
+        2200,
+        400
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-425",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        425,
+        "L",
+        2200,
+        425
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-450",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        450,
+        "L",
+        2200,
+        450
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-475",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        475,
+        "L",
+        2200,
+        475
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-500",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        500,
+        "L",
+        2200,
+        500
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-525",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        525,
+        "L",
+        2200,
+        525
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-550",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        550,
+        "L",
+        2200,
+        550
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-575",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        575,
+        "L",
+        2200,
+        575
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-600",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        600,
+        "L",
+        2200,
+        600
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-625",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        625,
+        "L",
+        2200,
+        625
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-650",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        650,
+        "L",
+        2200,
+        650
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-675",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        675,
+        "L",
+        2200,
+        675
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-700",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        700,
+        "L",
+        2200,
+        700
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-725",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        725,
+        "L",
+        2200,
+        725
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-750",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        750,
+        "L",
+        2200,
+        750
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-775",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        775,
+        "L",
+        2200,
+        775
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-800",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        800,
+        "L",
+        2200,
+        800
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-825",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        825,
+        "L",
+        2200,
+        825
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-850",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        850,
+        "L",
+        2200,
+        850
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-875",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        875,
+        "L",
+        2200,
+        875
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-900",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        900,
+        "L",
+        2200,
+        900
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-925",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        925,
+        "L",
+        2200,
+        925
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-950",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        950,
+        "L",
+        2200,
+        950
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-975",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        975,
+        "L",
+        2200,
+        975
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-1000",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1000,
+        "L",
+        2200,
+        1000
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-1025",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1025,
+        "L",
+        2200,
+        1025
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1050",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1050,
+        "L",
+        2200,
+        1050
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1075",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1075,
+        "L",
+        2200,
+        1075
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-1100",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1100,
+        "L",
+        2200,
+        1100
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-1125",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1125,
+        "L",
+        2200,
+        1125
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1150",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1150,
+        "L",
+        2200,
+        1150
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1175",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1175,
+        "L",
+        2200,
+        1175
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-1200",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1200,
+        "L",
+        2200,
+        1200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-1225",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1225,
+        "L",
+        2200,
+        1225
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1250",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1250,
+        "L",
+        2200,
+        1250
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1275",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1275,
+        "L",
+        2200,
+        1275
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-1300",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1300,
+        "L",
+        2200,
+        1300
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-1325",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1325,
+        "L",
+        2200,
+        1325
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1350",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1350,
+        "L",
+        2200,
+        1350
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1375",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1375,
+        "L",
+        2200,
+        1375
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-1400",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1400,
+        "L",
+        2200,
+        1400
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-1425",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1425,
+        "L",
+        2200,
+        1425
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1450",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1450,
+        "L",
+        2200,
+        1450
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1475",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1475,
+        "L",
+        2200,
+        1475
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-1500",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1500,
+        "L",
+        2200,
+        1500
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-1525",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1525,
+        "L",
+        2200,
+        1525
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1550",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1550,
+        "L",
+        2200,
+        1550
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1575",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1575,
+        "L",
+        2200,
+        1575
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-1600",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1600,
+        "L",
+        2200,
+        1600
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-1625",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1625,
+        "L",
+        2200,
+        1625
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1650",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1650,
+        "L",
+        2200,
+        1650
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1675",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1675,
+        "L",
+        2200,
+        1675
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-1700",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1700,
+        "L",
+        2200,
+        1700
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-1725",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1725,
+        "L",
+        2200,
+        1725
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1750",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1750,
+        "L",
+        2200,
+        1750
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1775",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1775,
+        "L",
+        2200,
+        1775
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-1800",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1800,
+        "L",
+        2200,
+        1800
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-1825",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1825,
+        "L",
+        2200,
+        1825
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1850",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1850,
+        "L",
+        2200,
+        1850
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1875",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1875,
+        "L",
+        2200,
+        1875
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-1900",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1900,
+        "L",
+        2200,
+        1900
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-1925",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1925,
+        "L",
+        2200,
+        1925
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-1950",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1950,
+        "L",
+        2200,
+        1950
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-1975",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        1975,
+        "L",
+        2200,
+        1975
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-2000",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2000,
+        "L",
+        2200,
+        2000
+      ],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "hfine-2025",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2025,
+        "L",
+        2200,
+        2025
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-2050",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2050,
+        "L",
+        2200,
+        2050
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-2075",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2075,
+        "L",
+        2200,
+        2075
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmid-2100",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2100,
+        "L",
+        2200,
+        2100
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "hfine-2125",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2125,
+        "L",
+        2200,
+        2125
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hminor-2150",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2150,
+        "L",
+        2200,
+        2150
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "hfine-2175",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2175,
+        "L",
+        2200,
+        2175
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "hmajor-2200",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        2200,
+        "L",
+        2200,
+        2200
+      ],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vmajor-0",
+      "type": "path",
+      "data": [
+        "M",
+        0,
+        0,
+        "L",
+        0,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-25",
+      "type": "path",
+      "data": [
+        "M",
+        25,
+        0,
+        "L",
+        25,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-50",
+      "type": "path",
+      "data": [
+        "M",
+        50,
+        0,
+        "L",
+        50,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-75",
+      "type": "path",
+      "data": [
+        "M",
+        75,
+        0,
+        "L",
+        75,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-100",
+      "type": "path",
+      "data": [
+        "M",
+        100,
+        0,
+        "L",
+        100,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-125",
+      "type": "path",
+      "data": [
+        "M",
+        125,
+        0,
+        "L",
+        125,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-150",
+      "type": "path",
+      "data": [
+        "M",
+        150,
+        0,
+        "L",
+        150,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-175",
+      "type": "path",
+      "data": [
+        "M",
+        175,
+        0,
+        "L",
+        175,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-200",
+      "type": "path",
+      "data": [
+        "M",
+        200,
+        0,
+        "L",
+        200,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-225",
+      "type": "path",
+      "data": [
+        "M",
+        225,
+        0,
+        "L",
+        225,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-250",
+      "type": "path",
+      "data": [
+        "M",
+        250,
+        0,
+        "L",
+        250,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-275",
+      "type": "path",
+      "data": [
+        "M",
+        275,
+        0,
+        "L",
+        275,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-300",
+      "type": "path",
+      "data": [
+        "M",
+        300,
+        0,
+        "L",
+        300,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-325",
+      "type": "path",
+      "data": [
+        "M",
+        325,
+        0,
+        "L",
+        325,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-350",
+      "type": "path",
+      "data": [
+        "M",
+        350,
+        0,
+        "L",
+        350,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-375",
+      "type": "path",
+      "data": [
+        "M",
+        375,
+        0,
+        "L",
+        375,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-400",
+      "type": "path",
+      "data": [
+        "M",
+        400,
+        0,
+        "L",
+        400,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-425",
+      "type": "path",
+      "data": [
+        "M",
+        425,
+        0,
+        "L",
+        425,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-450",
+      "type": "path",
+      "data": [
+        "M",
+        450,
+        0,
+        "L",
+        450,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-475",
+      "type": "path",
+      "data": [
+        "M",
+        475,
+        0,
+        "L",
+        475,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-500",
+      "type": "path",
+      "data": [
+        "M",
+        500,
+        0,
+        "L",
+        500,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-525",
+      "type": "path",
+      "data": [
+        "M",
+        525,
+        0,
+        "L",
+        525,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-550",
+      "type": "path",
+      "data": [
+        "M",
+        550,
+        0,
+        "L",
+        550,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-575",
+      "type": "path",
+      "data": [
+        "M",
+        575,
+        0,
+        "L",
+        575,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-600",
+      "type": "path",
+      "data": [
+        "M",
+        600,
+        0,
+        "L",
+        600,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-625",
+      "type": "path",
+      "data": [
+        "M",
+        625,
+        0,
+        "L",
+        625,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-650",
+      "type": "path",
+      "data": [
+        "M",
+        650,
+        0,
+        "L",
+        650,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-675",
+      "type": "path",
+      "data": [
+        "M",
+        675,
+        0,
+        "L",
+        675,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-700",
+      "type": "path",
+      "data": [
+        "M",
+        700,
+        0,
+        "L",
+        700,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-725",
+      "type": "path",
+      "data": [
+        "M",
+        725,
+        0,
+        "L",
+        725,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-750",
+      "type": "path",
+      "data": [
+        "M",
+        750,
+        0,
+        "L",
+        750,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-775",
+      "type": "path",
+      "data": [
+        "M",
+        775,
+        0,
+        "L",
+        775,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-800",
+      "type": "path",
+      "data": [
+        "M",
+        800,
+        0,
+        "L",
+        800,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-825",
+      "type": "path",
+      "data": [
+        "M",
+        825,
+        0,
+        "L",
+        825,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-850",
+      "type": "path",
+      "data": [
+        "M",
+        850,
+        0,
+        "L",
+        850,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-875",
+      "type": "path",
+      "data": [
+        "M",
+        875,
+        0,
+        "L",
+        875,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-900",
+      "type": "path",
+      "data": [
+        "M",
+        900,
+        0,
+        "L",
+        900,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-925",
+      "type": "path",
+      "data": [
+        "M",
+        925,
+        0,
+        "L",
+        925,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-950",
+      "type": "path",
+      "data": [
+        "M",
+        950,
+        0,
+        "L",
+        950,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-975",
+      "type": "path",
+      "data": [
+        "M",
+        975,
+        0,
+        "L",
+        975,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-1000",
+      "type": "path",
+      "data": [
+        "M",
+        1000,
+        0,
+        "L",
+        1000,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-1025",
+      "type": "path",
+      "data": [
+        "M",
+        1025,
+        0,
+        "L",
+        1025,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1050",
+      "type": "path",
+      "data": [
+        "M",
+        1050,
+        0,
+        "L",
+        1050,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1075",
+      "type": "path",
+      "data": [
+        "M",
+        1075,
+        0,
+        "L",
+        1075,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-1100",
+      "type": "path",
+      "data": [
+        "M",
+        1100,
+        0,
+        "L",
+        1100,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-1125",
+      "type": "path",
+      "data": [
+        "M",
+        1125,
+        0,
+        "L",
+        1125,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1150",
+      "type": "path",
+      "data": [
+        "M",
+        1150,
+        0,
+        "L",
+        1150,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1175",
+      "type": "path",
+      "data": [
+        "M",
+        1175,
+        0,
+        "L",
+        1175,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-1200",
+      "type": "path",
+      "data": [
+        "M",
+        1200,
+        0,
+        "L",
+        1200,
+        2200
+      ],
+      "strokeColor": "#000000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-1225",
+      "type": "path",
+      "data": [
+        "M",
+        1225,
+        0,
+        "L",
+        1225,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1250",
+      "type": "path",
+      "data": [
+        "M",
+        1250,
+        0,
+        "L",
+        1250,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1275",
+      "type": "path",
+      "data": [
+        "M",
+        1275,
+        0,
+        "L",
+        1275,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-1300",
+      "type": "path",
+      "data": [
+        "M",
+        1300,
+        0,
+        "L",
+        1300,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-1325",
+      "type": "path",
+      "data": [
+        "M",
+        1325,
+        0,
+        "L",
+        1325,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1350",
+      "type": "path",
+      "data": [
+        "M",
+        1350,
+        0,
+        "L",
+        1350,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1375",
+      "type": "path",
+      "data": [
+        "M",
+        1375,
+        0,
+        "L",
+        1375,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-1400",
+      "type": "path",
+      "data": [
+        "M",
+        1400,
+        0,
+        "L",
+        1400,
+        2200
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-1425",
+      "type": "path",
+      "data": [
+        "M",
+        1425,
+        0,
+        "L",
+        1425,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1450",
+      "type": "path",
+      "data": [
+        "M",
+        1450,
+        0,
+        "L",
+        1450,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1475",
+      "type": "path",
+      "data": [
+        "M",
+        1475,
+        0,
+        "L",
+        1475,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-1500",
+      "type": "path",
+      "data": [
+        "M",
+        1500,
+        0,
+        "L",
+        1500,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-1525",
+      "type": "path",
+      "data": [
+        "M",
+        1525,
+        0,
+        "L",
+        1525,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1550",
+      "type": "path",
+      "data": [
+        "M",
+        1550,
+        0,
+        "L",
+        1550,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1575",
+      "type": "path",
+      "data": [
+        "M",
+        1575,
+        0,
+        "L",
+        1575,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-1600",
+      "type": "path",
+      "data": [
+        "M",
+        1600,
+        0,
+        "L",
+        1600,
+        2200
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-1625",
+      "type": "path",
+      "data": [
+        "M",
+        1625,
+        0,
+        "L",
+        1625,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1650",
+      "type": "path",
+      "data": [
+        "M",
+        1650,
+        0,
+        "L",
+        1650,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1675",
+      "type": "path",
+      "data": [
+        "M",
+        1675,
+        0,
+        "L",
+        1675,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-1700",
+      "type": "path",
+      "data": [
+        "M",
+        1700,
+        0,
+        "L",
+        1700,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-1725",
+      "type": "path",
+      "data": [
+        "M",
+        1725,
+        0,
+        "L",
+        1725,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1750",
+      "type": "path",
+      "data": [
+        "M",
+        1750,
+        0,
+        "L",
+        1750,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1775",
+      "type": "path",
+      "data": [
+        "M",
+        1775,
+        0,
+        "L",
+        1775,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-1800",
+      "type": "path",
+      "data": [
+        "M",
+        1800,
+        0,
+        "L",
+        1800,
+        2200
+      ],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-1825",
+      "type": "path",
+      "data": [
+        "M",
+        1825,
+        0,
+        "L",
+        1825,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1850",
+      "type": "path",
+      "data": [
+        "M",
+        1850,
+        0,
+        "L",
+        1850,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1875",
+      "type": "path",
+      "data": [
+        "M",
+        1875,
+        0,
+        "L",
+        1875,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-1900",
+      "type": "path",
+      "data": [
+        "M",
+        1900,
+        0,
+        "L",
+        1900,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-1925",
+      "type": "path",
+      "data": [
+        "M",
+        1925,
+        0,
+        "L",
+        1925,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-1950",
+      "type": "path",
+      "data": [
+        "M",
+        1950,
+        0,
+        "L",
+        1950,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-1975",
+      "type": "path",
+      "data": [
+        "M",
+        1975,
+        0,
+        "L",
+        1975,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-2000",
+      "type": "path",
+      "data": [
+        "M",
+        2000,
+        0,
+        "L",
+        2000,
+        2200
+      ],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "vfine-2025",
+      "type": "path",
+      "data": [
+        "M",
+        2025,
+        0,
+        "L",
+        2025,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-2050",
+      "type": "path",
+      "data": [
+        "M",
+        2050,
+        0,
+        "L",
+        2050,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-2075",
+      "type": "path",
+      "data": [
+        "M",
+        2075,
+        0,
+        "L",
+        2075,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmid-2100",
+      "type": "path",
+      "data": [
+        "M",
+        2100,
+        0,
+        "L",
+        2100,
+        2200
+      ],
+      "strokeColor": "#888888",
+      "strokeWidth": 0.8
+    },
+    {
+      "id": "vfine-2125",
+      "type": "path",
+      "data": [
+        "M",
+        2125,
+        0,
+        "L",
+        2125,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vminor-2150",
+      "type": "path",
+      "data": [
+        "M",
+        2150,
+        0,
+        "L",
+        2150,
+        2200
+      ],
+      "strokeColor": "#aaaaaa",
+      "strokeWidth": 0.5
+    },
+    {
+      "id": "vfine-2175",
+      "type": "path",
+      "data": [
+        "M",
+        2175,
+        0,
+        "L",
+        2175,
+        2200
+      ],
+      "strokeColor": "#cccccc",
+      "strokeWidth": 0.3
+    },
+    {
+      "id": "vmajor-2200",
+      "type": "path",
+      "data": [
+        "M",
+        2200,
+        0,
+        "L",
+        2200,
+        2200
+      ],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 1.5
+    },
+    {
+      "id": "label-0",
+      "type": "text",
+      "text": "(0,0)",
+      "fontSize": 16,
+      "position": {
+        "x": 4,
+        "y": 18
+      }
+    },
+    {
+      "id": "label-200",
+      "type": "text",
+      "text": "(200,200)",
+      "fontSize": 16,
+      "position": {
+        "x": 204,
+        "y": 218
+      }
+    },
+    {
+      "id": "label-400",
+      "type": "text",
+      "text": "(400,400)",
+      "fontSize": 16,
+      "position": {
+        "x": 404,
+        "y": 418
+      }
+    },
+    {
+      "id": "label-600",
+      "type": "text",
+      "text": "(600,600)",
+      "fontSize": 16,
+      "position": {
+        "x": 604,
+        "y": 618
+      }
+    },
+    {
+      "id": "label-800",
+      "type": "text",
+      "text": "(800,800)",
+      "fontSize": 16,
+      "position": {
+        "x": 804,
+        "y": 818
+      }
+    },
+    {
+      "id": "label-1000",
+      "type": "text",
+      "text": "(1000,1000)",
+      "fontSize": 16,
+      "position": {
+        "x": 1004,
+        "y": 1018
+      }
+    },
+    {
+      "id": "label-1200",
+      "type": "text",
+      "text": "(1200,1200)",
+      "fontSize": 16,
+      "position": {
+        "x": 1204,
+        "y": 1218
+      }
+    },
+    {
+      "id": "label-1400",
+      "type": "text",
+      "text": "(1400,1400)",
+      "fontSize": 16,
+      "position": {
+        "x": 1404,
+        "y": 1418
+      }
+    },
+    {
+      "id": "label-1600",
+      "type": "text",
+      "text": "(1600,1600)",
+      "fontSize": 16,
+      "position": {
+        "x": 1604,
+        "y": 1618
+      }
+    },
+    {
+      "id": "label-1800",
+      "type": "text",
+      "text": "(1800,1800)",
+      "fontSize": 16,
+      "position": {
+        "x": 1804,
+        "y": 1818
+      }
+    },
+    {
+      "id": "label-2000",
+      "type": "text",
+      "text": "(2000,2000)",
+      "fontSize": 16,
+      "position": {
+        "x": 2004,
+        "y": 2018
+      }
+    },
+    {
+      "id": "label-2200",
+      "type": "text",
+      "text": "(2200,2200)",
+      "fontSize": 16,
+      "position": {
+        "x": 2204,
+        "y": 2218
+      }
+    }
+  ]
+}

@@ -42,6 +42,13 @@
       "iconCode": "\ue9d8",
       "categories": ["Samples"],
       "rmMethodsId": "a1b2c3d4-000b-4000-8000-00000000000b"
+    },
+    {
+      "name": "Sample Color Cornell",
+      "filename": "samples/P Sample Color Cornell",
+      "iconCode": "\ue9d8",
+      "categories": ["Samples"],
+      "rmMethodsId": "a1b2c3d4-000c-4000-8000-00000000000c"
     }
   ]
 }

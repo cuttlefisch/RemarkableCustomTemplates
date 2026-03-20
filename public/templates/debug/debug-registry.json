@@ -18,6 +18,15 @@
         "Debug"
       ],
       "rmMethodsId": "f5e133a6-a51f-4793-9285-c707e8db9d9b"
+    },
+    {
+      "name": "Calibration",
+      "filename": "debug/P Calibration",
+      "iconCode": "",
+      "categories": [
+        "Debug"
+      ],
+      "rmMethodsId": "33665c9c-df44-4aba-a78a-2cfd708b550a"
     }
   ]
 }
