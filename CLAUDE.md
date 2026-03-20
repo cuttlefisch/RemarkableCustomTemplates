@@ -65,6 +65,11 @@ server/
     deviceManifest.ts — read/write device manifest via SFTP
     ndjsonStream.ts  — NDJSON streaming for long-running operations
     sshErrors.ts     — SSH error formatting with user-friendly hints
+  __tests__/
+    helpers/
+      mockSshServer.ts — in-process ssh2 mock server for integration tests
+      seedDeviceFs.ts  — seed fake reMarkable filesystem in temp dir
+      ndjsonHelper.ts  — parse NDJSON response bodies from app.inject()
 ```
 
 ### Data flow
@@ -103,7 +108,7 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 | rmPP (Paper Pro) | 1620×2160 | |
 | rmPPM (Paper Pro Move) | 954×1696 | |
 
-`paperOriginX = templateWidth/2 - templateHeight/2` (negative in portrait, positive in landscape).
+`paperOriginX = templateWidth/2 - templateHeight/2` (negative in portrait, positive in landscape). Pages are stamped with the creating device's dimensions at page creation time; no cross-device coordinate correction is needed.
 
 ### Registry (`lib/registry.ts`, `types/registry.ts`)
 
