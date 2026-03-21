@@ -195,29 +195,49 @@ export function DrawingToolbar({
           Fill
         </label>
         {state.fillEnabled && (
-          <label className="drawing-color-label">
-            <input
-              type="color"
-              className="drawing-color-picker"
-              value={state.fillColor}
-              onChange={e => dispatch({ type: 'SET_FILL_COLOR', color: e.target.value })}
-              title="Fill color"
-              aria-label="Fill color"
-            />
-          </label>
+          <>
+            <label className="drawing-color-label">
+              <input
+                type="color"
+                className={`drawing-color-picker${state.fillUseForeground ? ' dimmed' : ''}`}
+                value={state.fillUseForeground ? foregroundColor : state.fillColor}
+                onChange={e => dispatch({ type: 'SET_FILL_COLOR', color: e.target.value })}
+                disabled={state.fillUseForeground}
+                title="Fill color"
+                aria-label="Fill color"
+              />
+            </label>
+            <button
+              className={`drawing-tool-btn drawing-fg-pin${state.fillUseForeground ? ' active' : ''}`}
+              onClick={() => dispatch({ type: 'SET_FILL_USE_FOREGROUND', enabled: !state.fillUseForeground })}
+              title="Pin fill to foreground color"
+              aria-label="Pin fill to foreground color"
+            >
+              FG
+            </button>
+          </>
         )}
 
         <label className="drawing-color-label">
           <span>Stroke</span>
           <input
             type="color"
-            className="drawing-color-picker"
-            value={state.strokeColor}
+            className={`drawing-color-picker${state.strokeUseForeground ? ' dimmed' : ''}`}
+            value={state.strokeUseForeground ? foregroundColor : state.strokeColor}
             onChange={e => dispatch({ type: 'SET_STROKE_COLOR', color: e.target.value })}
+            disabled={state.strokeUseForeground}
             title="Stroke color"
             aria-label="Stroke color"
           />
         </label>
+        <button
+          className={`drawing-tool-btn drawing-fg-pin${state.strokeUseForeground ? ' active' : ''}`}
+          onClick={() => dispatch({ type: 'SET_STROKE_USE_FOREGROUND', enabled: !state.strokeUseForeground })}
+          title="Pin stroke to foreground color"
+          aria-label="Pin stroke to foreground color"
+        >
+          FG
+        </button>
 
         <label className="drawing-color-label">
           <span>Width</span>

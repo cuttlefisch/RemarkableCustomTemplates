@@ -179,4 +179,39 @@ describe('DrawingToolbar', () => {
     renderToolbar()
     expect(screen.getByRole('status')).toBeDefined()
   })
+
+  // FG pin tests
+  it('renders stroke FG pin button', () => {
+    renderToolbar()
+    expect(screen.getByTitle('Pin stroke to foreground color')).toBeDefined()
+  })
+
+  it('clicking stroke FG pin dispatches SET_STROKE_USE_FOREGROUND', () => {
+    const { dispatch } = renderToolbar()
+    fireEvent.click(screen.getByTitle('Pin stroke to foreground color'))
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_STROKE_USE_FOREGROUND', enabled: true })
+  })
+
+  it('stroke FG pin shows active class when enabled', () => {
+    renderToolbar({ strokeUseForeground: true })
+    const btn = screen.getByTitle('Pin stroke to foreground color')
+    expect(btn.className).toContain('active')
+  })
+
+  it('stroke color picker is disabled when FG pin is active', () => {
+    renderToolbar({ strokeUseForeground: true })
+    const picker = screen.getByTitle('Stroke color') as HTMLInputElement
+    expect(picker.disabled).toBe(true)
+  })
+
+  it('fill FG pin button appears when fill is enabled', () => {
+    renderToolbar({ fillEnabled: true })
+    expect(screen.getByTitle('Pin fill to foreground color')).toBeDefined()
+  })
+
+  it('clicking fill FG pin dispatches SET_FILL_USE_FOREGROUND', () => {
+    const { dispatch } = renderToolbar({ fillEnabled: true })
+    fireEvent.click(screen.getByTitle('Pin fill to foreground color'))
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_FILL_USE_FOREGROUND', enabled: true })
+  })
 })

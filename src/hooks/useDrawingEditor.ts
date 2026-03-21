@@ -81,6 +81,9 @@ export interface DrawingEditorState {
     startAngle: number
     currentAngle: number
   } | null
+  // FG pin for stroke/fill colors
+  strokeUseForeground: boolean
+  fillUseForeground: boolean
 }
 
 export type DrawingAction =
@@ -128,6 +131,9 @@ export type DrawingAction =
   | { type: 'START_ROTATION'; itemIndex: number; center: Point; startAngle: number }
   | { type: 'UPDATE_ROTATION'; angle: number }
   | { type: 'END_ROTATION' }
+  // FG pin
+  | { type: 'SET_STROKE_USE_FOREGROUND'; enabled: boolean }
+  | { type: 'SET_FILL_USE_FOREGROUND'; enabled: boolean }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -160,6 +166,8 @@ export const initialDrawingEditorState: DrawingEditorState = {
   nudgeIntent: null,
   draggingItem: null,
   rotatingItem: null,
+  strokeUseForeground: false,
+  fillUseForeground: false,
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -191,8 +199,8 @@ function applyHandleEdit(
 function getShapeProps(state: DrawingEditorState): ShapeProps {
   return {
     fillEnabled: state.fillEnabled,
-    fillColor: state.fillColor,
-    strokeColor: state.strokeColor,
+    fillColor: state.fillUseForeground ? 'foreground' : state.fillColor,
+    strokeColor: state.strokeUseForeground ? 'foreground' : state.strokeColor,
     strokeWidth: state.strokeWidth,
   }
 }
@@ -392,6 +400,13 @@ export function drawingEditorReducer(
         rotatingItem: null,
       }
     }
+
+    // FG pin
+    case 'SET_STROKE_USE_FOREGROUND':
+      return { ...state, strokeUseForeground: action.enabled }
+
+    case 'SET_FILL_USE_FOREGROUND':
+      return { ...state, fillUseForeground: action.enabled }
 
     default:
       return state

@@ -849,6 +849,34 @@ export function computePathBounds(data: PathData): { minX: number; minY: number;
  * Resolve expression strings in PathData to numeric values using resolved
  * constants. Returns null if any expression cannot be evaluated.
  */
+/**
+ * Translate a PathItem by (dx, dy), resolving expression strings if needed.
+ * Falls back to resolving expressions to fixed numeric coordinates.
+ */
+export function translatePathItemResolved(
+  item: PathItem, dx: number, dy: number, constants: ResolvedConstants
+): PathItem | null {
+  const direct = translatePathItem(item, dx, dy)
+  if (direct) return direct
+  const resolved = resolvePathDataNumeric(item.data, constants)
+  if (!resolved) return null
+  return translatePathItem({ ...item, data: resolved }, dx, dy)
+}
+
+/**
+ * Rotate PathData by angleDeg, resolving expression strings if needed.
+ * Falls back to resolving expressions to fixed numeric coordinates.
+ */
+export function rotatePathDataResolved(
+  data: PathData, angleDeg: number, constants: ResolvedConstants, center?: Point
+): PathData | null {
+  const direct = rotatePathData(data, angleDeg, center)
+  if (direct) return direct
+  const resolved = resolvePathDataNumeric(data, constants)
+  if (!resolved) return null
+  return rotatePathData(resolved, angleDeg, center)
+}
+
 export function resolvePathDataNumeric(data: PathData, constants: ResolvedConstants): PathData | null {
   const result: PathData = []
   for (const token of data) {

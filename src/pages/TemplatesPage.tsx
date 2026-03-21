@@ -11,7 +11,7 @@ import { removeEntry } from '../lib/registry'
 import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode, upsertColorConstant } from '../lib/customTemplates'
 import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
 import { resolveConstants } from '../lib/expression'
-import { buildScaleConstants, reorderItem, rotatePathData, translatePathItem } from '../lib/drawingShapes'
+import { buildScaleConstants, reorderItem, rotatePathDataResolved, translatePathItemResolved } from '../lib/drawingShapes'
 import { extractColorConstants } from '../lib/color'
 import type { PathItem, PathData, ConstantEntry } from '../types/template'
 import type { ScalingMode } from '../lib/drawingShapes'
@@ -88,6 +88,14 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   useEffect(() => {
     localStorage.setItem(VIEW_MODE_KEY, JSON.stringify({ mode: viewMode, columns: cardColumns }))
   }, [viewMode, cardColumns])
+
+  // Collapsible sidebar
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('sidebarCollapsed') === 'true'
+  )
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed))
+  }, [sidebarCollapsed])
 
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -186,7 +194,10 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       const items = (parsed.items ?? []) as unknown[]
       const item = items[index] as PathItem | undefined
       if (!item || item.type !== 'path') return
-      const rotated = rotatePathData(item.data, angleDeg)
+      const tpl = parseTemplate(parsed)
+      const builtins = deviceBuiltins(tpl.orientation, deviceId)
+      const resolved = resolveConstants(tpl.constants, builtins)
+      const rotated = rotatePathDataResolved(item.data, angleDeg, resolved)
       if (!rotated) return
       const newItem = { ...item, data: rotated }
       parsed.items = items.map((it, i) => i === index ? newItem : it)
@@ -196,7 +207,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     } catch (err) {
       console.warn('[drawing-rotate] Failed to rotate item:', err instanceof Error ? err.message : String(err))
     }
-  }, [editorJson, setEditorJson])
+  }, [editorJson, setEditorJson, deviceId])
 
   const handleBackgroundColorChange = useCallback((color: string) => {
     try {
@@ -246,7 +257,10 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       const items = (parsed.items ?? []) as unknown[]
       const item = items[index] as PathItem | undefined
       if (!item || item.type !== 'path') return
-      const translated = translatePathItem(item, dx, dy)
+      const tpl = parseTemplate(parsed)
+      const builtins = deviceBuiltins(tpl.orientation, deviceId)
+      const resolved = resolveConstants(tpl.constants, builtins)
+      const translated = translatePathItemResolved(item, dx, dy, resolved)
       if (!translated) return
       items[index] = translated
       parsed.items = items
@@ -256,7 +270,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     } catch (err) {
       console.warn('[drawing-nudge] Failed:', err instanceof Error ? err.message : String(err))
     }
-  }, [editorJson, setEditorJson])
+  }, [editorJson, setEditorJson, deviceId])
 
   useEffect(() => {
     if (drawingState.nudgeIntent) {
@@ -468,26 +482,32 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   }, [selected, setEditorJson])
 
   // Derived: all unique categories from merged registry
-  const allCategories = mergedRegistry
-    ? [...new Set(mergedRegistry.templates.flatMap(t => t.categories))].sort()
-    : []
+  const allCategories = useMemo(() =>
+    mergedRegistry
+      ? [...new Set(mergedRegistry.templates.flatMap(t => t.categories))].sort()
+      : [],
+    [mergedRegistry],
+  )
 
   // Derived: filtered + sorted template list
-  const filteredTemplates = (mergedRegistry?.templates ?? [])
-    .filter(t => {
-      if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
-      if (filterCategory && !t.categories.includes(filterCategory)) return false
-      if (filterOrientation === 'portrait' && t.landscape === true) return false
-      if (filterOrientation === 'landscape' && t.landscape !== true) return false
-      if (filterSource === 'methods' && !t.origin) return false
-      if (filterSource === 'samples' && !t.categories.includes('Samples')) return false
-      if (filterSource === 'official' && (t.isCustom || t.origin === 'custom-methods' || t.categories.includes('Debug') || t.categories.includes('Samples'))) return false
-      return true
-    })
-    .sort((a, b) => {
-      if (a.landscape !== b.landscape) return a.landscape ? 1 : -1
-      return a.name.localeCompare(b.name)
-    })
+  const filteredTemplates = useMemo(() =>
+    (mergedRegistry?.templates ?? [])
+      .filter(t => {
+        if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+        if (filterCategory && !t.categories.includes(filterCategory)) return false
+        if (filterOrientation === 'portrait' && t.landscape === true) return false
+        if (filterOrientation === 'landscape' && t.landscape !== true) return false
+        if (filterSource === 'methods' && !t.origin) return false
+        if (filterSource === 'samples' && !t.categories.includes('Samples')) return false
+        if (filterSource === 'official' && (t.isCustom || t.origin === 'custom-methods' || t.categories.includes('Debug') || t.categories.includes('Samples'))) return false
+        return true
+      })
+      .sort((a, b) => {
+        if (a.landscape !== b.landscape) return a.landscape ? 1 : -1
+        return a.name.localeCompare(b.name)
+      }),
+    [mergedRegistry, searchQuery, filterCategory, filterOrientation, filterSource],
+  )
 
   async function handleApply(json: string, name: string) {
     setEditorError(null)
@@ -690,12 +710,20 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     <div className={`app-content${editorOpen ? ' editing' : ''}`}>
 
       {/* ── Sidebar ────────────────────────────────────────────── */}
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>
         <div className="sidebar-header">
           <span className="sidebar-title">Templates</span>
           <span className="sidebar-count">
             {mergedRegistry ? filteredTemplates.length : '...'}
           </span>
+          <button
+            className="sidebar-collapse-btn"
+            onClick={() => setSidebarCollapsed(c => !c)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? '\u25B6' : '\u25C0'}
+          </button>
         </div>
 
         <div className="device-selector">
@@ -966,22 +994,24 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             <div className="preview-meta">
               <div className="preview-meta-top">
                 <h1 className="preview-meta-name">{selected.name}</h1>
-                {selected?.isCustom && (
+                <div className="preview-meta-actions">
+                  {selected?.isCustom && (
+                    <button
+                      className={`edit-json-btn${drawingMode ? ' active' : ''}`}
+                      onClick={() => setDrawingMode(d => !d)}
+                      disabled={!template}
+                    >
+                      {drawingMode ? 'Close Draw' : 'Draw'}
+                    </button>
+                  )}
                   <button
-                    className={`edit-json-btn${drawingMode ? ' active' : ''}`}
-                    onClick={() => setDrawingMode(d => !d)}
+                    className={`edit-json-btn${editorOpen ? ' active' : ''}`}
+                    onClick={() => setEditorOpen(o => !o)}
                     disabled={!template}
                   >
-                    {drawingMode ? 'Close Draw' : 'Draw'}
+                    {editorOpen ? 'Close Editor' : 'Edit JSON'}
                   </button>
-                )}
-                <button
-                  className={`edit-json-btn${editorOpen ? ' active' : ''}`}
-                  onClick={() => setEditorOpen(o => !o)}
-                  disabled={!template}
-                >
-                  {editorOpen ? 'Close Editor' : 'Edit JSON'}
-                </button>
+                </div>
               </div>
               <div className="preview-meta-tags">
                 <button

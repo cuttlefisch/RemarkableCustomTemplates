@@ -698,3 +698,67 @@ describe('rotation drag actions', () => {
     expect(state.rotateIntent).toBeNull()
   })
 })
+
+// ─── FG pin ─────────────────────────────────────────────────────────────────
+
+describe('FG pin actions', () => {
+  it('defaults to strokeUseForeground=false', () => {
+    expect(initialDrawingEditorState.strokeUseForeground).toBe(false)
+  })
+
+  it('defaults to fillUseForeground=false', () => {
+    expect(initialDrawingEditorState.fillUseForeground).toBe(false)
+  })
+
+  it('SET_STROKE_USE_FOREGROUND toggles strokeUseForeground', () => {
+    let state = dispatch(initialDrawingEditorState, { type: 'SET_STROKE_USE_FOREGROUND', enabled: true })
+    expect(state.strokeUseForeground).toBe(true)
+    state = dispatch(state, { type: 'SET_STROKE_USE_FOREGROUND', enabled: false })
+    expect(state.strokeUseForeground).toBe(false)
+  })
+
+  it('SET_FILL_USE_FOREGROUND toggles fillUseForeground', () => {
+    let state = dispatch(initialDrawingEditorState, { type: 'SET_FILL_USE_FOREGROUND', enabled: true })
+    expect(state.fillUseForeground).toBe(true)
+    state = dispatch(state, { type: 'SET_FILL_USE_FOREGROUND', enabled: false })
+    expect(state.fillUseForeground).toBe(false)
+  })
+})
+
+// ─── Expression-aware translate / rotate ────────────────────────────────────
+
+describe('translatePathItemResolved and rotatePathDataResolved', () => {
+  // These are tested at the drawingShapes level
+  // Import them to verify they exist and are callable
+  it('translatePathItemResolved is importable', async () => {
+    const { translatePathItemResolved } = await import('../lib/drawingShapes')
+    expect(typeof translatePathItemResolved).toBe('function')
+  })
+
+  it('rotatePathDataResolved is importable', async () => {
+    const { rotatePathDataResolved } = await import('../lib/drawingShapes')
+    expect(typeof rotatePathDataResolved).toBe('function')
+  })
+
+  it('translatePathItemResolved handles expression-based paths', async () => {
+    const { translatePathItemResolved } = await import('../lib/drawingShapes')
+    const item = {
+      type: 'path' as const,
+      data: ['M', 'drawnScaleX * 100', 'drawnScaleY * 200', 'L', 'drawnScaleX * 300', 'drawnScaleY * 400'],
+      strokeColor: '#000000',
+    }
+    const constants = { drawnScaleX: 1, drawnScaleY: 1 }
+    const result = translatePathItemResolved(item, 10, 20, constants)
+    expect(result).not.toBeNull()
+    // After resolution + translate, values should be numeric
+    expect(result!.data).toEqual(['M', 110, 220, 'L', 310, 420])
+  })
+
+  it('rotatePathDataResolved handles expression-based paths', async () => {
+    const { rotatePathDataResolved } = await import('../lib/drawingShapes')
+    const data = ['M', 'drawnScaleX * 0', 'drawnScaleY * 0', 'L', 'drawnScaleX * 100', 'drawnScaleY * 0']
+    const constants = { drawnScaleX: 1, drawnScaleY: 1 }
+    const result = rotatePathDataResolved(data, 90, constants)
+    expect(result).not.toBeNull()
+  })
+})

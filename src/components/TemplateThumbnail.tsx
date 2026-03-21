@@ -1,10 +1,12 @@
+import { memo } from 'react'
+
 interface TemplateThumbnailProps {
   iconData?: string
   landscape?: boolean
   className?: string
 }
 
-export function TemplateThumbnail({ iconData, landscape, className }: TemplateThumbnailProps) {
+export const TemplateThumbnail = memo(function TemplateThumbnail({ iconData, landscape, className }: TemplateThumbnailProps) {
   if (!iconData) return null
 
   const orientClass = landscape ? 'landscape' : 'portrait'
@@ -17,4 +19,4 @@ export function TemplateThumbnail({ iconData, landscape, className }: TemplateTh
       alt=""
     />
   )
-}
+})

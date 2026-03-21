@@ -208,7 +208,6 @@ export function DrawingOverlay({
             item={item}
             index={originalIndex}
             isSelected={originalIndex === state.selectedItemIndex}
-            isExpression={hasExpressionCoords(item.data)}
             resolvedConstants={resolvedConstants}
           />
         ))}
@@ -263,8 +262,8 @@ export function DrawingOverlay({
 
 // ─── Hit targets ─────────────────────────────────────────────────────────────
 
-function HitTarget({ item, index, isSelected, isExpression, resolvedConstants }: {
-  item: PathItem; index: number; isSelected: boolean; isExpression: boolean; resolvedConstants?: ResolvedConstants
+function HitTarget({ item, index, isSelected, resolvedConstants }: {
+  item: PathItem; index: number; isSelected: boolean; resolvedConstants?: ResolvedConstants
 }) {
   let d = buildSimpleD(item)
   if (!d && resolvedConstants) {
@@ -273,9 +272,7 @@ function HitTarget({ item, index, isSelected, isExpression, resolvedConstants }:
   }
   if (!d) return null
 
-  const cursor = isSelected
-    ? (isExpression ? 'not-allowed' : 'move')
-    : 'pointer'
+  const cursor = isSelected ? 'move' : 'pointer'
 
   return (
     <path
@@ -287,16 +284,6 @@ function HitTarget({ item, index, isSelected, isExpression, resolvedConstants }:
       style={{ cursor }}
     />
   )
-}
-
-/** Check if a path item has expression-based (non-numeric) coordinates */
-function hasExpressionCoords(data: PathItem['data']): boolean {
-  for (const token of data) {
-    if (typeof token === 'string' && !['M', 'L', 'C', 'Z'].includes(token)) {
-      return true
-    }
-  }
-  return false
 }
 
 function buildSimpleD(item: PathItem): string | null {
@@ -402,38 +389,34 @@ function SelectionIndicator({ item, resolvedConstants, rotatingItem }: {
       </g>
 
       {/* Rotation handle */}
-      {!hasExpressionCoords(item.data) && (
-        <>
-          <line
-            className="rotation-handle-stem"
-            x1={cx} y1={minY - pad}
-            x2={cx} y2={stemTopY}
-            stroke="var(--color-editor-apply-bg, #0969da)"
-            strokeWidth={1.5}
-            pointerEvents="none"
-          />
-          <circle
-            className="rotation-handle-knob"
-            cx={cx} cy={stemTopY}
-            r={6}
-            fill="var(--color-editor-apply-bg, #0969da)"
-            stroke="white"
-            strokeWidth={1.5}
-            style={{ cursor: 'grab' }}
-            pointerEvents="all"
-            data-rotation-handle="true"
-          />
-          {/* Invisible enlarged hit target for rotation handle */}
-          <circle
-            cx={cx} cy={stemTopY}
-            r={16}
-            fill="transparent"
-            pointerEvents="all"
-            style={{ cursor: 'grab' }}
-            data-rotation-handle="true"
-          />
-        </>
-      )}
+      <line
+        className="rotation-handle-stem"
+        x1={cx} y1={minY - pad}
+        x2={cx} y2={stemTopY}
+        stroke="var(--color-editor-apply-bg, #0969da)"
+        strokeWidth={1.5}
+        pointerEvents="none"
+      />
+      <circle
+        className="rotation-handle-knob"
+        cx={cx} cy={stemTopY}
+        r={6}
+        fill="var(--color-editor-apply-bg, #0969da)"
+        stroke="white"
+        strokeWidth={1.5}
+        style={{ cursor: 'grab' }}
+        pointerEvents="all"
+        data-rotation-handle="true"
+      />
+      {/* Invisible enlarged hit target for rotation handle */}
+      <circle
+        cx={cx} cy={stemTopY}
+        r={16}
+        fill="transparent"
+        pointerEvents="all"
+        style={{ cursor: 'grab' }}
+        data-rotation-handle="true"
+      />
 
       {/* Angle label during rotation */}
       {rotatingItem && Math.abs(rotAngleDeg) > 0.5 && (

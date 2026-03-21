@@ -5,7 +5,7 @@
  * recursively renders the item tree into React SVG elements.
  */
 
-import { forwardRef } from 'react'
+import { forwardRef, memo } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import type {
   RemarkableTemplate,
@@ -47,7 +47,7 @@ interface TemplateCanvasProps {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export const TemplateCanvas = forwardRef<SVGSVGElement, TemplateCanvasProps>(
+export const TemplateCanvas = memo(forwardRef<SVGSVGElement, TemplateCanvasProps>(
   function TemplateCanvas({ template, className, deviceId = 'rm', viewBox: viewBoxOverride, children, onWheel }, ref): ReactElement {
     const builtins = deviceBuiltins(template.orientation, deviceId)
     const constants = resolveConstants(template.constants, builtins)
@@ -73,7 +73,7 @@ export const TemplateCanvas = forwardRef<SVGSVGElement, TemplateCanvasProps>(
       </svg>
     )
   },
-)
+))
 
 // ─── Item dispatcher ──────────────────────────────────────────────────────────
 
