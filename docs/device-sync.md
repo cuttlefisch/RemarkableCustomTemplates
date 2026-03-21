@@ -174,7 +174,7 @@ Four format choices make this work:
 
 When a page is created on a reMarkable device, it is stamped with the creating device's screen dimensions (`templateWidth` × `templateHeight`). These dimensions are stored in the page data and persist permanently — even after the notebook syncs to a different device model.
 
-For example, a page created on a Paper Pro (1620×2160) retains those dimensions when viewed on a Paper Pro Move (954×1696). The template is not re-rendered at the viewing device's native resolution. This is expected behavior and does not require any correction during deployment.
+For example, a page created on a Paper Pro (1620×2160) retains those dimensions when viewed on a Paper Pro Move (814×1454). Note: the PPM's physical panel is 954×1696, but xochitl injects template dimensions of 814×1454. The template is not re-rendered at the viewing device's native resolution. This is expected behavior and does not require any correction during deployment.
 
 Templates that use expression-based scaling (e.g. `"templateWidth / 1404 * 60"`) adapt naturally because expressions are evaluated at page creation time using the creating device's constants.
 

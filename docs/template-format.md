@@ -83,7 +83,9 @@ Expressions support arithmetic (`+`, `-`, `*`, `/`), comparisons (`>`, `<`, `>=`
 |--------|-------------|---------------|--------------------------|
 | rm (RM 1 & 2) | 1404×1872 | 1872×1404 | −234 |
 | rmPP (Paper Pro) | 1620×2160 | 2160×1620 | −270 |
-| rmPPM (Paper Pro Move) | 954×1696 | 1696×954 | −371 |
+| rmPPM (Paper Pro Move) | 814×1454 | 1454×814 | −320 |
+
+> **Note:** The PPM's physical panel is 954×1696 pixels, but xochitl injects `templateWidth=814` and `templateHeight=1454` for template rendering. This is the only known device where template dimensions differ from physical panel resolution. Confirmed on-device with fw 3.26.0.68.
 
 `paperOriginX = templateWidth/2 − templateHeight/2`
 
@@ -91,7 +93,7 @@ Expressions support arithmetic (`+`, `-`, `*`, `/`), comparisons (`>`, `<`, `>=`
 
 When a notebook page is created on a reMarkable device, it is stamped with that device's screen dimensions (`templateWidth` × `templateHeight`). These dimensions are stored in the page data and **persist permanently** — even when the notebook syncs to a different device model via the cloud.
 
-This means a page created on a Paper Pro (1620×2160) will render at Paper Pro dimensions when viewed on a Paper Pro Move (954×1696), and vice versa. The template is not re-rendered at the viewing device's native resolution. This is normal device behavior, not a bug.
+This means a page created on a Paper Pro (1620×2160) will render at Paper Pro dimensions when viewed on a Paper Pro Move (814×1454), and vice versa. The template is not re-rendered at the viewing device's native resolution. This is normal device behavior, not a bug.
 
 **Design tip:** Templates that use expression-based scaling (see below) adapt naturally across devices because the expressions are evaluated at page creation time using the creating device's constants. If you want a template to look good regardless of which device creates the page, use relative expressions rather than hardcoded pixel values.
 

@@ -106,7 +106,7 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 |--------|-------------|-------|
 | rm (RM 1 & 2) | 1404×1872 | same pixel dimensions |
 | rmPP (Paper Pro) | 1620×2160 | |
-| rmPPM (Paper Pro Move) | 954×1696 | |
+| rmPPM (Paper Pro Move) | 814×1454 | template coords; physical panel is 954×1696 |
 
 `paperOriginX = templateWidth/2 - templateHeight/2` (negative in portrait, positive in landscape). Pages are stamped with the creating device's dimensions at page creation time; no cross-device coordinate correction is needed.
 

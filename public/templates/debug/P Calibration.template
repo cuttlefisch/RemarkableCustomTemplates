@@ -2669,6 +2669,122 @@
         "x": 2204,
         "y": 2218
       }
+    },
+
+    {
+      "id": "diag-line-v1404",
+      "type": "path",
+      "data": ["M", 1404, 0, "L", 1404, "templateHeight"],
+      "strokeColor": "#00aa00",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-v1404",
+      "type": "text",
+      "text": "x=1404 (rm)",
+      "fontSize": 20,
+      "position": { "x": 1350, "y": 60 }
+    },
+    {
+      "id": "diag-line-h1872",
+      "type": "path",
+      "data": ["M", 0, 1872, "L", "templateWidth", 1872],
+      "strokeColor": "#00aa00",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-h1872",
+      "type": "text",
+      "text": "y=1872 (rm)",
+      "fontSize": 20,
+      "position": { "x": 20, "y": 1866 }
+    },
+
+    {
+      "id": "diag-line-v1620",
+      "type": "path",
+      "data": ["M", 1620, 0, "L", 1620, "templateHeight"],
+      "strokeColor": "#ff8800",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-v1620",
+      "type": "text",
+      "text": "x=1620 (rmPP)",
+      "fontSize": 20,
+      "position": { "x": 1560, "y": 90 }
+    },
+    {
+      "id": "diag-line-h2160",
+      "type": "path",
+      "data": ["M", 0, 2160, "L", "templateWidth", 2160],
+      "strokeColor": "#ff8800",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-h2160",
+      "type": "text",
+      "text": "y=2160 (rmPP)",
+      "fontSize": 20,
+      "position": { "x": 20, "y": 2154 }
+    },
+
+    {
+      "id": "diag-line-v814",
+      "type": "path",
+      "data": ["M", 814, 0, "L", 814, "templateHeight"],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-v814",
+      "type": "text",
+      "text": "x=814 (rmPPM tmpl)",
+      "fontSize": 20,
+      "position": { "x": 770, "y": 60 }
+    },
+    {
+      "id": "diag-line-h1454",
+      "type": "path",
+      "data": ["M", 0, 1454, "L", "templateWidth", 1454],
+      "strokeColor": "#ff0000",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-h1454",
+      "type": "text",
+      "text": "y=1454 (rmPPM tmpl)",
+      "fontSize": 20,
+      "position": { "x": 20, "y": 1448 }
+    },
+
+    {
+      "id": "diag-line-v954",
+      "type": "path",
+      "data": ["M", 954, 0, "L", 954, "templateHeight"],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-v954",
+      "type": "text",
+      "text": "x=954 (rmPPM panel)",
+      "fontSize": 20,
+      "position": { "x": 910, "y": 90 }
+    },
+    {
+      "id": "diag-line-h1696",
+      "type": "path",
+      "data": ["M", 0, 1696, "L", "templateWidth", 1696],
+      "strokeColor": "#0000ff",
+      "strokeWidth": 3
+    },
+    {
+      "id": "diag-label-h1696",
+      "type": "text",
+      "text": "y=1696 (rmPPM panel)",
+      "fontSize": 20,
+      "position": { "x": 20, "y": 1690 }
     }
   ]
 }

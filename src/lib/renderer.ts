@@ -40,8 +40,11 @@ export const DEVICES: Record<string, DeviceSpec> = {
     id: 'rmPPM',
     name: 'reMarkable Paper Pro Move',
     shortName: 'Move',
-    portraitWidth: 954,
-    portraitHeight: 1696,
+    // Template dimensions (what xochitl injects), NOT physical panel resolution (954×1696).
+    // The PPM renders templates at a scaled-down coordinate system.
+    // Confirmed on-device 2026-03-21 via diagnostic calibration template (fw 3.26.0.68).
+    portraitWidth: 814,
+    portraitHeight: 1454,
   },
 }
 
