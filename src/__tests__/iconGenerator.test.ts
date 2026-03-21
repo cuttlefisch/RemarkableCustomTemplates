@@ -79,9 +79,9 @@ describe('icon dimensions — rmPP', () => {
 // ─── Icon dimensions — rmPPM ──────────────────────────────────────────────────
 
 describe('icon dimensions — rmPPM', () => {
-  it('portrait viewBox is "0 0 954 1696"', () => {
+  it('portrait viewBox is "0 0 814 1454"', () => {
     const svg = decode(generateTemplateIcon(makeTemplate(), 'rmPPM'))
-    expect(svg).toContain('viewBox="0 0 954 1696"')
+    expect(svg).toContain('viewBox="0 0 814 1454"')
   })
 })
 

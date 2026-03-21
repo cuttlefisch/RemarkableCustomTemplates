@@ -229,9 +229,9 @@ describe('DEVICES', () => {
     expect(DEVICES.rmPP.portraitHeight).toBe(2160)
   })
 
-  it('rmPPM has a 954×1696 screen', () => {
-    expect(DEVICES.rmPPM.portraitWidth).toBe(954)
-    expect(DEVICES.rmPPM.portraitHeight).toBe(1696)
+  it('rmPPM has 814×1454 template dimensions', () => {
+    expect(DEVICES.rmPPM.portraitWidth).toBe(814)
+    expect(DEVICES.rmPPM.portraitHeight).toBe(1454)
   })
 
   it('all devices are portrait by default (height > width)', () => {
@@ -297,22 +297,22 @@ describe('deviceBuiltins', () => {
 
   // ── rmPPM (Paper Pro Move) ──────────────────────────────────────────────
 
-  it('rmPPM portrait: width=954, height=1696', () => {
+  it('rmPPM portrait: width=814, height=1454', () => {
     const b = deviceBuiltins('portrait', 'rmPPM')
-    expect(b.templateWidth).toBe(954)
-    expect(b.templateHeight).toBe(1696)
+    expect(b.templateWidth).toBe(814)
+    expect(b.templateHeight).toBe(1454)
   })
 
-  it('rmPPM landscape: width=1696, height=954', () => {
+  it('rmPPM landscape: width=1454, height=814', () => {
     const b = deviceBuiltins('landscape', 'rmPPM')
-    expect(b.templateWidth).toBe(1696)
-    expect(b.templateHeight).toBe(954)
+    expect(b.templateWidth).toBe(1454)
+    expect(b.templateHeight).toBe(814)
   })
 
-  it('rmPPM portrait paperOriginX = 954/2 - 1696/2 = -371', () => {
+  it('rmPPM portrait paperOriginX = 814/2 - 1454/2 = -320', () => {
     const b = deviceBuiltins('portrait', 'rmPPM')
-    expect(b.paperOriginX).toBe(954 / 2 - 1696 / 2)
-    expect(b.paperOriginX).toBe(-371)
+    expect(b.paperOriginX).toBe(814 / 2 - 1454 / 2)
+    expect(b.paperOriginX).toBe(-320)
   })
 
   it('rmPPM templateWidth < mobileMaxWidth=1000 → hits mobile layout branch', () => {
@@ -320,9 +320,9 @@ describe('deviceBuiltins', () => {
     expect(b.templateWidth).toBeLessThan(1000)
   })
 
-  it('rmPPM landscape paperOriginX = 1696/2 - 954/2 = 371', () => {
+  it('rmPPM landscape paperOriginX = 1454/2 - 814/2 = 320', () => {
     const b = deviceBuiltins('landscape', 'rmPPM')
-    expect(b.paperOriginX).toBe(371)
+    expect(b.paperOriginX).toBe(320)
   })
 
   it('throws for unknown deviceId', () => {
