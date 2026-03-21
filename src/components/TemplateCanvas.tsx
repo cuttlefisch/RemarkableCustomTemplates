@@ -41,12 +41,14 @@ interface TemplateCanvasProps {
   viewBox?: string
   /** Children rendered as last elements inside the SVG (e.g. DrawingOverlay). */
   children?: ReactNode
+  /** Optional wheel handler (for zoom). */
+  onWheel?: (e: React.WheelEvent<SVGSVGElement>) => void
 }
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export const TemplateCanvas = forwardRef<SVGSVGElement, TemplateCanvasProps>(
-  function TemplateCanvas({ template, className, deviceId = 'rm', viewBox: viewBoxOverride, children }, ref): ReactElement {
+  function TemplateCanvas({ template, className, deviceId = 'rm', viewBox: viewBoxOverride, children, onWheel }, ref): ReactElement {
     const builtins = deviceBuiltins(template.orientation, deviceId)
     const constants = resolveConstants(template.constants, builtins)
     const { templateWidth, templateHeight } = builtins
@@ -61,6 +63,7 @@ export const TemplateCanvas = forwardRef<SVGSVGElement, TemplateCanvasProps>(
         className={className}
         preserveAspectRatio="xMidYMid meet"
         style={viewBoxOverride ? undefined : { aspectRatio: `${templateWidth} / ${templateHeight}` }}
+        onWheel={onWheel}
       >
         <rect width={templateWidth} height={templateHeight} fill={colorConstants['background'] ?? (isDark ? '#000000' : '#ffffff')} />
         {template.items.map((item, i) => (

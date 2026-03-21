@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { TemplateCanvas } from '../components/TemplateCanvas'
 import { TemplateEditor } from '../components/TemplateEditor'
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary'
 import { DrawingToolbar } from '../components/DrawingToolbar'
+import { TemplateThumbnail } from '../components/TemplateThumbnail'
 import { DrawingOverlay } from '../components/DrawingOverlay'
 import type { IndexedPathItem } from '../components/DrawingOverlay'
+import { TemplateViewport } from '../components/TemplateViewport'
 import { parseTemplate } from '../lib/parser'
 import { removeEntry } from '../lib/registry'
 import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode, upsertColorConstant } from '../lib/customTemplates'
 import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
 import { resolveConstants } from '../lib/expression'
 import { buildScaleConstants, reorderItem, rotatePathData } from '../lib/drawingShapes'
-import { computeViewBox, zoomAtPoint } from '../lib/drawingViewport'
 import { extractColorConstants } from '../lib/color'
 import type { PathItem, PathData, ConstantEntry } from '../types/template'
 import type { ScalingMode } from '../lib/drawingShapes'
@@ -68,6 +68,26 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOrientation, setFilterOrientation] = useState<'all' | 'portrait' | 'landscape'>('all')
   const [filterSource, setFilterSource] = useState<'methods' | 'official' | 'samples' | null>(null)
+
+  // Sidebar view mode
+  type ViewMode = 'list' | 'cards'
+  type CardColumns = 1 | 2 | 3
+  const VIEW_MODE_KEY = 'remarkable-templates-view-mode'
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(VIEW_MODE_KEY) ?? '{}')
+      return s.mode === 'cards' ? 'cards' : 'list'
+    } catch { return 'list' }
+  })
+  const [cardColumns, setCardColumns] = useState<CardColumns>(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(VIEW_MODE_KEY) ?? '{}')
+      return [1, 2, 3].includes(s.columns) ? s.columns : 2
+    } catch { return 2 }
+  })
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_KEY, JSON.stringify({ mode: viewMode, columns: cardColumns }))
+  }, [viewMode, cardColumns])
 
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -188,6 +208,19 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       setTemplate(parseTemplate(JSON.parse(newJson)))
     } catch (err) {
       console.warn('[drawing-bg-color] Failed to change background color:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson])
+
+  const handleForegroundColorChange = useCallback((color: string) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const constants = (parsed.constants ?? []) as ConstantEntry[]
+      parsed.constants = upsertColorConstant(constants, 'foreground', color)
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch (err) {
+      console.warn('[drawing-fg-color] Failed:', err instanceof Error ? err.message : String(err))
     }
   }, [editorJson, setEditorJson])
 
@@ -652,7 +685,34 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
           )}
         </div>
 
-        <div className="sidebar-list">
+        <div className="sidebar-view-controls">
+          <div className="view-mode-toggle">
+            <button
+              className={`view-mode-btn${viewMode === 'list' ? ' active' : ''}`}
+              onClick={() => setViewMode('list')}
+              title="List view"
+            >☰</button>
+            <button
+              className={`view-mode-btn${viewMode === 'cards' ? ' active' : ''}`}
+              onClick={() => setViewMode('cards')}
+              title="Card view"
+            >▦</button>
+          </div>
+          {viewMode === 'cards' && (
+            <div className="card-columns-toggle">
+              {([1, 2, 3] as const).map(n => (
+                <button
+                  key={n}
+                  className={`card-col-btn${cardColumns === n ? ' active' : ''}`}
+                  onClick={() => setCardColumns(n)}
+                  title={`${n} column${n > 1 ? 's' : ''}`}
+                >{n}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={`sidebar-list${viewMode === 'cards' ? ` card-view cols-${cardColumns}` : ''}`}>
           {loadingRegistry && <p className="sidebar-hint">Loading...</p>}
           {officialTemplatesAvailable === false && (
             <div className="sidebar-import-prompt">
@@ -660,35 +720,78 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
               <p>Go to <strong>Device &amp; Sync</strong> to import official templates from your device.</p>
             </div>
           )}
-          {filteredTemplates.map(entry => (
-            <div
-              key={`${entry.filename}::${entry.landscape ?? false}`}
-              className={`template-btn${selected?.filename === entry.filename && selected?.landscape === entry.landscape ? ' selected' : ''}`}
-              onClick={() => setSelected(entry)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(entry) }}
-            >
-              <span className="template-btn-name">{entry.name}</span>
-              <span className="template-btn-right">
-                {entry.categories.includes('Samples') && !entry.isCustom && (
-                  <button
-                    className="sample-hide-btn"
-                    title="Hide this sample"
-                    onClick={e => { e.stopPropagation(); handleHideSample(entry.filename) }}
+          {viewMode === 'list' ? (
+            filteredTemplates.map(entry => (
+              <div
+                key={`${entry.filename}::${entry.landscape ?? false}`}
+                className={`template-btn${selected?.filename === entry.filename && selected?.landscape === entry.landscape ? ' selected' : ''}`}
+                onClick={() => setSelected(entry)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(entry) }}
+              >
+                <TemplateThumbnail iconData={entry.iconData} landscape={entry.landscape} />
+                <span className="template-btn-name">{entry.name}</span>
+                <span className="template-btn-right">
+                  {entry.categories.includes('Samples') && !entry.isCustom && (
+                    <button
+                      className="sample-hide-btn"
+                      title="Hide this sample"
+                      onClick={e => { e.stopPropagation(); handleHideSample(entry.filename) }}
+                    >
+                      ×
+                    </button>
+                  )}
+                  <span
+                    className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}
+                    title={`${entry.landscape ? 'Landscape' : 'Portrait'}${entry.isCustom ? ' (Custom)' : entry.origin === 'official-methods' ? ' (Methods)' : entry.origin === 'custom-methods' ? ' (Methods — custom)' : entry.categories.includes('Samples') ? ' (Sample)' : ' (Classic)'}`}
                   >
-                    ×
-                  </button>
-                )}
-                <span
-                  className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}
-                  title={`${entry.landscape ? 'Landscape' : 'Portrait'}${entry.isCustom ? ' (Custom)' : entry.origin === 'official-methods' ? ' (Methods)' : entry.origin === 'custom-methods' ? ' (Methods — custom)' : entry.categories.includes('Samples') ? ' (Sample)' : ' (Classic)'}`}
-                >
-                  {entry.landscape ? 'LS' : 'P'}
+                    {entry.landscape ? 'LS' : 'P'}
+                  </span>
                 </span>
-              </span>
+              </div>
+            ))
+          ) : (
+            <div className="card-grid">
+              {filteredTemplates.map(entry => {
+                const isSelected = selected?.filename === entry.filename && selected?.landscape === entry.landscape
+                const sourceLabel = entry.isCustom ? 'Custom'
+                  : entry.origin === 'official-methods' ? 'Methods'
+                  : entry.origin === 'custom-methods' ? 'Methods'
+                  : entry.categories.includes('Samples') ? 'Sample'
+                  : 'Classic'
+                const tooltipText = `${entry.name} — ${entry.landscape ? 'Landscape' : 'Portrait'} (${sourceLabel})`
+                return (
+                  <div
+                    key={`${entry.filename}::${entry.landscape ?? false}`}
+                    className={`template-card${isSelected ? ' selected' : ''}`}
+                    onClick={() => setSelected(entry)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(entry) }}
+                    title={cardColumns >= 2 ? tooltipText : undefined}
+                  >
+                    <div className="card-thumb-wrapper">
+                      <TemplateThumbnail iconData={entry.iconData} landscape={entry.landscape} className="card-thumb" />
+                      {cardColumns <= 2 && (
+                        <div className="card-badges">
+                          <span className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}>
+                            {entry.landscape ? 'LS' : 'P'}
+                          </span>
+                          {cardColumns === 1 && (
+                            <span className="card-source-badge">{sourceLabel}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {cardColumns === 1 && (
+                      <span className="card-name">{entry.name}</span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          ))}
+          )}
         </div>
       </aside>
 
@@ -783,7 +886,9 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             </div>
 
             {drawingMode && template && (() => {
-              const bgColor = extractColorConstants(template.constants)['background'] ?? '#ffffff'
+              const colorConsts = extractColorConstants(template.constants)
+              const bgColor = colorConsts['background'] ?? '#ffffff'
+              const fgColor = colorConsts['foreground'] ?? '#000000'
               return (
                 <DrawingToolbar
                   state={drawingState}
@@ -791,6 +896,8 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                   deviceId={deviceId}
                   backgroundColor={bgColor}
                   onBackgroundColorChange={handleBackgroundColorChange}
+                  foregroundColor={fgColor}
+                  onForegroundColorChange={handleForegroundColorChange}
                   onMove={handleDrawingMove}
                   onRotate={handleDrawingRotate}
                   canUndo={editorCanUndo}
@@ -800,31 +907,39 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                 />
               )
             })()}
-            <div className={`preview-stage${drawingMode ? ' drawing-mode' : ''}`}>
-              {loadingTemplate && <p className="stage-hint">Loading...</p>}
-              {error && <p className="stage-hint stage-error">{error}</p>}
-              {template && (
-                <CanvasErrorBoundary resetKey={editorJson}>
-                  {drawingMode ? (() => {
-                    const builtins = deviceBuiltins(template.orientation, deviceId)
-                    const resolved = resolveConstants(template.constants, builtins)
-                    const indexedItems: IndexedPathItem[] = template.items
-                      .map((item, i) => ({ item, originalIndex: i }))
-                      .filter((entry): entry is IndexedPathItem => entry.item.type === 'path') as IndexedPathItem[]
-                    const vb = computeViewBox(
-                      builtins.templateWidth,
-                      builtins.templateHeight,
-                      drawingState.zoom,
-                      drawingState.panOffset,
-                    )
-                    const viewBoxStr = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`
-                    return (
-                      <TemplateCanvas
-                        template={template}
-                        className="preview-svg"
-                        deviceId={deviceId}
-                        viewBox={viewBoxStr}
-                      >
+            {loadingTemplate && (
+              <div className="preview-stage">
+                <p className="stage-hint">Loading...</p>
+              </div>
+            )}
+            {error && (
+              <div className="preview-stage">
+                <p className="stage-hint stage-error">{error}</p>
+              </div>
+            )}
+            {template && (
+              <CanvasErrorBoundary resetKey={editorJson}>
+                {(() => {
+                  const builtins = deviceBuiltins(template.orientation, deviceId)
+                  const resolved = resolveConstants(template.constants, builtins)
+                  const indexedItems: IndexedPathItem[] = template.items
+                    .map((item, i) => ({ item, originalIndex: i }))
+                    .filter((entry): entry is IndexedPathItem => entry.item.type === 'path') as IndexedPathItem[]
+                  return (
+                    <TemplateViewport
+                      key={selected.filename}
+                      template={template}
+                      deviceId={deviceId}
+                      className={drawingMode ? 'drawing-mode' : ''}
+                      zoom={drawingMode ? drawingState.zoom : undefined}
+                      pan={drawingMode ? drawingState.panOffset : undefined}
+                      onViewportChange={drawingMode
+                        ? (z, p) => drawingDispatch({ type: 'ZOOM', zoom: z, pan: p })
+                        : undefined}
+                      panButton={drawingMode ? 'middle' : 'left'}
+                      snapToDefault={!drawingMode}
+                    >
+                      {drawingMode && (
                         <DrawingOverlay
                           state={drawingState}
                           dispatch={drawingDispatch}
@@ -832,38 +947,13 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                           templateHeight={builtins.templateHeight}
                           items={indexedItems}
                           resolvedConstants={resolved}
-                          onWheel={(e) => {
-                            e.preventDefault()
-                            const target = e.target as SVGElement
-                            const svg = target.ownerSVGElement ?? (target as unknown as SVGSVGElement)
-                            if (!svg || !('getScreenCTM' in svg)) return
-                            const ctm = (svg as SVGSVGElement).getScreenCTM()
-                            if (!ctm) return
-                            const inv = ctm.inverse()
-                            const cursorPt = {
-                              x: e.clientX * inv.a + e.clientY * inv.c + inv.e,
-                              y: e.clientX * inv.b + e.clientY * inv.d + inv.f,
-                            }
-                            const delta = e.deltaY > 0 ? -0.15 : 0.15
-                            const result = zoomAtPoint(
-                              drawingState.zoom,
-                              drawingState.panOffset,
-                              delta,
-                              cursorPt,
-                              builtins.templateWidth,
-                              builtins.templateHeight,
-                            )
-                            drawingDispatch({ type: 'ZOOM', zoom: result.zoom, pan: result.pan })
-                          }}
                         />
-                      </TemplateCanvas>
-                    )
-                  })() : (
-                    <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
-                  )}
-                </CanvasErrorBoundary>
-              )}
-            </div>
+                      )}
+                    </TemplateViewport>
+                  )
+                })()}
+              </CanvasErrorBoundary>
+            )}
           </>
         ) : (
           <div className="preview-stage">

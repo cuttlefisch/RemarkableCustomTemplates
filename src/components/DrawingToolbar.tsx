@@ -13,6 +13,8 @@ interface DrawingToolbarProps {
   deviceId: DeviceId
   backgroundColor: string
   onBackgroundColorChange: (color: string) => void
+  foregroundColor: string
+  onForegroundColorChange: (color: string) => void
   onMove: (index: number, direction: 'up' | 'down' | 'top' | 'bottom') => void
   onRotate: (index: number, angleDeg: number) => void
   canUndo: boolean
@@ -39,6 +41,8 @@ export function DrawingToolbar({
   deviceId,
   backgroundColor,
   onBackgroundColorChange,
+  foregroundColor,
+  onForegroundColorChange,
   onMove,
   onRotate,
   canUndo,
@@ -226,6 +230,17 @@ export function DrawingToolbar({
             <option key={w} value={w}>{w}px</option>
           ))}
         </select>
+      </label>
+
+      <label className="drawing-color-label">
+        <span>FG</span>
+        <input
+          type="color"
+          className="drawing-color-picker"
+          value={foregroundColor}
+          onChange={e => onForegroundColorChange(e.target.value)}
+          title="Foreground color"
+        />
       </label>
 
       <label className="drawing-color-label">

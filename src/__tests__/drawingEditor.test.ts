@@ -332,16 +332,6 @@ describe('Zoom and pan', () => {
     expect(state.panOffset).toEqual({ x: 100, y: 50 })
   })
 
-  it('PAN shifts panOffset', () => {
-    const state = dispatch(initialDrawingEditorState, {
-      type: 'PAN',
-      dx: 50,
-      dy: 30,
-    })
-    expect(state.panOffset.x).toBeCloseTo(50)
-    expect(state.panOffset.y).toBeCloseTo(30)
-  })
-
   it('ZOOM_TO_FIT resets zoom and pan', () => {
     let state: DrawingEditorState = { ...initialDrawingEditorState, zoom: 3.0, panOffset: { x: 200, y: 100 } }
     state = dispatch(state, { type: 'ZOOM_TO_FIT' })

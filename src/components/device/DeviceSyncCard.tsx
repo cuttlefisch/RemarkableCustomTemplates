@@ -560,7 +560,7 @@ function SelectiveDeploySection({
       selective.selectAll(deployableTemplates.map(t => t.uuid))
     }
     prevTemplateCount.current = deployableTemplates.length
-  }, [deployableTemplates.length, selective])
+  }, [deployableTemplates, selective])
 
   if (!selective.showSelector) {
     return (

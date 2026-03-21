@@ -5,7 +5,7 @@
  * systems align automatically (single CTM).
  */
 
-import { useRef, useCallback, useEffect, useState } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import type { ReactElement } from 'react'
 import type { DrawingEditorState, DrawingAction } from '../hooks/useDrawingEditor'
 import type { PathItem } from '../types/template'
@@ -34,7 +34,6 @@ interface DrawingOverlayProps {
   templateHeight: number
   items: IndexedPathItem[]
   resolvedConstants?: ResolvedConstants
-  onWheel?: (e: React.WheelEvent<SVGGElement>) => void
 }
 
 export function DrawingOverlay({
@@ -44,12 +43,8 @@ export function DrawingOverlay({
   templateHeight,
   items,
   resolvedConstants,
-  onWheel,
 }: DrawingOverlayProps): ReactElement {
   const gRef = useRef<SVGGElement>(null)
-  const [isPanning, setIsPanning] = useState(false)
-  const [spaceHeld, setSpaceHeld] = useState(false)
-  const lastPanPoint = useRef<{ x: number; y: number } | null>(null)
 
   const getSvg = useCallback(() => gRef.current?.ownerSVGElement ?? null, [])
 
@@ -57,15 +52,6 @@ export function DrawingOverlay({
     (e: React.MouseEvent<SVGGElement>) => {
       const svg = getSvg()
       if (!svg) return
-
-      // Middle mouse or space+click → start panning
-      if (e.button === 1 || (spaceHeld && e.button === 0)) {
-        e.preventDefault()
-        const point = screenToTemplate(e.nativeEvent, svg)
-        lastPanPoint.current = point
-        setIsPanning(true)
-        return
-      }
 
       const point = screenToTemplate(e.nativeEvent, svg)
 
@@ -108,22 +94,13 @@ export function DrawingOverlay({
 
       dispatch({ type: 'CANVAS_CLICK', point })
     },
-    [state.activeTool, state.selectedItemIndex, dispatch, getSvg, spaceHeld, items, resolvedConstants],
+    [state.activeTool, state.selectedItemIndex, dispatch, getSvg, items, resolvedConstants],
   )
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGGElement>) => {
       const svg = getSvg()
       if (!svg) return
-
-      if (isPanning && lastPanPoint.current) {
-        const point = screenToTemplate(e.nativeEvent, svg)
-        const dx = point.x - lastPanPoint.current.x
-        const dy = point.y - lastPanPoint.current.y
-        dispatch({ type: 'PAN', dx, dy })
-        // Don't update lastPanPoint since PAN changes the viewBox
-        return
-      }
 
       const point = screenToTemplate(e.nativeEvent, svg)
 
@@ -134,7 +111,7 @@ export function DrawingOverlay({
 
       dispatch({ type: 'CANVAS_MOUSE_MOVE', point })
     },
-    [dispatch, getSvg, isPanning, state.draggingHandle],
+    [dispatch, getSvg, state.draggingHandle],
   )
 
   const handleMouseUp = useCallback(() => {
@@ -142,13 +119,9 @@ export function DrawingOverlay({
       dispatch({ type: 'END_HANDLE_DRAG' })
       return
     }
-    if (isPanning) {
-      setIsPanning(false)
-      lastPanPoint.current = null
-    }
-  }, [isPanning, state.draggingHandle, dispatch])
+  }, [state.draggingHandle, dispatch])
 
-  // Handle Escape, Enter, Space key
+  // Handle Escape and Enter keys
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -158,35 +131,15 @@ export function DrawingOverlay({
         if (state.inProgress?.tool === 'bezier' && state.inProgress.vertices.length >= 2) {
           dispatch({ type: 'FINISH_BEZIER' })
         }
-      } else if (e.key === ' ') {
-        e.preventDefault()
-        setSpaceHeld(true)
-      }
-    }
-    function handleKeyUp(e: KeyboardEvent) {
-      if (e.key === ' ') {
-        setSpaceHeld(false)
-        if (isPanning) {
-          setIsPanning(false)
-          lastPanPoint.current = null
-        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [dispatch, isPanning, state.inProgress])
+  }, [dispatch, state.inProgress])
 
-  const cursor = isPanning
-    ? 'grabbing'
-    : spaceHeld
-      ? 'grab'
-      : state.activeTool === 'select'
-        ? 'default'
-        : 'crosshair'
+  const cursor = state.activeTool === 'select' ? 'default' : 'crosshair'
 
   return (
     <g
@@ -197,7 +150,6 @@ export function DrawingOverlay({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onWheel={onWheel}
     >
       {/* Transparent hit area covering the full template */}
       <rect

@@ -6,7 +6,7 @@
  */
 
 import type { FastifyInstance } from 'fastify'
-import { readFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, rmdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { ServerConfig } from '../../config.ts'
@@ -17,6 +17,8 @@ import { buildMethodsRegistry } from '../../lib/buildMethodsRegistry.ts'
 import { importCustomMethodsEntries } from '../../lib/importCustomMethods.ts'
 import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
+import { parseTemplate } from '../../../src/lib/parser.ts'
+import { generateTemplateIcon } from '../../../src/lib/iconGenerator.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 
@@ -44,6 +46,24 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       const pulled = await pullDirectory(sftp, TEMPLATES_PATH, config.officialDir, undefined, (cur, tot) => {
         stream.progress('Pulling templates', cur, tot)
       })
+
+      // Post-process: enrich registry entries with iconData
+      try {
+        const registryPath = resolve(config.officialDir, 'templates.json')
+        if (existsSync(registryPath)) {
+          const reg = JSON.parse(readFileSync(registryPath, 'utf8')) as { templates: Array<Record<string, unknown>> }
+          for (const entry of reg.templates) {
+            try {
+              const tplFile = resolve(config.officialDir, `${entry.filename as string}.template`)
+              if (existsSync(tplFile)) {
+                const tpl = parseTemplate(JSON.parse(readFileSync(tplFile, 'utf8')))
+                entry.iconData = generateTemplateIcon(tpl)
+              }
+            } catch { /* skip individual icon failures */ }
+          }
+          writeFileSync(registryPath, JSON.stringify(reg, null, 2), 'utf8')
+        }
+      } catch { /* non-fatal */ }
 
       stream.done({ count: pulled.length, files: pulled })
     } catch (e) {

@@ -332,6 +332,15 @@ body {
   color: var(--color-text-template-btn-selected);
 }
 
+.template-thumbnail {
+  flex-shrink: 0;
+  border: 1px solid var(--color-svg-border);
+  border-radius: 2px;
+  object-fit: contain;
+}
+.template-thumbnail.portrait { width: 20px; height: 27px; }
+.template-thumbnail.landscape { width: 27px; height: 20px; }
+
 .template-btn-name {
   flex: 1;
   overflow: hidden;
@@ -603,7 +612,8 @@ body {
 
 /* ── Stage ───────────────────────────────────────────────────────────────── */
 
-.preview-stage {
+.preview-stage,
+.viewport-stage {
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -612,6 +622,7 @@ body {
   justify-content: center;
   padding: 32px;
   box-sizing: border-box;
+  outline: none;
 }
 
 .stage-hint {
@@ -726,7 +737,8 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
 
 /* ── SVG preview ─────────────────────────────────────────────────────────── */
 
-.preview-svg {
+.preview-svg,
+.viewport-svg {
   max-width: min(100%, 600px);
   max-height: 100%;
   width: auto;
@@ -737,14 +749,20 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
   border-radius: 2px;
 }
 
-/* ── Drawing mode canvas ────────────────────────────────────────────────── */
+/* ── Zoomed preview canvas ──────────────────────────────────────────────── */
 
-.preview-stage.drawing-mode {
+.preview-stage.preview-zoomed,
+.preview-stage.drawing-mode,
+.viewport-stage.viewport-zoomed,
+.viewport-stage.drawing-mode {
   padding: 0;
   overflow: hidden;           /* viewBox handles viewport, no scrollbars */
 }
 
-.preview-stage.drawing-mode .preview-svg {
+.preview-stage.preview-zoomed .preview-svg,
+.preview-stage.drawing-mode .preview-svg,
+.viewport-stage.viewport-zoomed .viewport-svg,
+.viewport-stage.drawing-mode .viewport-svg {
   max-width: none;
   max-height: none;
   width: 100%;
@@ -1003,3 +1021,119 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
 .close-indicator {
   pointer-events: none;
 }
+
+/* ── Sidebar view controls ─────────────────────────────────────────────── */
+
+.sidebar-view-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-sidebar-header-border);
+  flex-shrink: 0;
+}
+
+.view-mode-toggle, .card-columns-toggle { display: flex; gap: 2px; }
+
+.view-mode-btn, .card-col-btn {
+  padding: 3px 7px;
+  background: var(--color-sidebar-btn-bg);
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 3px;
+  color: var(--color-sidebar-btn-text);
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.view-mode-btn:hover, .card-col-btn:hover {
+  background: var(--color-sidebar-btn-hover-bg);
+  color: var(--color-sidebar-btn-hover-text);
+}
+.view-mode-btn.active, .card-col-btn.active {
+  background: var(--color-sidebar-btn-active-bg);
+  border-color: var(--color-sidebar-btn-active-border);
+  color: var(--color-sidebar-btn-active-text);
+}
+
+/* ── Card grid ─────────────────────────────────────────────────────────── */
+
+.card-grid { display: grid; gap: 6px; padding: 6px; }
+
+.sidebar-list.card-view.cols-1 .card-grid { grid-template-columns: 1fr; }
+.sidebar-list.card-view.cols-2 .card-grid { grid-template-columns: 1fr 1fr; }
+.sidebar-list.card-view.cols-3 .card-grid { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ── Template card ─────────────────────────────────────────────────────── */
+
+.template-card {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--color-sidebar-btn-bg);
+  transition: background 0.1s, border-color 0.15s;
+}
+.template-card:hover { background: var(--color-sidebar-item-hover-bg); }
+.template-card.selected {
+  border-color: var(--color-template-btn-selected-border);
+  background: var(--color-sidebar-item-hover-bg);
+}
+
+.card-thumb-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  min-height: 40px;
+}
+
+/* Override TemplateThumbnail fixed sizes in card mode */
+.template-card .template-thumbnail {
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  object-fit: contain;
+}
+
+.card-badges {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  gap: 2px;
+}
+.card-badges .orient-badge { font-size: 8px; padding: 1px 4px; }
+
+.card-source-badge {
+  font-size: 8px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--color-tag-cat-bg);
+  color: var(--color-tag-cat-text);
+}
+
+.card-name {
+  display: block;
+  padding: 2px 4px 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--color-text-template-btn);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* ── Column-specific card sizing ───────────────────────────────────────── */
+
+.cols-1 .card-thumb-wrapper { min-height: 120px; }
+.cols-2 .card-thumb-wrapper { min-height: 60px; }
+.cols-2 .template-card .template-thumbnail { max-height: 80px; }
+.cols-3 .card-thumb-wrapper { min-height: 40px; padding: 2px; }
+.cols-3 .template-card .template-thumbnail { max-height: 56px; }
+.cols-3 .template-card { border-width: 1.5px; border-radius: 3px; }

@@ -21,7 +21,6 @@ import {
   rebuildBezierPathData,
 } from '../lib/drawingShapes'
 import { distanceBetween } from '../lib/drawingCoords'
-import { clampPan } from '../lib/drawingViewport'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -87,7 +86,6 @@ export type DrawingAction =
   | { type: 'FINISH_BEZIER' }
   // Zoom/pan
   | { type: 'ZOOM'; zoom: number; pan: Point }
-  | { type: 'PAN'; dx: number; dy: number }
   | { type: 'ZOOM_TO_FIT' }
   // Layering
   | { type: 'MOVE_ITEM'; index: number; direction: 'up' | 'down' | 'top' | 'bottom' }
@@ -235,16 +233,6 @@ export function drawingEditorReducer(
     // Zoom/pan
     case 'ZOOM':
       return { ...state, zoom: action.zoom, panOffset: action.pan }
-
-    case 'PAN': {
-      const newPan = clampPan(
-        { x: state.panOffset.x + action.dx, y: state.panOffset.y + action.dy },
-        state.zoom,
-        1404, // These are approximate; parent passes real values via viewBox
-        1872,
-      )
-      return { ...state, panOffset: newPan }
-    }
 
     case 'ZOOM_TO_FIT':
       return { ...state, zoom: 1.0, panOffset: { x: 0, y: 0 } }

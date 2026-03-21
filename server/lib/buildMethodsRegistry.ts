@@ -9,6 +9,8 @@
 import { readFileSync, writeFileSync, copyFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { readManifestUuids } from './manifestUuids.ts'
+import { parseTemplate } from '../../src/lib/parser.ts'
+import { generateTemplateIcon } from '../../src/lib/iconGenerator.ts'
 
 export interface BuildMethodsRegistryOptions {
   tempDir: string
@@ -74,6 +76,7 @@ export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): P
     // Read template body for orientation and labels
     let orientation = 'portrait'
     let labels: string[] = []
+    let iconData: string | undefined
     if (existsSync(tplPath)) {
       try {
         const tplBody = JSON.parse(readFileSync(tplPath, 'utf8')) as Record<string, unknown>
@@ -85,6 +88,11 @@ export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): P
       } catch {
         // Use defaults
       }
+
+      try {
+        const tpl = parseTemplate(JSON.parse(readFileSync(tplPath, 'utf8')))
+        iconData = generateTemplateIcon(tpl)
+      } catch { /* skip icon */ }
     }
 
     // Determine origin — UUID in a known manifest OR "Custom" label in template body
@@ -109,6 +117,7 @@ export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): P
       categories: labels.length > 0 ? labels : ['Uncategorized'],
       rmMethodsId: uuid,
       origin,
+      ...(iconData ? { iconData } : {}),
     })
     count++
   }

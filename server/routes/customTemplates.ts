@@ -7,6 +7,15 @@ import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from '
 import { resolve } from 'node:path'
 import type { ServerConfig } from '../config.ts'
 import { assertWithin } from '../lib/pathSecurity.ts'
+import { parseTemplate } from '../../src/lib/parser.ts'
+import { generateTemplateIcon } from '../../src/lib/iconGenerator.ts'
+
+function tryGenerateIcon(content: string): string | undefined {
+  try {
+    const tpl = parseTemplate(JSON.parse(content))
+    return generateTemplateIcon(tpl)
+  } catch { return undefined }
+}
 
 function readRegistry(config: ServerConfig): { templates: unknown[] } {
   try {
@@ -31,7 +40,8 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
       writeFileSync(filePath, body.content, 'utf8')
 
       const registry = readRegistry(config)
-      registry.templates.push(body.entry)
+      const iconData = tryGenerateIcon(body.content)
+      registry.templates.push({ ...(body.entry as object), ...(iconData ? { iconData } : {}) })
       writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
 
       return reply.status(201).send({ ok: true })
@@ -54,14 +64,15 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
       writeFileSync(filePath, body.content, 'utf8')
 
       if (body.entry) {
+        const iconData = tryGenerateIcon(body.content)
         const registry = readRegistry(config)
         registry.templates = (registry.templates as Array<{ filename: string; rmMethodsId?: string }>).map(e => {
           if (e.filename !== `custom/${filename}`) return e
           const incoming = body.entry as Record<string, unknown>
-          if (e.rmMethodsId && !incoming.rmMethodsId) {
-            return { ...incoming, rmMethodsId: e.rmMethodsId }
-          }
-          return body.entry
+          const base = (e.rmMethodsId && !incoming.rmMethodsId)
+            ? { ...incoming, rmMethodsId: e.rmMethodsId }
+            : { ...(body.entry as object) }
+          return { ...base, ...(iconData ? { iconData } : {}) }
         })
         writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
       }
@@ -92,10 +103,11 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
         assertWithin(config.customDir, oldPath)
         if (existsSync(oldPath)) unlinkSync(oldPath)
       }
+      const iconData = tryGenerateIcon(content)
       const registry = readRegistry(config)
       registry.templates = (registry.templates as Array<{ filename: string; name: string }>).map(e =>
         e.filename === `custom/${oldSlug}`
-          ? { ...e, name: newName, filename: `custom/${newSlug}` }
+          ? { ...e, name: newName, filename: `custom/${newSlug}`, ...(iconData ? { iconData } : {}) }
           : e,
       )
       writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
