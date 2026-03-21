@@ -1,14 +1,20 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { TemplateCanvas } from '../components/TemplateCanvas'
 import { TemplateEditor } from '../components/TemplateEditor'
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary'
+import { DrawingToolbar } from '../components/DrawingToolbar'
+import { DrawingOverlay } from '../components/DrawingOverlay'
 import { parseTemplate } from '../lib/parser'
 import { removeEntry } from '../lib/registry'
 import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode } from '../lib/customTemplates'
-import { DEVICES, type DeviceId } from '../lib/renderer'
+import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
+import { buildScaleConstants } from '../lib/drawingShapes'
+import type { PathItem } from '../types/template'
+import type { ScalingMode } from '../lib/drawingShapes'
 import type { TemplateRegistryEntry } from '../types/registry'
 import type { RemarkableTemplate } from '../types/template'
 import { useRegistryContext } from '../hooks/useRegistry'
+import { useDrawingEditor } from '../hooks/useDrawingEditor'
 
 function DeviceIcon({ width, height }: { width: number; height: number }) {
   const maxH = 18
@@ -59,6 +65,65 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   const [filterSource, setFilterSource] = useState<'methods' | 'official' | 'samples' | null>(null)
 
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  // Drawing editor state
+  const [drawingMode, setDrawingMode] = useState(false)
+
+  const handleDrawingCommit = useCallback((newItem: PathItem, scalingMode: ScalingMode) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+
+      // Ensure "Drawn" category
+      const categories = parsed.categories as string[] ?? []
+      if (!categories.includes('Drawn')) {
+        parsed.categories = [...categories, 'Drawn']
+      }
+
+      // Inject scale constants if proportional and not already present
+      if (scalingMode.type === 'proportional') {
+        const constants = (parsed.constants ?? []) as Record<string, unknown>[]
+        const hasScale = constants.some(c => 'drawnScaleX' in c)
+        if (!hasScale) {
+          parsed.constants = [
+            ...buildScaleConstants(scalingMode.baseWidth, scalingMode.baseHeight),
+            ...constants,
+          ]
+        }
+      }
+
+      // Set supportedScreens if fixed mode
+      if (scalingMode.type === 'fixed') {
+        parsed.supportedScreens = (parsed.supportedScreens as string[] | undefined) ?? [deviceId]
+      }
+
+      const items = (parsed.items ?? []) as unknown[]
+      parsed.items = [...items, newItem]
+
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch {
+      // If JSON is malformed, ignore the commit
+    }
+  }, [editorJson, deviceId])
+
+  const handleDrawingDelete = useCallback((index: number) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      parsed.items = items.filter((_, i) => i !== index)
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch {
+      // If JSON is malformed, ignore the delete
+    }
+  }, [editorJson])
+
+  const { state: drawingState, dispatch: drawingDispatch } = useDrawingEditor({
+    onCommit: handleDrawingCommit,
+    onDelete: handleDrawingDelete,
+  })
 
   const deviceGroups = useMemo<DeviceGroup[]>(() => {
     const groups = new Map<string, typeof DEVICES[string][]>()
@@ -529,6 +594,15 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             <div className="preview-meta">
               <div className="preview-meta-top">
                 <h1 className="preview-meta-name">{selected.name}</h1>
+                {selected?.isCustom && (
+                  <button
+                    className={`edit-json-btn${drawingMode ? ' active' : ''}`}
+                    onClick={() => setDrawingMode(d => !d)}
+                    disabled={!template}
+                  >
+                    {drawingMode ? 'Close Draw' : 'Draw'}
+                  </button>
+                )}
                 <button
                   className={`edit-json-btn${editorOpen ? ' active' : ''}`}
                   onClick={() => setEditorOpen(o => !o)}
@@ -583,12 +657,28 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
               </div>
             </div>
 
+            {drawingMode && template && (
+              <DrawingToolbar state={drawingState} dispatch={drawingDispatch} deviceId={deviceId} />
+            )}
             <div className="preview-stage">
               {loadingTemplate && <p className="stage-hint">Loading...</p>}
               {error && <p className="stage-hint stage-error">{error}</p>}
               {template && (
                 <CanvasErrorBoundary resetKey={editorJson}>
-                  <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
+                  {drawingMode ? (
+                    <div className="drawing-editor-wrapper">
+                      <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
+                      <DrawingOverlay
+                        state={drawingState}
+                        dispatch={drawingDispatch}
+                        templateWidth={deviceBuiltins(template.orientation, deviceId).templateWidth}
+                        templateHeight={deviceBuiltins(template.orientation, deviceId).templateHeight}
+                        items={template.items.filter((item): item is PathItem => item.type === 'path')}
+                      />
+                    </div>
+                  ) : (
+                    <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
+                  )}
                 </CanvasErrorBoundary>
               )}
             </div>

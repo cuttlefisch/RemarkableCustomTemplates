@@ -736,3 +736,200 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
   border: 1px solid var(--color-svg-border);
   border-radius: 2px;
 }
+
+/* ── Drawing editor ─────────────────────────────────────────────────────── */
+
+.drawing-editor-wrapper {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.drawing-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-editor-toolbar-bg);
+  border-bottom: 1px solid var(--color-editor-border);
+  border-radius: 4px 4px 0 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.drawing-tool-btn {
+  padding: 4px 8px;
+  background: var(--color-sidebar-btn-bg);
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 4px;
+  color: var(--color-sidebar-btn-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  min-width: 30px;
+  text-align: center;
+}
+
+.drawing-tool-btn:hover {
+  background: var(--color-sidebar-btn-hover-bg, var(--color-sidebar-btn-bg));
+}
+
+.drawing-tool-btn.active {
+  background: var(--color-sidebar-btn-active-bg);
+  border-color: var(--color-sidebar-btn-active-border);
+  color: var(--color-sidebar-btn-active-text);
+}
+
+.drawing-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.drawing-delete-btn {
+  color: var(--color-error-text, #d1242f);
+}
+
+.drawing-alpha-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-sidebar-count-fg);
+  background: var(--color-text-sidebar-count-bg);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.drawing-help-btn {
+  font-size: 12px;
+  min-width: 24px;
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.drawing-help-popover {
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  z-index: 100;
+  max-width: 400px;
+  padding: 12px 16px;
+  background: var(--color-editor-bg, #fff);
+  border: 1px solid var(--color-editor-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.drawing-help-popover h4 {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.drawing-help-popover p {
+  margin: 6px 0;
+}
+
+.drawing-help-popover ul {
+  margin: 4px 0 8px 16px;
+  font-size: 12px;
+}
+
+.drawing-help-popover li {
+  margin-bottom: 4px;
+}
+
+.drawing-help-popover kbd {
+  background: var(--color-sidebar-btn-bg);
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.drawing-help-close {
+  margin-top: 8px;
+  padding: 4px 12px;
+  background: var(--color-editor-apply-bg);
+  border: 1px solid var(--color-editor-apply-border);
+  border-radius: 4px;
+  color: var(--color-editor-apply-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.drawing-toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--color-editor-border);
+  flex-shrink: 0;
+}
+
+.drawing-sides-input {
+  width: 48px;
+  padding: 3px 6px;
+  background: var(--color-sidebar-input-bg, var(--color-sidebar-btn-bg));
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.drawing-fill-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.drawing-color-picker {
+  width: 28px;
+  height: 24px;
+  padding: 1px;
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.drawing-stroke-width-select,
+.drawing-scaling-select {
+  padding: 3px 6px;
+  background: var(--color-sidebar-btn-bg);
+  border: 1px solid var(--color-sidebar-btn-border);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.selection-handle {
+  pointer-events: none;
+}
+
+.in-progress-edge {
+  pointer-events: none;
+}
+
+.close-indicator {
+  pointer-events: none;
+}
