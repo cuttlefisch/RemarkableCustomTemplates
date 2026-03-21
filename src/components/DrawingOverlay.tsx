@@ -17,6 +17,11 @@ import type { BezierHandles, Point } from '../lib/drawingShapes'
 
 const SNAP_THRESHOLD = 15
 
+// Bezier handle sizing (template coordinate space, e.g. 1404×1872)
+const HIT_RADIUS = 20          // invisible hit target — easy to click
+const VISUAL_KNOT_RADIUS = 5   // visible knot dot
+const VISUAL_CP_RADIUS = 4     // visible control point dot
+
 export interface IndexedPathItem {
   item: PathItem
   originalIndex: number
@@ -434,51 +439,71 @@ function BezierHandleOverlay({
         )
       })}
 
-      {/* Control points (hollow circles) */}
+      {/* Control points (hollow circles with enlarged hit targets) */}
       {Array.from({ length: segCount }, (_, i) => {
         const cp1 = getCp(i, 0)
         const cp2 = getCp(i, 1)
         return (
           <g key={`cps-${i}`}>
+            {/* Hit targets (invisible, larger radius for easy clicking) */}
             <circle
-              cx={cp1.x} cy={cp1.y} r={4}
-              fill="white"
-              stroke="var(--color-editor-apply-bg, #0969da)"
-              strokeWidth={1.5}
+              cx={cp1.x} cy={cp1.y} r={HIT_RADIUS}
+              fill="transparent"
               style={{ cursor: 'move' }}
               pointerEvents="all"
               data-handle-type="cp1"
               data-handle-index={i}
             />
             <circle
-              cx={cp2.x} cy={cp2.y} r={4}
-              fill="white"
-              stroke="var(--color-editor-apply-bg, #0969da)"
-              strokeWidth={1.5}
+              cx={cp2.x} cy={cp2.y} r={HIT_RADIUS}
+              fill="transparent"
               style={{ cursor: 'move' }}
               pointerEvents="all"
               data-handle-type="cp2"
               data-handle-index={i}
             />
+            {/* Visual circles (small, no pointer events) */}
+            <circle
+              cx={cp1.x} cy={cp1.y} r={VISUAL_CP_RADIUS}
+              fill="white"
+              stroke="var(--color-editor-apply-bg, #0969da)"
+              strokeWidth={1.5}
+              pointerEvents="none"
+            />
+            <circle
+              cx={cp2.x} cy={cp2.y} r={VISUAL_CP_RADIUS}
+              fill="white"
+              stroke="var(--color-editor-apply-bg, #0969da)"
+              strokeWidth={1.5}
+              pointerEvents="none"
+            />
           </g>
         )
       })}
 
-      {/* Knots (filled circles) */}
+      {/* Knots (filled circles with enlarged hit targets) */}
       {knots.map((_, i) => {
         const k = getKnot(i)
         return (
-          <circle
-            key={`knot-${i}`}
-            cx={k.x} cy={k.y} r={5}
-            fill="var(--color-editor-apply-bg, #0969da)"
-            stroke="white"
-            strokeWidth={1.5}
-            style={{ cursor: 'move' }}
-            pointerEvents="all"
-            data-handle-type="knot"
-            data-handle-index={i}
-          />
+          <g key={`knot-${i}`}>
+            {/* Hit target */}
+            <circle
+              cx={k.x} cy={k.y} r={HIT_RADIUS}
+              fill="transparent"
+              style={{ cursor: 'move' }}
+              pointerEvents="all"
+              data-handle-type="knot"
+              data-handle-index={i}
+            />
+            {/* Visual circle */}
+            <circle
+              cx={k.x} cy={k.y} r={VISUAL_KNOT_RADIUS}
+              fill="var(--color-editor-apply-bg, #0969da)"
+              stroke="white"
+              strokeWidth={1.5}
+              pointerEvents="none"
+            />
+          </g>
         )
       })}
     </g>

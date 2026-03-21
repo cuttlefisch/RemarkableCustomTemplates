@@ -416,12 +416,18 @@ export function computeHobbyControlPoints(
     solveHobbyClosed(d, delta, theta, n, segCount)
   }
 
-  // Compute phi[i] = -theta[i+1] - delta[i] for each segment
+  // Compute phi[i] = -theta[i+1] - delta[i+1] for each segment.
+  // From C1 continuity at knot i+1: psi[i] - phi[i] = psi[i+1] + theta[i+1]
+  //   → phi[i] = -(psi[i+1] - psi[i]) - theta[i+1] = -delta[i+1] - theta[i+1]
+  // For the last segment of an open path, there's no next turning angle (delta = 0).
   const result: { cp1: Point; cp2: Point }[] = []
 
   for (let i = 0; i < segCount; i++) {
     const i2 = (i + 1) % n
-    const phi = -theta[i2] - delta[i]
+    const nextDelta = closed
+      ? delta[(i + 1) % segCount]
+      : ((i + 1) < segCount ? delta[i + 1] : 0)
+    const phi = -theta[i2] - nextDelta
     const t = theta[i]
 
     // Hobby's velocity function
@@ -470,22 +476,23 @@ function normalizeAngle(a: number): number {
  *
  * Based on John Hobby's 1986 paper "Smooth, Easy to Compute Interpolating Splines".
  */
-function hobbyAlpha(theta: number, phi: number): number {
+export function hobbyAlpha(theta: number, phi: number): number {
   const st = Math.sin(theta)
   const ct = Math.cos(theta)
   const sp = Math.sin(phi)
   const cp = Math.cos(phi)
 
-  // Hobby's formula: f(theta, phi) =
-  //   (2 + sqrt(2) * (sin(theta) - sin(phi)/16) * (sin(phi) - sin(theta)/16) * (cos(theta) - 1))
-  //   / (1 + 0.5*(sqrt(5)-1)*cos(theta) + 0.5*(3-sqrt(5))*cos(phi))
+  // Hobby's formula (1986 paper):
+  //   f(theta, phi) =
+  //     (2 + sqrt(2) * (sin(theta) - sin(phi)/16) * (sin(phi) - sin(theta)/16) * (cos(theta) - cos(phi)))
+  //     / (1 + 0.5*(sqrt(5)-1)*cos(theta) + 0.5*(3-sqrt(5))*cos(phi))
   // Note: no factor of 3 in denominator — that's applied externally as d/3.
 
   const sqrt5 = Math.sqrt(5)
   const a = 0.5 * (sqrt5 - 1)  // ≈ 0.618
   const b = 0.5 * (3 - sqrt5)  // ≈ 0.382
 
-  const num = 2 + Math.SQRT2 * (st - sp / 16) * (sp - st / 16) * (ct - 1)
+  const num = 2 + Math.SQRT2 * (st - sp / 16) * (sp - st / 16) * (ct - cp)
   const den = 1 + a * ct + b * cp
 
   if (Math.abs(den) < 1e-10) return 1
@@ -516,11 +523,10 @@ function solveHobbyOpen(
     const di = Math.max(d[i - 1], 1e-10)
     const di1 = Math.max(d[i], 1e-10)
 
-    a[k] = 1 / di1
+    a[k] = 1 / di       // sub-diagonal: coefficient of theta[i-1], uses d[i-1]
     b[k] = 2 * (1 / di + 1 / di1)
-    c[k] = 1 / di
+    c[k] = 1 / di1      // super-diagonal: coefficient of theta[i+1], uses d[i]
 
-    // RHS: - (2 * delta[i] / di + delta[i < segCount ? i : 0] / di1)
     const deltaI = i < segCount ? delta[i] : 0
     const deltaI1 = (i + 1) < segCount ? delta[i + 1] : 0
     rhs[k] = -(2 * deltaI / di + deltaI1 / di1)
@@ -556,9 +562,9 @@ function solveHobbyClosed(
     const di = Math.max(d[iPrev], 1e-10)
     const di1 = Math.max(d[i], 1e-10)
 
-    a[i] = 1 / di1
+    a[i] = 1 / di       // sub-diagonal: coefficient of theta[i-1], uses d[iPrev]
     b[i] = 2 * (1 / di + 1 / di1)
-    c[i] = 1 / di
+    c[i] = 1 / di1      // super-diagonal: coefficient of theta[i+1], uses d[i]
 
     const iNext = (i + 1) % n
     rhs[i] = -(2 * delta[i] / di + delta[iNext] / di1)

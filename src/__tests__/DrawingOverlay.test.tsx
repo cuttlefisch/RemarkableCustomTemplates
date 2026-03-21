@@ -95,4 +95,34 @@ describe('DrawingOverlay', () => {
     const circles = document.querySelectorAll('circle')
     expect(circles.length).toBeGreaterThanOrEqual(3)
   })
+
+  it('bezier handles have enlarged invisible hit targets', () => {
+    const bezierItem: IndexedPathItem = {
+      item: {
+        type: 'path',
+        data: ['M', 0, 0, 'C', 30, 0, 70, 50, 100, 50, 'C', 130, 50, 170, 0, 200, 0],
+        strokeColor: '#000000',
+      },
+      originalIndex: 0,
+    }
+    renderOverlay(
+      { activeTool: 'select', selectedItemIndex: 0 },
+      [bezierItem],
+    )
+    // Each knot and CP should have a transparent hit target circle
+    const hitTargets = document.querySelectorAll('circle[data-handle-type]')
+    expect(hitTargets.length).toBeGreaterThan(0)
+    // Hit targets should be transparent (invisible) with a large radius
+    for (const target of hitTargets) {
+      expect(target.getAttribute('fill')).toBe('transparent')
+      const r = Number(target.getAttribute('r'))
+      expect(r).toBeGreaterThanOrEqual(15)
+    }
+    // Visual circles (no data-handle-type) should have smaller radius
+    const allCircles = document.querySelectorAll('.bezier-handle-overlay circle:not([data-handle-type])')
+    for (const circle of allCircles) {
+      const r = Number(circle.getAttribute('r'))
+      expect(r).toBeLessThanOrEqual(6)
+    }
+  })
 })

@@ -13,6 +13,7 @@ import {
   extractBezierHandles,
   rebuildBezierPathData,
   computeHobbyControlPoints,
+  hobbyAlpha,
   translatePathItem,
   scaleCoord,
   buildScaleConstants,
@@ -658,33 +659,74 @@ describe('rebuildBezierPathData', () => {
   })
 })
 
+// ─── hobbyAlpha (velocity function) ─────────────────────────────────────────
+
+describe('hobbyAlpha', () => {
+  it('f(0, 0) = 1 (straight line)', () => {
+    expect(hobbyAlpha(0, 0)).toBeCloseTo(1, 10)
+  })
+
+  it('f(θ, θ) = 2 / (1 + cos(θ)) for equal angles (cos(θ)-cos(φ)=0)', () => {
+    // When theta = phi, the numerator simplifies to 2 because (cos(theta) - cos(phi)) = 0.
+    // So f(θ,θ) = 2 / (1 + a*cos(θ) + b*cos(θ)) = 2 / (1 + cos(θ))
+    for (const angle of [Math.PI / 6, Math.PI / 4, Math.PI / 3]) {
+      const expected = 2 / (1 + Math.cos(angle))
+      expect(hobbyAlpha(angle, angle)).toBeCloseTo(expected, 8)
+    }
+  })
+
+  it('f(θ, φ) uses (cos(θ) - cos(φ)), not (cos(θ) - 1)', () => {
+    // When theta ≠ phi, the two formulations diverge.
+    // For θ=π/6, φ=π/3: cos(π/6)−cos(π/3) ≈ 0.366, cos(π/6)−1 ≈ −0.134
+    const theta = Math.PI / 6
+    const phi = Math.PI / 3
+    const st = Math.sin(theta), ct = Math.cos(theta)
+    const sp = Math.sin(phi), cp = Math.cos(phi)
+    const sqrt5 = Math.sqrt(5)
+    const a = 0.5 * (sqrt5 - 1)
+    const b = 0.5 * (3 - sqrt5)
+    const num = 2 + Math.SQRT2 * (st - sp / 16) * (sp - st / 16) * (ct - cp)
+    const den = 1 + a * ct + b * cp
+    const expected = num / den
+    expect(hobbyAlpha(theta, phi)).toBeCloseTo(expected, 8)
+    // Verify it's NOT using the buggy (cos(theta) - 1) formula
+    const buggyNum = 2 + Math.SQRT2 * (st - sp / 16) * (sp - st / 16) * (ct - 1)
+    const buggyResult = buggyNum / den
+    expect(Math.abs(expected - buggyResult)).toBeGreaterThan(0.05)
+  })
+
+  it('is asymmetric: f(θ, φ) ≠ f(φ, θ) in general', () => {
+    const a = hobbyAlpha(Math.PI / 6, Math.PI / 3)
+    const b = hobbyAlpha(Math.PI / 3, Math.PI / 6)
+    expect(a).not.toBeCloseTo(b, 2)
+  })
+})
+
 // ─── computeHobbyControlPoints ──────────────────────────────────────────────
 
 describe('computeHobbyControlPoints', () => {
-  it('2 points: CPs along the chord', () => {
+  it('2 points: CPs at exactly 1/3 and 2/3 of chord', () => {
     const cps = computeHobbyControlPoints(
       [{ x: 0, y: 0 }, { x: 300, y: 0 }], false,
     )
     expect(cps).toHaveLength(1)
-    // CP1 should be near 1/3 of chord, CP2 near 2/3
-    expect(cps[0].cp1.x).toBeGreaterThan(0)
-    expect(cps[0].cp1.x).toBeLessThan(150)
-    expect(cps[0].cp2.x).toBeGreaterThan(150)
-    expect(cps[0].cp2.x).toBeLessThan(300)
-    // Y should be 0 for a horizontal line
-    expect(cps[0].cp1.y).toBeCloseTo(0, 2)
-    expect(cps[0].cp2.y).toBeCloseTo(0, 2)
+    // For 2 points, theta = phi = 0, hobbyAlpha(0,0) = 1
+    // CP1 = start + d/3 * 1 along chord = (100, 0)
+    // CP2 = end - d/3 * 1 along chord = (200, 0)
+    expect(cps[0].cp1.x).toBeCloseTo(100, 1)
+    expect(cps[0].cp1.y).toBeCloseTo(0, 5)
+    expect(cps[0].cp2.x).toBeCloseTo(200, 1)
+    expect(cps[0].cp2.y).toBeCloseTo(0, 5)
   })
 
-  it('3 collinear points: nearly-straight segments', () => {
+  it('3 collinear points: CPs lie on the line (y ≈ 0)', () => {
     const cps = computeHobbyControlPoints(
       [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }], false,
     )
     expect(cps).toHaveLength(2)
-    // All CPs should have y ≈ 0
     for (const { cp1, cp2 } of cps) {
-      expect(cp1.y).toBeCloseTo(0, 1)
-      expect(cp2.y).toBeCloseTo(0, 1)
+      expect(cp1.y).toBeCloseTo(0, 5)
+      expect(cp2.y).toBeCloseTo(0, 5)
     }
   })
 
@@ -697,13 +739,83 @@ describe('computeHobbyControlPoints', () => {
     ]
     const cps = computeHobbyControlPoints(anchors, true)
     expect(cps).toHaveLength(3)
-    // All segments should have similar CP distances from their knots
+    // All segments should have identical CP distances from their knots (by symmetry)
     const dists = cps.map(({ cp1 }, i) => {
       const knot = anchors[i]
       return Math.sqrt((cp1.x - knot.x) ** 2 + (cp1.y - knot.y) ** 2)
     })
-    expect(dists[0]).toBeCloseTo(dists[1], 0)
-    expect(dists[1]).toBeCloseTo(dists[2], 0)
+    expect(dists[0]).toBeCloseTo(dists[1], 5)
+    expect(dists[1]).toBeCloseTo(dists[2], 5)
+  })
+
+  it('unequal chord lengths: CPs account for segment length ratios', () => {
+    // 4 points with unequal spacing — tests the tridiagonal solver with
+    // different sub/super-diagonal coefficients
+    const anchors: Point[] = [
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },    // short chord (50)
+      { x: 250, y: 0 },   // long chord (200)
+      { x: 300, y: 0 },   // short chord (50)
+    ]
+    const cps = computeHobbyControlPoints(anchors, false)
+    expect(cps).toHaveLength(3)
+    // Collinear, so all CPs should remain on y=0
+    for (const { cp1, cp2 } of cps) {
+      expect(cp1.y).toBeCloseTo(0, 5)
+      expect(cp2.y).toBeCloseTo(0, 5)
+    }
+  })
+
+  it('S-curve: CPs swing to opposite sides', () => {
+    // Points forming an S-shape
+    const anchors: Point[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+      { x: 200, y: 0 },
+      { x: 300, y: 100 },
+    ]
+    const cps = computeHobbyControlPoints(anchors, false)
+    expect(cps).toHaveLength(3)
+    // Middle segment should have CPs that create the S-curve inflection
+    // CP1 of middle segment should be above y=100 (continuing upward from first turn)
+    // CP2 of middle segment should be below y=0 (anticipating downward turn)
+    expect(cps[1].cp1.y).toBeGreaterThan(50)
+    expect(cps[1].cp2.y).toBeLessThan(50)
+  })
+
+  it('open path: natural boundary aligns endpoint tangents with chords', () => {
+    // Natural boundary means tangent at start = first chord direction,
+    // tangent at end = last chord direction.
+    // For (0,0)→(100,0)→(100,100): first chord is horizontal, last is vertical.
+    const cps = computeHobbyControlPoints(
+      [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], false,
+    )
+    // CP1 of first segment: direction from (0,0) should be horizontal (y=0)
+    expect(cps[0].cp1.y).toBeCloseTo(0, 5)
+    expect(cps[0].cp1.x).toBeGreaterThan(0)
+    // CP2 of last segment: direction into (100,100) should be vertical (x=100)
+    expect(cps[1].cp2.x).toBeCloseTo(100, 5)
+    expect(cps[1].cp2.y).toBeLessThan(100)
+    expect(cps[1].cp2.y).toBeGreaterThan(0)
+  })
+
+  it('closed square: produces rounded corners', () => {
+    const anchors: Point[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 },
+    ]
+    const cps = computeHobbyControlPoints(anchors, true)
+    expect(cps).toHaveLength(4)
+    // By 4-fold symmetry, all CP1 distances should be equal
+    const cp1Dists = cps.map(({ cp1 }, i) => {
+      const knot = anchors[i]
+      return Math.sqrt((cp1.x - knot.x) ** 2 + (cp1.y - knot.y) ** 2)
+    })
+    expect(cp1Dists[0]).toBeCloseTo(cp1Dists[1], 5)
+    expect(cp1Dists[1]).toBeCloseTo(cp1Dists[2], 5)
+    expect(cp1Dists[2]).toBeCloseTo(cp1Dists[3], 5)
   })
 })
 
