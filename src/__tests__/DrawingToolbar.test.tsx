@@ -28,26 +28,26 @@ function renderToolbar(overrides: Partial<DrawingEditorState> = {}) {
 }
 
 describe('DrawingToolbar', () => {
-  it('renders all tool buttons', () => {
+  it('renders all tool buttons with keybinding hints', () => {
     renderToolbar()
-    expect(screen.getByTitle('Select')).toBeDefined()
-    expect(screen.getByTitle('Point')).toBeDefined()
-    expect(screen.getByTitle('Line')).toBeDefined()
-    expect(screen.getByTitle('Polygon')).toBeDefined()
-    expect(screen.getByTitle('Regular Polygon')).toBeDefined()
-    expect(screen.getByTitle('Circle')).toBeDefined()
-    expect(screen.getByTitle('Bezier Curve')).toBeDefined()
+    expect(screen.getByTitle('Select (V)')).toBeDefined()
+    expect(screen.getByTitle('Point (M)')).toBeDefined()
+    expect(screen.getByTitle('Line (L)')).toBeDefined()
+    expect(screen.getByTitle('Polygon (P)')).toBeDefined()
+    expect(screen.getByTitle('Regular Polygon (R)')).toBeDefined()
+    expect(screen.getByTitle('Circle (C)')).toBeDefined()
+    expect(screen.getByTitle('Bezier Curve (B)')).toBeDefined()
   })
 
   it('active tool has active class', () => {
     renderToolbar({ activeTool: 'line' })
-    const lineBtn = screen.getByTitle('Line')
+    const lineBtn = screen.getByTitle('Line (L)')
     expect(lineBtn.className).toContain('active')
   })
 
   it('clicking tool dispatches SET_TOOL', () => {
     const { dispatch } = renderToolbar()
-    fireEvent.click(screen.getByTitle('Point'))
+    fireEvent.click(screen.getByTitle('Point (M)'))
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_TOOL', tool: 'point' })
   })
 
@@ -59,8 +59,8 @@ describe('DrawingToolbar', () => {
         deviceId="rm"
         backgroundColor="#ffffff"
         onBackgroundColorChange={vi.fn()}
-      foregroundColor="#000000"
-      onForegroundColorChange={vi.fn()}
+        foregroundColor="#000000"
+        onForegroundColorChange={vi.fn()}
         onMove={vi.fn()}
         onRotate={vi.fn()}
         canUndo={false}
@@ -79,8 +79,8 @@ describe('DrawingToolbar', () => {
         deviceId="rm"
         backgroundColor="#ffffff"
         onBackgroundColorChange={vi.fn()}
-      foregroundColor="#000000"
-      onForegroundColorChange={vi.fn()}
+        foregroundColor="#000000"
+        onForegroundColorChange={vi.fn()}
         onMove={vi.fn()}
         onRotate={vi.fn()}
         canUndo={false}
@@ -108,42 +108,20 @@ describe('DrawingToolbar', () => {
 
   it('delete button disabled when no selection', () => {
     renderToolbar({ selectedItemIndex: null })
-    const deleteBtn = screen.getByTitle('Delete selected item')
+    const deleteBtn = screen.getByTitle('Delete selected item (Del)')
     expect(deleteBtn).toHaveProperty('disabled', true)
   })
 
   it('delete button enabled when item selected', () => {
     renderToolbar({ selectedItemIndex: 2 })
-    const deleteBtn = screen.getByTitle('Delete selected item')
+    const deleteBtn = screen.getByTitle('Delete selected item (Del)')
     expect(deleteBtn).toHaveProperty('disabled', false)
-  })
-
-  it('renders alpha badge', () => {
-    renderToolbar()
-    expect(screen.getByText('Alpha')).toBeDefined()
   })
 
   it('scaling dropdown shows current mode', () => {
     renderToolbar()
     const select = screen.getByTitle('Scaling mode') as HTMLSelectElement
     expect(select.value).toBe('proportional')
-  })
-
-  it('help button toggles popover visibility', () => {
-    renderToolbar()
-    expect(screen.queryByText('Drawing Editor Help')).toBeNull()
-    fireEvent.click(screen.getByTitle('Drawing help'))
-    expect(screen.getByText('Drawing Editor Help')).toBeDefined()
-    fireEvent.click(screen.getByText('Got it'))
-    expect(screen.queryByText('Drawing Editor Help')).toBeNull()
-  })
-
-  it('help popover contains guidance for tools and scaling', () => {
-    renderToolbar()
-    fireEvent.click(screen.getByTitle('Drawing help'))
-    expect(screen.getByText(/Click to place a marker/)).toBeDefined()
-    expect(screen.getByText(/Shapes scale to fit any device/)).toBeDefined()
-    expect(screen.getByText(/Scroll wheel/)).toBeDefined()
   })
 
   it('algorithm selector renders when bezier tool active', () => {
@@ -174,5 +152,31 @@ describe('DrawingToolbar', () => {
   it('point shape selector does not render for other tools', () => {
     renderToolbar({ activeTool: 'line' })
     expect(screen.queryByTitle('Point shape: dot')).toBeNull()
+  })
+
+  // Accessibility tests
+  it('toolbar has proper ARIA roles', () => {
+    renderToolbar()
+    expect(screen.getByRole('toolbar')).toBeDefined()
+    expect(screen.getByRole('radiogroup')).toBeDefined()
+  })
+
+  it('active tool button has aria-checked=true', () => {
+    renderToolbar({ activeTool: 'circle' })
+    const circleBtn = screen.getByTitle('Circle (C)')
+    expect(circleBtn.getAttribute('aria-checked')).toBe('true')
+    const lineBtn = screen.getByTitle('Line (L)')
+    expect(lineBtn.getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('disabled buttons have aria-disabled', () => {
+    renderToolbar()
+    const undoBtn = screen.getByTitle('Undo (Ctrl+Z)')
+    expect(undoBtn.getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('has visually hidden live region for announcements', () => {
+    renderToolbar()
+    expect(screen.getByRole('status')).toBeDefined()
   })
 })

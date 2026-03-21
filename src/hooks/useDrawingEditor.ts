@@ -66,6 +66,21 @@ export interface DrawingEditorState {
   } | null
   // Path edit intent (handled by parent)
   pathEditIntent: { itemIndex: number; newData: PathData } | null
+  // Nudge intent (handled by parent)
+  nudgeIntent: { index: number; dx: number; dy: number } | null
+  // Item drag state (drag-to-move)
+  draggingItem: {
+    itemIndex: number
+    startPos: Point
+    currentOffset: Point
+  } | null
+  // Rotation drag state
+  rotatingItem: {
+    itemIndex: number
+    center: Point
+    startAngle: number
+    currentAngle: number
+  } | null
 }
 
 export type DrawingAction =
@@ -102,6 +117,17 @@ export type DrawingAction =
   | { type: 'UPDATE_HANDLE_DRAG'; point: Point }
   | { type: 'END_HANDLE_DRAG' }
   | { type: 'CLEAR_PATH_EDIT_INTENT' }
+  // Nudge
+  | { type: 'NUDGE_SELECTED'; dx: number; dy: number }
+  | { type: 'CLEAR_NUDGE_INTENT' }
+  // Item drag (drag-to-move)
+  | { type: 'START_ITEM_DRAG'; itemIndex: number; startPos: Point }
+  | { type: 'UPDATE_ITEM_DRAG'; point: Point }
+  | { type: 'END_ITEM_DRAG' }
+  // Rotation drag
+  | { type: 'START_ROTATION'; itemIndex: number; center: Point; startAngle: number }
+  | { type: 'UPDATE_ROTATION'; angle: number }
+  | { type: 'END_ROTATION' }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -131,6 +157,9 @@ export const initialDrawingEditorState: DrawingEditorState = {
   bezierAlgorithm: 'catmull-rom',
   draggingHandle: null,
   pathEditIntent: null,
+  nudgeIntent: null,
+  draggingItem: null,
+  rotatingItem: null,
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -293,6 +322,76 @@ export function drawingEditorReducer(
 
     case 'CLEAR_PATH_EDIT_INTENT':
       return { ...state, pathEditIntent: null }
+
+    // Nudge
+    case 'NUDGE_SELECTED':
+      if (state.selectedItemIndex === null) return state
+      return { ...state, nudgeIntent: { index: state.selectedItemIndex, dx: action.dx, dy: action.dy } }
+
+    case 'CLEAR_NUDGE_INTENT':
+      return { ...state, nudgeIntent: null }
+
+    // Item drag (drag-to-move)
+    case 'START_ITEM_DRAG':
+      return {
+        ...state,
+        draggingItem: { itemIndex: action.itemIndex, startPos: action.startPos, currentOffset: { x: 0, y: 0 } },
+      }
+
+    case 'UPDATE_ITEM_DRAG':
+      if (!state.draggingItem) return state
+      return {
+        ...state,
+        draggingItem: {
+          ...state.draggingItem,
+          currentOffset: {
+            x: action.point.x - state.draggingItem.startPos.x,
+            y: action.point.y - state.draggingItem.startPos.y,
+          },
+        },
+      }
+
+    case 'END_ITEM_DRAG':
+      if (!state.draggingItem) return state
+      return {
+        ...state,
+        nudgeIntent: {
+          index: state.draggingItem.itemIndex,
+          dx: state.draggingItem.currentOffset.x,
+          dy: state.draggingItem.currentOffset.y,
+        },
+        draggingItem: null,
+      }
+
+    // Rotation drag
+    case 'START_ROTATION':
+      return {
+        ...state,
+        rotatingItem: {
+          itemIndex: action.itemIndex,
+          center: action.center,
+          startAngle: action.startAngle,
+          currentAngle: action.startAngle,
+        },
+      }
+
+    case 'UPDATE_ROTATION':
+      if (!state.rotatingItem) return state
+      return {
+        ...state,
+        rotatingItem: { ...state.rotatingItem, currentAngle: action.angle },
+      }
+
+    case 'END_ROTATION': {
+      if (!state.rotatingItem) return state
+      const angleDeg = (state.rotatingItem.currentAngle - state.rotatingItem.startAngle) * 180 / Math.PI
+      if (Math.abs(angleDeg) < 0.1) return { ...state, rotatingItem: null }
+      return {
+        ...state,
+        rotateIntent: { index: state.rotatingItem.itemIndex, angle: angleDeg },
+        rotatingItem: null,
+      }
+    }
 
     default:
       return state

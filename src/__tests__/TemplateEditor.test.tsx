@@ -230,11 +230,24 @@ describe('TemplateEditor delete button', () => {
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
-  it('calls onDelete when clicked', () => {
+  it('calls onDelete when clicked and confirmed', () => {
     const onDelete = vi.fn()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderEditor({ isCustom: true, onDelete })
     fireEvent.click(screen.getByRole('button', { name: /delete/i }))
+    expect(confirmSpy).toHaveBeenCalledOnce()
     expect(onDelete).toHaveBeenCalledOnce()
+    confirmSpy.mockRestore()
+  })
+
+  it('does not call onDelete when confirmation is cancelled', () => {
+    const onDelete = vi.fn()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderEditor({ isCustom: true, onDelete })
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }))
+    expect(confirmSpy).toHaveBeenCalledOnce()
+    expect(onDelete).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
   })
 })
 

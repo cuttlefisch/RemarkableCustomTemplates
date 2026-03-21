@@ -44,7 +44,7 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
       registry.templates.push({ ...(body.entry as object), ...(iconData ? { iconData } : {}) })
       writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
 
-      return reply.status(201).send({ ok: true })
+      return reply.status(201).send({ ok: true, iconData })
     } catch (e) {
       return reply.status(400).send({ error: String(e) })
     }
@@ -63,8 +63,10 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
       assertWithin(config.customDir, filePath)
       writeFileSync(filePath, body.content, 'utf8')
 
+      // Always regenerate icon from content
+      const iconData = tryGenerateIcon(body.content)
+
       if (body.entry) {
-        const iconData = tryGenerateIcon(body.content)
         const registry = readRegistry(config)
         registry.templates = (registry.templates as Array<{ filename: string; rmMethodsId?: string }>).map(e => {
           if (e.filename !== `custom/${filename}`) return e
@@ -75,9 +77,17 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
           return { ...base, ...(iconData ? { iconData } : {}) }
         })
         writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
+      } else if (iconData) {
+        // Auto-save path (no entry) — still update iconData in registry
+        const registry = readRegistry(config)
+        registry.templates = (registry.templates as Array<{ filename: string }>).map(e => {
+          if (e.filename !== `custom/${filename}`) return e
+          return { ...e, iconData }
+        })
+        writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
       }
 
-      return reply.send({ ok: true })
+      return reply.send({ ok: true, iconData })
     } catch (e) {
       return reply.status(400).send({ error: String(e) })
     }
@@ -111,7 +121,7 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
           : e,
       )
       writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
-      return reply.send({ ok: true })
+      return reply.send({ ok: true, iconData })
     } catch (e) {
       return reply.status(400).send({ error: String(e) })
     }

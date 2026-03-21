@@ -11,7 +11,7 @@ import { removeEntry } from '../lib/registry'
 import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode, upsertColorConstant } from '../lib/customTemplates'
 import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
 import { resolveConstants } from '../lib/expression'
-import { buildScaleConstants, reorderItem, rotatePathData } from '../lib/drawingShapes'
+import { buildScaleConstants, reorderItem, rotatePathData, translatePathItem } from '../lib/drawingShapes'
 import { extractColorConstants } from '../lib/color'
 import type { PathItem, PathData, ConstantEntry } from '../types/template'
 import type { ScalingMode } from '../lib/drawingShapes'
@@ -239,6 +239,32 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
   }, [drawingState.rotateIntent, handleDrawingRotate, drawingDispatch])
 
+  // Handle nudge intents (from keyboard nudge or drag-to-move)
+  const handleNudge = useCallback((index: number, dx: number, dy: number) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      const item = items[index] as PathItem | undefined
+      if (!item || item.type !== 'path') return
+      const translated = translatePathItem(item, dx, dy)
+      if (!translated) return
+      items[index] = translated
+      parsed.items = items
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch (err) {
+      console.warn('[drawing-nudge] Failed:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson])
+
+  useEffect(() => {
+    if (drawingState.nudgeIntent) {
+      handleNudge(drawingState.nudgeIntent.index, drawingState.nudgeIntent.dx, drawingState.nudgeIntent.dy)
+      drawingDispatch({ type: 'CLEAR_NUDGE_INTENT' })
+    }
+  }, [drawingState.nudgeIntent, handleNudge, drawingDispatch])
+
   // Fix 1: Re-parse template when editorJson changes in drawing mode
   // Catches all sources: undo, redo, commit, delete, rotate, move, etc.
   useEffect(() => {
@@ -250,38 +276,151 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
   }, [editorJson, drawingMode])
 
-  // Fix 1: Global Ctrl+Z / Ctrl+Shift+Z in drawing mode
+  // Consolidated keydown handler for drawing mode
   useEffect(() => {
     if (!drawingMode) return
     function handleKeyDown(e: KeyboardEvent) {
+      // Skip when focus is in an input/textarea/select
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // Undo/Redo (Ctrl+Z / Ctrl+Shift+Z)
       if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
-        if (e.shiftKey) {
-          editorRedo()
-        } else {
-          editorUndo()
+        if (e.shiftKey) editorRedo()
+        else editorUndo()
+        return
+      }
+
+      // Tool shortcuts (single keys, no modifiers)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const toolMap: Record<string, Parameters<typeof drawingDispatch>[0]> = {
+          v: { type: 'SET_TOOL', tool: 'select' },
+          m: { type: 'SET_TOOL', tool: 'point' },
+          l: { type: 'SET_TOOL', tool: 'line' },
+          p: { type: 'SET_TOOL', tool: 'polygon' },
+          r: { type: 'SET_TOOL', tool: 'regularPolygon' },
+          c: { type: 'SET_TOOL', tool: 'circle' },
+          b: { type: 'SET_TOOL', tool: 'bezier' },
+          f: { type: 'SET_FILL_ENABLED', enabled: !drawingState.fillEnabled },
+        }
+
+        const action = toolMap[e.key.toLowerCase()]
+        if (action) {
+          e.preventDefault()
+          drawingDispatch(action)
+          return
+        }
+
+        // Delete / Backspace
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault()
+          drawingDispatch({ type: 'DELETE_SELECTED' })
+          return
+        }
+
+        // Escape — cancel drawing or deselect
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          if (drawingState.inProgress) {
+            drawingDispatch({ type: 'CANCEL' })
+          } else {
+            drawingDispatch({ type: 'SELECT_ITEM', index: null })
+          }
+          return
+        }
+
+        // Enter — finish bezier
+        if (e.key === 'Enter') {
+          if (drawingState.inProgress?.tool === 'bezier' && drawingState.inProgress.vertices.length >= 2) {
+            e.preventDefault()
+            drawingDispatch({ type: 'FINISH_BEZIER' })
+          }
+          return
+        }
+
+        // Arrow keys — nudge
+        if (e.key.startsWith('Arrow') && drawingState.selectedItemIndex !== null) {
+          e.preventDefault()
+          const step = e.shiftKey ? 10 : 1
+          const nudge = {
+            ArrowUp: { dx: 0, dy: -step },
+            ArrowDown: { dx: 0, dy: step },
+            ArrowLeft: { dx: -step, dy: 0 },
+            ArrowRight: { dx: step, dy: 0 },
+          }[e.key]
+          if (nudge) drawingDispatch({ type: 'NUDGE_SELECTED', ...nudge })
+          return
+        }
+
+        // Layer controls: [ ] and Shift+[ Shift+]
+        if (e.key === '[' && drawingState.selectedItemIndex !== null) {
+          e.preventDefault()
+          drawingDispatch({ type: 'MOVE_ITEM', index: drawingState.selectedItemIndex, direction: e.shiftKey ? 'bottom' : 'down' })
+          return
+        }
+        if (e.key === ']' && drawingState.selectedItemIndex !== null) {
+          e.preventDefault()
+          drawingDispatch({ type: 'MOVE_ITEM', index: drawingState.selectedItemIndex, direction: e.shiftKey ? 'top' : 'up' })
+          return
+        }
+
+        // Zoom
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault()
+          const newZoom = Math.min(10, drawingState.zoom + 0.25)
+          drawingDispatch({ type: 'ZOOM', zoom: newZoom, pan: drawingState.panOffset })
+          return
+        }
+        if (e.key === '-') {
+          e.preventDefault()
+          const newZoom = Math.max(0.1, drawingState.zoom - 0.25)
+          drawingDispatch({ type: 'ZOOM', zoom: newZoom, pan: drawingState.panOffset })
+          return
+        }
+        if (e.key === '0') {
+          e.preventDefault()
+          drawingDispatch({ type: 'ZOOM_TO_FIT' })
+          return
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [drawingMode, editorUndo, editorRedo])
+  }, [drawingMode, editorUndo, editorRedo, drawingDispatch, drawingState.fillEnabled, drawingState.inProgress, drawingState.selectedItemIndex, drawingState.zoom, drawingState.panOffset])
 
   // Fix 4: Auto-save drawing edits with debounce
+  // Note: we use a ref for selected.filename to avoid re-triggering on selected changes
+  const autoSaveFilenameRef = useRef(selected?.filename)
+  useEffect(() => { autoSaveFilenameRef.current = selected?.filename }, [selected?.filename])
+
   useEffect(() => {
     if (!drawingMode || !selected?.isCustom || !editorJson) return
     const slug = selected.filename.replace('custom/', '')
+    const filename = selected.filename
     const timer = setTimeout(() => {
       fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editorJson }),
-      }).catch((err) => {
-        console.warn('[drawing-autosave] Auto-save failed:', err instanceof Error ? err.message : String(err))
       })
+        .then(r => r.json())
+        .then((data: { ok: boolean; iconData?: string }) => {
+          if (data.iconData) {
+            // Only update registry (not selected) to avoid triggering the fetch effect loop
+            setCustomRegistry(prev => ({
+              templates: prev.templates.map(e =>
+                e.filename === filename ? { ...e, iconData: data.iconData } : e,
+              ),
+            }))
+          }
+        })
+        .catch((err) => {
+          console.warn('[drawing-autosave] Auto-save failed:', err instanceof Error ? err.message : String(err))
+        })
     }, 500)
     return () => clearTimeout(timer)
-  }, [editorJson, drawingMode, selected])
+  }, [editorJson, drawingMode, selected?.isCustom, selected?.filename, setCustomRegistry])
 
   const deviceGroups = useMemo<DeviceGroup[]>(() => {
     const groups = new Map<string, typeof DEVICES[string][]>()
@@ -382,12 +521,14 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             body: JSON.stringify({ newSlug, newName: name, content: updatedContent }),
           })
           if (!res.ok) throw new Error(`Server error: ${res.status}`)
+          const data = await res.json() as { ok: boolean; iconData?: string }
+          const entryWithIcon = { ...renamedEntry, ...(data.iconData ? { iconData: data.iconData } : {}) }
           setCustomRegistry(prev => ({
             templates: prev.templates.map(e =>
-              e.filename === selected.filename ? renamedEntry : e,
+              e.filename === selected.filename ? entryWithIcon : e,
             ),
           }))
-          setSelected(renamedEntry)
+          setSelected(entryWithIcon)
           setEditorJson(updatedContent)
           setTemplate(tpl)
         } else {
@@ -401,12 +542,14 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             body: JSON.stringify({ content: updatedContent, entry: updatedEntry }),
           })
           if (!res.ok) throw new Error(`Server error: ${res.status}`)
+          const data = await res.json() as { ok: boolean; iconData?: string }
+          const entryWithIcon = { ...updatedEntry, ...(data.iconData ? { iconData: data.iconData } : {}) }
           setCustomRegistry(prev => ({
             templates: prev.templates.map(e =>
-              e.filename === selected.filename ? updatedEntry : e,
+              e.filename === selected.filename ? entryWithIcon : e,
             ),
           }))
-          setSelected(updatedEntry)
+          setSelected(entryWithIcon)
           setEditorJson(updatedContent)
           setTemplate(tpl)
         }
@@ -424,9 +567,10 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
           body: JSON.stringify({ filename: slug, content: updatedContent, entry }),
         })
         if (!res.ok) throw new Error(`Server error: ${res.status}`)
-
-        setCustomRegistry(prev => ({ templates: [entry, ...prev.templates] }))
-        setSelected(entry)
+        const data = await res.json() as { ok: boolean; iconData?: string }
+        const entryWithIcon = { ...entry, ...(data.iconData ? { iconData: data.iconData } : {}) }
+        setCustomRegistry(prev => ({ templates: [entryWithIcon, ...prev.templates] }))
+        setSelected(entryWithIcon)
       }
     } catch (e) {
       setEditorError(`Failed to save: ${e instanceof Error ? e.message : String(e)}`)

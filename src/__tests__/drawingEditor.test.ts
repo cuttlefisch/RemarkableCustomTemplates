@@ -570,3 +570,131 @@ describe('Handle drag', () => {
     expect(state.pathEditIntent).toBeNull()
   })
 })
+
+// ─── Nudge ──────────────────────────────────────────────────────────────────
+
+describe('nudge actions', () => {
+  it('NUDGE_SELECTED sets nudgeIntent when item is selected', () => {
+    let state = dispatch(initialDrawingEditorState, { type: 'SELECT_ITEM', index: 3 })
+    state = dispatch(state, { type: 'NUDGE_SELECTED', dx: 5, dy: -10 })
+    expect(state.nudgeIntent).toEqual({ index: 3, dx: 5, dy: -10 })
+  })
+
+  it('NUDGE_SELECTED is no-op when nothing selected', () => {
+    const state = dispatch(initialDrawingEditorState, { type: 'NUDGE_SELECTED', dx: 5, dy: 0 })
+    expect(state.nudgeIntent).toBeNull()
+  })
+
+  it('CLEAR_NUDGE_INTENT clears nudgeIntent', () => {
+    let state = dispatch(initialDrawingEditorState, { type: 'SELECT_ITEM', index: 1 })
+    state = dispatch(state, { type: 'NUDGE_SELECTED', dx: 1, dy: 1 })
+    expect(state.nudgeIntent).not.toBeNull()
+    state = dispatch(state, { type: 'CLEAR_NUDGE_INTENT' })
+    expect(state.nudgeIntent).toBeNull()
+  })
+})
+
+// ─── Drag-to-move ───────────────────────────────────────────────────────────
+
+describe('drag-to-move actions', () => {
+  it('START_ITEM_DRAG sets draggingItem with zero offset', () => {
+    const state = dispatch(initialDrawingEditorState, {
+      type: 'START_ITEM_DRAG',
+      itemIndex: 2,
+      startPos: { x: 100, y: 200 },
+    })
+    expect(state.draggingItem).toEqual({
+      itemIndex: 2,
+      startPos: { x: 100, y: 200 },
+      currentOffset: { x: 0, y: 0 },
+    })
+  })
+
+  it('UPDATE_ITEM_DRAG computes offset from start', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_ITEM_DRAG',
+      itemIndex: 0,
+      startPos: { x: 100, y: 100 },
+    })
+    state = dispatch(state, { type: 'UPDATE_ITEM_DRAG', point: { x: 150, y: 120 } })
+    expect(state.draggingItem!.currentOffset).toEqual({ x: 50, y: 20 })
+  })
+
+  it('END_ITEM_DRAG sets nudgeIntent and clears draggingItem', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_ITEM_DRAG',
+      itemIndex: 1,
+      startPos: { x: 50, y: 50 },
+    })
+    state = dispatch(state, { type: 'UPDATE_ITEM_DRAG', point: { x: 80, y: 60 } })
+    state = dispatch(state, { type: 'END_ITEM_DRAG' })
+    expect(state.draggingItem).toBeNull()
+    expect(state.nudgeIntent).toEqual({ index: 1, dx: 30, dy: 10 })
+  })
+
+  it('UPDATE_ITEM_DRAG is no-op when not dragging', () => {
+    const state = dispatch(initialDrawingEditorState, {
+      type: 'UPDATE_ITEM_DRAG',
+      point: { x: 100, y: 100 },
+    })
+    expect(state.draggingItem).toBeNull()
+  })
+})
+
+// ─── Rotation drag ──────────────────────────────────────────────────────────
+
+describe('rotation drag actions', () => {
+  it('START_ROTATION sets rotatingItem', () => {
+    const state = dispatch(initialDrawingEditorState, {
+      type: 'START_ROTATION',
+      itemIndex: 0,
+      center: { x: 100, y: 100 },
+      startAngle: 0.5,
+    })
+    expect(state.rotatingItem).toEqual({
+      itemIndex: 0,
+      center: { x: 100, y: 100 },
+      startAngle: 0.5,
+      currentAngle: 0.5,
+    })
+  })
+
+  it('UPDATE_ROTATION updates currentAngle', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_ROTATION',
+      itemIndex: 0,
+      center: { x: 100, y: 100 },
+      startAngle: 0,
+    })
+    state = dispatch(state, { type: 'UPDATE_ROTATION', angle: 1.5 })
+    expect(state.rotatingItem!.currentAngle).toBe(1.5)
+  })
+
+  it('END_ROTATION sets rotateIntent with computed angle', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_ROTATION',
+      itemIndex: 2,
+      center: { x: 0, y: 0 },
+      startAngle: 0,
+    })
+    state = dispatch(state, { type: 'UPDATE_ROTATION', angle: Math.PI / 4 })
+    state = dispatch(state, { type: 'END_ROTATION' })
+    expect(state.rotatingItem).toBeNull()
+    expect(state.rotateIntent).not.toBeNull()
+    expect(state.rotateIntent!.index).toBe(2)
+    expect(state.rotateIntent!.angle).toBeCloseTo(45, 0)
+  })
+
+  it('END_ROTATION with negligible angle does not set rotateIntent', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_ROTATION',
+      itemIndex: 0,
+      center: { x: 0, y: 0 },
+      startAngle: 1.0,
+    })
+    state = dispatch(state, { type: 'UPDATE_ROTATION', angle: 1.001 })
+    state = dispatch(state, { type: 'END_ROTATION' })
+    expect(state.rotatingItem).toBeNull()
+    expect(state.rotateIntent).toBeNull()
+  })
+})

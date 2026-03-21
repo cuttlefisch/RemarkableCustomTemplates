@@ -60,10 +60,11 @@ describe('DrawingOverlay', () => {
     })
   })
 
-  it('escape dispatches CANCEL', () => {
+  it('keydown handling is centralized in TemplatesPage (not in overlay)', () => {
     const { dispatch } = renderOverlay({ activeTool: 'polygon' })
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(dispatch).toHaveBeenCalledWith({ type: 'CANCEL' })
+    // Overlay no longer handles keydown — it's centralized in TemplatesPage
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'CANCEL' })
   })
 
   it('cursor style changes with active tool', () => {

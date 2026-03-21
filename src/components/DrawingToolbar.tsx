@@ -1,11 +1,17 @@
 /**
  * DrawingToolbar — tool selection, property controls, zoom, layering,
- * rotation, undo/redo, and scaling mode for the drawing editor.
+ * undo/redo, and scaling mode for the drawing editor.
  */
 
 import { useState } from 'react'
 import type { DrawingEditorState, DrawingAction, DrawingTool, PointShape, BezierAlgorithm } from '../hooks/useDrawingEditor'
 import { DEVICES, type DeviceId } from '../lib/renderer'
+import {
+  SelectIcon, PointIcon, LineIcon, PolygonIcon, RegularPolygonIcon,
+  CircleIcon, BezierIcon, UndoIcon, RedoIcon, DeleteIcon,
+  SendBackIcon, SendBackwardIcon, BringForwardIcon, BringFrontIcon,
+  ZoomInIcon, ZoomOutIcon, ZoomFitIcon,
+} from './DrawingIcons'
 
 interface DrawingToolbarProps {
   state: DrawingEditorState
@@ -25,14 +31,14 @@ interface DrawingToolbarProps {
 
 const STROKE_WIDTHS = [1, 2, 3, 5, 8]
 
-const TOOLS: { tool: DrawingTool; label: string; title: string }[] = [
-  { tool: 'select', label: '↖', title: 'Select' },
-  { tool: 'point', label: '·', title: 'Point' },
-  { tool: 'line', label: '/', title: 'Line' },
-  { tool: 'polygon', label: '⬠', title: 'Polygon' },
-  { tool: 'regularPolygon', label: '⬡', title: 'Regular Polygon' },
-  { tool: 'circle', label: '○', title: 'Circle' },
-  { tool: 'bezier', label: '〰', title: 'Bezier Curve' },
+const TOOLS: { tool: DrawingTool; icon: React.ComponentType; title: string; key: string }[] = [
+  { tool: 'select', icon: SelectIcon, title: 'Select', key: 'V' },
+  { tool: 'point', icon: PointIcon, title: 'Point', key: 'M' },
+  { tool: 'line', icon: LineIcon, title: 'Line', key: 'L' },
+  { tool: 'polygon', icon: PolygonIcon, title: 'Polygon', key: 'P' },
+  { tool: 'regularPolygon', icon: RegularPolygonIcon, title: 'Regular Polygon', key: 'R' },
+  { tool: 'circle', icon: CircleIcon, title: 'Circle', key: 'C' },
+  { tool: 'bezier', icon: BezierIcon, title: 'Bezier Curve', key: 'B' },
 ]
 
 export function DrawingToolbar({
@@ -50,8 +56,7 @@ export function DrawingToolbar({
   onUndo,
   onRedo,
 }: DrawingToolbarProps) {
-  const [helpOpen, setHelpOpen] = useState(false)
-  const [rotationDeg, setRotationDeg] = useState('0')
+  const [statusMessage, setStatusMessage] = useState('')
   const device = DEVICES[deviceId]
 
   function handleScalingChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -66,83 +71,71 @@ export function DrawingToolbar({
     }
   }
 
+  function announceToolChange(toolTitle: string) {
+    setStatusMessage(`${toolTitle} tool selected`)
+  }
+
   const zoomPercent = Math.round(state.zoom * 100)
   const hasSelection = state.selectedItemIndex !== null
 
+  // Suppress unused variable warning — onRotate is kept in the interface
+  // for the Phase 4 rotation handle integration
+  void onRotate
+
   return (
-    <div className="drawing-toolbar">
-      <span className="drawing-alpha-badge">Alpha</span>
+    <div className="drawing-toolbar" role="toolbar" aria-label="Drawing tools">
+      {/* Visually hidden live region for screen reader announcements */}
+      <div className="visually-hidden" aria-live="polite" role="status">
+        {statusMessage}
+      </div>
 
-      <button
-        className={`drawing-tool-btn drawing-help-btn${helpOpen ? ' active' : ''}`}
-        onClick={() => setHelpOpen(v => !v)}
-        title="Drawing help"
-      >
-        ?
-      </button>
-
-      {helpOpen && (
-        <div className="drawing-help-popover">
-          <h4>Drawing Editor Help</h4>
-          <p><strong>Tools:</strong></p>
-          <ul>
-            <li><strong>Select (↖):</strong> Click items to select them for deletion, moving, or rotating.</li>
-            <li><strong>Point (·):</strong> Click to place a marker. Choose shape: dot (●), cross (✕), or diamond (◇).</li>
-            <li><strong>Line (/):</strong> Click start point, then click end point.</li>
-            <li><strong>Polygon (⬠):</strong> Click to add vertices. Click near the first vertex to close (min 3 vertices).</li>
-            <li><strong>Regular Polygon (⬡):</strong> Click to set center, then click to set radius.</li>
-            <li><strong>Circle (○):</strong> Click to set center, then click to set radius.</li>
-            <li><strong>Bezier (〰):</strong> Click to place anchor points. Click near first vertex to close, or press <kbd>Enter</kbd> to finish open path.</li>
-          </ul>
-          <p><strong>Navigation:</strong></p>
-          <ul>
-            <li><strong>Zoom:</strong> Scroll wheel, or use +/- buttons.</li>
-            <li><strong>Pan:</strong> Hold <kbd>Space</kbd> and drag, or middle-click drag.</li>
-            <li><strong>Undo/Redo:</strong> <kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Shift+Z</kbd></li>
-          </ul>
-          <p><strong>Scaling:</strong></p>
-          <ul>
-            <li><strong>Proportional:</strong> Shapes scale to fit any device.</li>
-            <li><strong>Fixed:</strong> Pixel-perfect coordinates locked to the current device.</li>
-            <li>Changing the scaling mode only affects newly drawn shapes. Existing shapes keep their original scaling.</li>
-          </ul>
-          <button className="drawing-help-close" onClick={() => setHelpOpen(false)}>Got it</button>
-        </div>
-      )}
-
-      <div className="drawing-toolbar-separator" />
-
-      {/* Undo/Redo */}
-      <button
-        className="drawing-tool-btn"
-        disabled={!canUndo}
-        onClick={onUndo}
-        title="Undo (Ctrl+Z)"
-      >
-        ↩
-      </button>
-      <button
-        className="drawing-tool-btn"
-        disabled={!canRedo}
-        onClick={onRedo}
-        title="Redo (Ctrl+Shift+Z)"
-      >
-        ↪
-      </button>
-
-      <div className="drawing-toolbar-separator" />
-
-      {TOOLS.map(({ tool, label, title }) => (
+      {/* ── Undo/Redo ── */}
+      <div className="drawing-toolbar-group">
         <button
-          key={tool}
-          className={`drawing-tool-btn${state.activeTool === tool ? ' active' : ''}`}
-          onClick={() => dispatch({ type: 'SET_TOOL', tool })}
-          title={title}
+          className="drawing-tool-btn"
+          disabled={!canUndo}
+          aria-disabled={!canUndo}
+          onClick={onUndo}
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo (Ctrl+Z)"
         >
-          {label}
+          <UndoIcon />
         </button>
-      ))}
+        <button
+          className="drawing-tool-btn"
+          disabled={!canRedo}
+          aria-disabled={!canRedo}
+          onClick={onRedo}
+          title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo (Ctrl+Shift+Z)"
+        >
+          <RedoIcon />
+        </button>
+      </div>
 
+      <div className="drawing-toolbar-separator" />
+
+      {/* ── Tools ── */}
+      <div className="drawing-toolbar-group" role="radiogroup" aria-label="Drawing tools">
+        {TOOLS.map(({ tool, icon: ToolIcon, title, key }) => (
+          <button
+            key={tool}
+            className={`drawing-tool-btn${state.activeTool === tool ? ' active' : ''}`}
+            onClick={() => {
+              dispatch({ type: 'SET_TOOL', tool })
+              announceToolChange(title)
+            }}
+            title={`${title} (${key})`}
+            role="radio"
+            aria-checked={state.activeTool === tool}
+            aria-label={`${title} (${key})`}
+          >
+            <ToolIcon />
+          </button>
+        ))}
+      </div>
+
+      {/* ── Shape Options ── */}
       {state.activeTool === 'regularPolygon' && (
         <input
           type="number"
@@ -152,6 +145,7 @@ export function DrawingToolbar({
           value={state.regularPolygonSides}
           onChange={e => dispatch({ type: 'SET_REGULAR_SIDES', sides: Math.max(3, Math.min(12, parseInt(e.target.value) || 3)) })}
           title="Number of sides"
+          aria-label="Number of sides"
         />
       )}
 
@@ -163,6 +157,7 @@ export function DrawingToolbar({
               className={`drawing-tool-btn${state.pointShape === shape ? ' active' : ''}`}
               onClick={() => dispatch({ type: 'SET_POINT_SHAPE', shape })}
               title={`Point shape: ${shape}`}
+              aria-label={`Point shape: ${shape}`}
             >
               {label}
             </button>
@@ -178,6 +173,7 @@ export function DrawingToolbar({
               className={`drawing-tool-btn${state.bezierAlgorithm === algo ? ' active' : ''}`}
               onClick={() => dispatch({ type: 'SET_BEZIER_ALGORITHM', algorithm: algo })}
               title={`Bezier algorithm: ${algo === 'catmull-rom' ? 'Catmull-Rom' : "Hobby's"}`}
+              aria-label={`Bezier algorithm: ${algo === 'catmull-rom' ? 'Catmull-Rom' : "Hobby's"}`}
             >
               {label}
             </button>
@@ -187,202 +183,192 @@ export function DrawingToolbar({
 
       <div className="drawing-toolbar-separator" />
 
-      <label className="drawing-fill-toggle" title="Fill">
-        <input
-          type="checkbox"
-          checked={state.fillEnabled}
-          onChange={e => dispatch({ type: 'SET_FILL_ENABLED', enabled: e.target.checked })}
-        />
-        Fill
-      </label>
-      {state.fillEnabled && (
+      {/* ── Fill & Stroke ── */}
+      <div className="drawing-toolbar-group">
+        <label className="drawing-fill-toggle" title="Fill (F)">
+          <input
+            type="checkbox"
+            checked={state.fillEnabled}
+            onChange={e => dispatch({ type: 'SET_FILL_ENABLED', enabled: e.target.checked })}
+            aria-label="Toggle fill (F)"
+          />
+          Fill
+        </label>
+        {state.fillEnabled && (
+          <label className="drawing-color-label">
+            <input
+              type="color"
+              className="drawing-color-picker"
+              value={state.fillColor}
+              onChange={e => dispatch({ type: 'SET_FILL_COLOR', color: e.target.value })}
+              title="Fill color"
+              aria-label="Fill color"
+            />
+          </label>
+        )}
+
         <label className="drawing-color-label">
+          <span>Stroke</span>
           <input
             type="color"
             className="drawing-color-picker"
-            value={state.fillColor}
-            onChange={e => dispatch({ type: 'SET_FILL_COLOR', color: e.target.value })}
-            title="Fill color"
+            value={state.strokeColor}
+            onChange={e => dispatch({ type: 'SET_STROKE_COLOR', color: e.target.value })}
+            title="Stroke color"
+            aria-label="Stroke color"
           />
         </label>
-      )}
 
-      <label className="drawing-color-label">
-        <span>Stroke</span>
-        <input
-          type="color"
-          className="drawing-color-picker"
-          value={state.strokeColor}
-          onChange={e => dispatch({ type: 'SET_STROKE_COLOR', color: e.target.value })}
-          title="Stroke color"
-        />
-      </label>
-
-      <label className="drawing-color-label">
-        <span>Width</span>
-        <select
-          className="drawing-stroke-width-select"
-          value={state.strokeWidth}
-          onChange={e => dispatch({ type: 'SET_STROKE_WIDTH', width: Number(e.target.value) })}
-          title="Stroke width"
-        >
-          {STROKE_WIDTHS.map(w => (
-            <option key={w} value={w}>{w}px</option>
-          ))}
-        </select>
-      </label>
-
-      <label className="drawing-color-label">
-        <span>FG</span>
-        <input
-          type="color"
-          className="drawing-color-picker"
-          value={foregroundColor}
-          onChange={e => onForegroundColorChange(e.target.value)}
-          title="Foreground color"
-        />
-      </label>
-
-      <label className="drawing-color-label">
-        <span>BG</span>
-        <input
-          type="color"
-          className="drawing-color-picker"
-          value={backgroundColor}
-          onChange={e => onBackgroundColorChange(e.target.value)}
-          title="Background color"
-        />
-      </label>
+        <label className="drawing-color-label">
+          <span>Width</span>
+          <select
+            className="drawing-stroke-width-select"
+            value={state.strokeWidth}
+            onChange={e => dispatch({ type: 'SET_STROKE_WIDTH', width: Number(e.target.value) })}
+            title="Stroke width"
+            aria-label="Stroke width"
+          >
+            {STROKE_WIDTHS.map(w => (
+              <option key={w} value={w}>{w}px</option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div className="drawing-toolbar-separator" />
 
-      <label className="drawing-color-label">
-        <span>Scale</span>
-        <select
-          className="drawing-scaling-select"
-          value={state.scalingMode.type}
-          onChange={handleScalingChange}
-          title="Scaling mode"
-        >
-          <option value="proportional">Proportional</option>
-          <option value="fixed">Fixed for {device.shortName}</option>
-        </select>
-      </label>
+      {/* ── FG / BG Colors ── */}
+      <div className="drawing-toolbar-group">
+        <label className="drawing-color-label">
+          <span>FG</span>
+          <input
+            type="color"
+            className="drawing-color-picker"
+            value={foregroundColor}
+            onChange={e => onForegroundColorChange(e.target.value)}
+            title="Foreground color"
+            aria-label="Foreground color"
+          />
+        </label>
+
+        <label className="drawing-color-label">
+          <span>BG</span>
+          <input
+            type="color"
+            className="drawing-color-picker"
+            value={backgroundColor}
+            onChange={e => onBackgroundColorChange(e.target.value)}
+            title="Background color"
+            aria-label="Background color"
+          />
+        </label>
+      </div>
 
       <div className="drawing-toolbar-separator" />
 
-      {/* Zoom controls */}
-      <div className="drawing-zoom-controls">
+      {/* ── Layer Controls + Delete ── */}
+      <div className="drawing-toolbar-group">
+        {hasSelection && (
+          <>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onMove(state.selectedItemIndex!, 'bottom')}
+              title="Send to back (Shift+[)"
+              aria-label="Send to back (Shift+[)"
+            >
+              <SendBackIcon />
+            </button>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onMove(state.selectedItemIndex!, 'down')}
+              title="Send backward ([)"
+              aria-label="Send backward ([)"
+            >
+              <SendBackwardIcon />
+            </button>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onMove(state.selectedItemIndex!, 'up')}
+              title="Bring forward (])"
+              aria-label="Bring forward (])"
+            >
+              <BringForwardIcon />
+            </button>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onMove(state.selectedItemIndex!, 'top')}
+              title="Bring to front (Shift+])"
+              aria-label="Bring to front (Shift+])"
+            >
+              <BringFrontIcon />
+            </button>
+          </>
+        )}
+
         <button
-          className="drawing-tool-btn"
-          onClick={() => {
-            const newZoom = Math.max(0.1, state.zoom - 0.25)
-            dispatch({ type: 'ZOOM', zoom: newZoom, pan: state.panOffset })
-          }}
-          title="Zoom out"
+          className="drawing-tool-btn drawing-delete-btn"
+          disabled={!hasSelection}
+          aria-disabled={!hasSelection}
+          onClick={() => dispatch({ type: 'DELETE_SELECTED' })}
+          title="Delete selected item (Del)"
+          aria-label="Delete selected item (Del)"
         >
-          −
-        </button>
-        <span className="drawing-zoom-label">{zoomPercent}%</span>
-        <button
-          className="drawing-tool-btn"
-          onClick={() => {
-            const newZoom = Math.min(10, state.zoom + 0.25)
-            dispatch({ type: 'ZOOM', zoom: newZoom, pan: state.panOffset })
-          }}
-          title="Zoom in"
-        >
-          +
-        </button>
-        <button
-          className="drawing-tool-btn"
-          onClick={() => dispatch({ type: 'ZOOM_TO_FIT' })}
-          title="Zoom to fit"
-        >
-          Fit
+          <DeleteIcon />
         </button>
       </div>
 
       <div className="drawing-toolbar-separator" />
 
-      {/* Layer controls (when selected) */}
-      {hasSelection && (
-        <>
-          <div className="drawing-layer-controls">
-            <button
-              className="drawing-layer-btn"
-              onClick={() => onMove(state.selectedItemIndex!, 'bottom')}
-              title="Move to bottom"
-            >
-              ⤓
-            </button>
-            <button
-              className="drawing-layer-btn"
-              onClick={() => onMove(state.selectedItemIndex!, 'down')}
-              title="Move back"
-            >
-              ↓
-            </button>
-            <button
-              className="drawing-layer-btn"
-              onClick={() => onMove(state.selectedItemIndex!, 'up')}
-              title="Move front"
-            >
-              ↑
-            </button>
-            <button
-              className="drawing-layer-btn"
-              onClick={() => onMove(state.selectedItemIndex!, 'top')}
-              title="Move to top"
-            >
-              ⤒
-            </button>
-          </div>
-
-          {/* Rotation */}
-          <input
-            type="number"
-            className="drawing-rotation-input"
-            value={rotationDeg}
-            onChange={e => setRotationDeg(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                const deg = parseFloat(rotationDeg)
-                if (!isNaN(deg) && deg !== 0) {
-                  onRotate(state.selectedItemIndex!, deg)
-                  setRotationDeg('0')
-                }
-              }
-            }}
-            title="Rotation degrees (press Enter)"
-            placeholder="0°"
-          />
+      {/* ── Zoom & Scale ── */}
+      <div className="drawing-toolbar-group">
+        <div className="drawing-zoom-controls">
           <button
             className="drawing-tool-btn"
             onClick={() => {
-              const deg = parseFloat(rotationDeg)
-              if (!isNaN(deg) && deg !== 0) {
-                onRotate(state.selectedItemIndex!, deg)
-                setRotationDeg('0')
-              }
+              const newZoom = Math.max(0.1, state.zoom - 0.25)
+              dispatch({ type: 'ZOOM', zoom: newZoom, pan: state.panOffset })
             }}
-            title="Apply rotation"
+            title="Zoom out (-)"
+            aria-label="Zoom out (-)"
           >
-            ↻
+            <ZoomOutIcon />
           </button>
+          <span className="drawing-zoom-label">{zoomPercent}%</span>
+          <button
+            className="drawing-tool-btn"
+            onClick={() => {
+              const newZoom = Math.min(10, state.zoom + 0.25)
+              dispatch({ type: 'ZOOM', zoom: newZoom, pan: state.panOffset })
+            }}
+            title="Zoom in (+)"
+            aria-label="Zoom in (+)"
+          >
+            <ZoomInIcon />
+          </button>
+          <button
+            className="drawing-tool-btn"
+            onClick={() => dispatch({ type: 'ZOOM_TO_FIT' })}
+            title="Zoom to fit (0)"
+            aria-label="Zoom to fit (0)"
+          >
+            <ZoomFitIcon />
+          </button>
+        </div>
 
-          <div className="drawing-toolbar-separator" />
-        </>
-      )}
-
-      <button
-        className="drawing-tool-btn drawing-delete-btn"
-        disabled={!hasSelection}
-        onClick={() => dispatch({ type: 'DELETE_SELECTED' })}
-        title="Delete selected item"
-      >
-        ✕
-      </button>
+        <label className="drawing-color-label">
+          <span>Scale</span>
+          <select
+            className="drawing-scaling-select"
+            value={state.scalingMode.type}
+            onChange={handleScalingChange}
+            title="Scaling mode"
+            aria-label="Scaling mode"
+          >
+            <option value="proportional">Proportional</option>
+            <option value="fixed">Fixed for {device.shortName}</option>
+          </select>
+        </label>
+      </div>
     </div>
   )
 }

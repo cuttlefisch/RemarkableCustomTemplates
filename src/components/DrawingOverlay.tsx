@@ -5,7 +5,7 @@
  * systems align automatically (single CTM).
  */
 
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useCallback } from 'react'
 import type { ReactElement } from 'react'
 import type { DrawingEditorState, DrawingAction } from '../hooks/useDrawingEditor'
 import type { PathItem } from '../types/template'
@@ -58,6 +58,32 @@ export function DrawingOverlay({
       if (state.activeTool === 'select') {
         const target = e.target as Element
 
+        // Check for rotation handle
+        if (target.getAttribute('data-rotation-handle') === 'true' && state.selectedItemIndex !== null) {
+          const found = items.find(({ originalIndex }) => originalIndex === state.selectedItemIndex)
+          if (found) {
+            let bounds = computePathBounds(found.item.data)
+            if (!bounds && resolvedConstants) {
+              const resolved = resolvePathDataNumeric(found.item.data, resolvedConstants)
+              if (resolved) bounds = computePathBoundsFromShapes(resolved)
+            }
+            if (bounds) {
+              const center = {
+                x: (bounds.minX + bounds.maxX) / 2,
+                y: (bounds.minY + bounds.maxY) / 2,
+              }
+              const startAngle = Math.atan2(point.y - center.y, point.x - center.x)
+              dispatch({
+                type: 'START_ROTATION',
+                itemIndex: state.selectedItemIndex,
+                center,
+                startAngle,
+              })
+              return
+            }
+          }
+        }
+
         // Check for bezier handle drag
         const handleType = target.getAttribute('data-handle-type') as 'knot' | 'cp1' | 'cp2' | null
         const handleIndex = target.getAttribute('data-handle-index')
@@ -85,7 +111,13 @@ export function DrawingOverlay({
 
         const itemIndex = target.getAttribute('data-item-index')
         if (itemIndex !== null) {
-          dispatch({ type: 'SELECT_ITEM', index: parseInt(itemIndex) })
+          const idx = parseInt(itemIndex)
+          if (idx === state.selectedItemIndex) {
+            // Already selected — start drag-to-move
+            dispatch({ type: 'START_ITEM_DRAG', itemIndex: idx, startPos: point })
+          } else {
+            dispatch({ type: 'SELECT_ITEM', index: idx })
+          }
         } else {
           dispatch({ type: 'SELECT_ITEM', index: null })
         }
@@ -104,6 +136,20 @@ export function DrawingOverlay({
 
       const point = screenToTemplate(e.nativeEvent, svg)
 
+      if (state.rotatingItem) {
+        const angle = Math.atan2(
+          point.y - state.rotatingItem.center.y,
+          point.x - state.rotatingItem.center.x,
+        )
+        dispatch({ type: 'UPDATE_ROTATION', angle })
+        return
+      }
+
+      if (state.draggingItem) {
+        dispatch({ type: 'UPDATE_ITEM_DRAG', point })
+        return
+      }
+
       if (state.draggingHandle) {
         dispatch({ type: 'UPDATE_HANDLE_DRAG', point })
         return
@@ -111,35 +157,30 @@ export function DrawingOverlay({
 
       dispatch({ type: 'CANVAS_MOUSE_MOVE', point })
     },
-    [dispatch, getSvg, state.draggingHandle],
+    [dispatch, getSvg, state.draggingHandle, state.draggingItem, state.rotatingItem],
   )
 
   const handleMouseUp = useCallback(() => {
+    if (state.rotatingItem) {
+      dispatch({ type: 'END_ROTATION' })
+      return
+    }
+    if (state.draggingItem) {
+      dispatch({ type: 'END_ITEM_DRAG' })
+      return
+    }
     if (state.draggingHandle) {
       dispatch({ type: 'END_HANDLE_DRAG' })
       return
     }
-  }, [state.draggingHandle, dispatch])
+  }, [state.draggingHandle, state.draggingItem, state.rotatingItem, dispatch])
 
-  // Handle Escape and Enter keys
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        dispatch({ type: 'CANCEL' })
-      } else if (e.key === 'Enter') {
-        // Finish bezier path
-        if (state.inProgress?.tool === 'bezier' && state.inProgress.vertices.length >= 2) {
-          dispatch({ type: 'FINISH_BEZIER' })
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [dispatch, state.inProgress])
+  // Keydown handling is centralized in TemplatesPage
 
-  const cursor = state.activeTool === 'select' ? 'default' : 'crosshair'
+  const cursor = state.draggingItem ? 'move'
+    : state.rotatingItem ? 'grabbing'
+    : state.activeTool === 'select' ? 'default'
+    : 'crosshair'
 
   return (
     <g
@@ -162,8 +203,39 @@ export function DrawingOverlay({
       {/* Hit targets for selection */}
       {state.activeTool === 'select' &&
         items.map(({ item, originalIndex }) => (
-          <HitTarget key={originalIndex} item={item} index={originalIndex} resolvedConstants={resolvedConstants} />
+          <HitTarget
+            key={originalIndex}
+            item={item}
+            index={originalIndex}
+            isSelected={originalIndex === state.selectedItemIndex}
+            isExpression={hasExpressionCoords(item.data)}
+            resolvedConstants={resolvedConstants}
+          />
         ))}
+
+      {/* Drag ghost preview */}
+      {state.draggingItem && (() => {
+        const found = items.find(({ originalIndex }) => originalIndex === state.draggingItem!.itemIndex)
+        if (!found) return null
+        let d = buildSimpleD(found.item)
+        if (!d && resolvedConstants) {
+          const resolved = resolvePathDataNumeric(found.item.data, resolvedConstants)
+          if (resolved) d = buildSimpleDFromData(resolved)
+        }
+        if (!d) return null
+        const { currentOffset } = state.draggingItem
+        return (
+          <path
+            d={d}
+            transform={`translate(${currentOffset.x}, ${currentOffset.y})`}
+            fill="none"
+            stroke="var(--color-editor-apply-bg, #0969da)"
+            strokeWidth={2}
+            opacity={0.5}
+            pointerEvents="none"
+          />
+        )
+      })()}
 
       {/* Selection indicator / Bezier handle overlay */}
       {state.selectedItemIndex !== null && (() => {
@@ -178,7 +250,7 @@ export function DrawingOverlay({
         if (handles) {
           return <BezierHandleOverlay handles={handles} draggingHandle={state.draggingHandle} />
         }
-        return <SelectionIndicator item={found.item} resolvedConstants={resolvedConstants} />
+        return <SelectionIndicator item={found.item} resolvedConstants={resolvedConstants} rotatingItem={state.rotatingItem} />
       })()}
 
       {/* In-progress shape feedback */}
@@ -191,13 +263,19 @@ export function DrawingOverlay({
 
 // ─── Hit targets ─────────────────────────────────────────────────────────────
 
-function HitTarget({ item, index, resolvedConstants }: { item: PathItem; index: number; resolvedConstants?: ResolvedConstants }) {
+function HitTarget({ item, index, isSelected, isExpression, resolvedConstants }: {
+  item: PathItem; index: number; isSelected: boolean; isExpression: boolean; resolvedConstants?: ResolvedConstants
+}) {
   let d = buildSimpleD(item)
   if (!d && resolvedConstants) {
     const resolved = resolvePathDataNumeric(item.data, resolvedConstants)
     if (resolved) d = buildSimpleDFromData(resolved)
   }
   if (!d) return null
+
+  const cursor = isSelected
+    ? (isExpression ? 'not-allowed' : 'move')
+    : 'pointer'
 
   return (
     <path
@@ -206,9 +284,19 @@ function HitTarget({ item, index, resolvedConstants }: { item: PathItem; index: 
       fill="transparent"
       stroke="transparent"
       strokeWidth={20}
-      style={{ cursor: 'pointer' }}
+      style={{ cursor }}
     />
   )
+}
+
+/** Check if a path item has expression-based (non-numeric) coordinates */
+function hasExpressionCoords(data: PathItem['data']): boolean {
+  for (const token of data) {
+    if (typeof token === 'string' && !['M', 'L', 'C', 'Z'].includes(token)) {
+      return true
+    }
+  }
+  return false
 }
 
 function buildSimpleD(item: PathItem): string | null {
@@ -231,7 +319,11 @@ function buildSimpleDFromData(data: PathItem['data']): string | null {
 
 // ─── Selection indicator ─────────────────────────────────────────────────────
 
-function SelectionIndicator({ item, resolvedConstants }: { item: PathItem; resolvedConstants?: ResolvedConstants }) {
+function SelectionIndicator({ item, resolvedConstants, rotatingItem }: {
+  item: PathItem
+  resolvedConstants?: ResolvedConstants
+  rotatingItem: DrawingEditorState['rotatingItem']
+}) {
   let bounds = computePathBounds(item.data)
   if (!bounds && resolvedConstants) {
     const resolved = resolvePathDataNumeric(item.data, resolvedConstants)
@@ -261,38 +353,101 @@ function SelectionIndicator({ item, resolvedConstants }: { item: PathItem; resol
   const pad = 6
   const { minX, minY, maxX, maxY } = bounds
   const handleSize = 6
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  const stemLength = 30
+  const stemTopY = minY - pad - stemLength
+
+  // Compute rotation preview angle
+  const rotAngleDeg = rotatingItem
+    ? (rotatingItem.currentAngle - rotatingItem.startAngle) * 180 / Math.PI
+    : 0
+
+  const rotTransform = rotatingItem
+    ? `rotate(${rotAngleDeg}, ${cx}, ${cy})`
+    : undefined
 
   return (
-    <g className="selection-handle" pointerEvents="none">
+    <g className="selection-handle" transform={rotTransform}>
       {/* Bounding box */}
-      <rect
-        x={minX - pad} y={minY - pad}
-        width={maxX - minX + pad * 2} height={maxY - minY + pad * 2}
-        fill="none"
-        stroke="var(--color-editor-apply-bg, #0969da)"
-        strokeWidth={1.5}
-        strokeDasharray="6 3"
-      />
-      {/* 8 handles: corners + midpoints */}
-      {[
-        [minX - pad, minY - pad],
-        [(minX + maxX) / 2, minY - pad],
-        [maxX + pad, minY - pad],
-        [maxX + pad, (minY + maxY) / 2],
-        [maxX + pad, maxY + pad],
-        [(minX + maxX) / 2, maxY + pad],
-        [minX - pad, maxY + pad],
-        [minX - pad, (minY + maxY) / 2],
-      ].map(([hx, hy], i) => (
+      <g pointerEvents="none">
         <rect
-          key={i}
-          x={hx - handleSize / 2} y={hy - handleSize / 2}
-          width={handleSize} height={handleSize}
-          fill="white"
+          x={minX - pad} y={minY - pad}
+          width={maxX - minX + pad * 2} height={maxY - minY + pad * 2}
+          fill="none"
           stroke="var(--color-editor-apply-bg, #0969da)"
           strokeWidth={1.5}
+          strokeDasharray="6 3"
         />
-      ))}
+        {/* 8 handles: corners + midpoints */}
+        {[
+          [minX - pad, minY - pad],
+          [cx, minY - pad],
+          [maxX + pad, minY - pad],
+          [maxX + pad, (minY + maxY) / 2],
+          [maxX + pad, maxY + pad],
+          [cx, maxY + pad],
+          [minX - pad, maxY + pad],
+          [minX - pad, (minY + maxY) / 2],
+        ].map(([hx, hy], i) => (
+          <rect
+            key={i}
+            x={hx - handleSize / 2} y={hy - handleSize / 2}
+            width={handleSize} height={handleSize}
+            fill="white"
+            stroke="var(--color-editor-apply-bg, #0969da)"
+            strokeWidth={1.5}
+          />
+        ))}
+      </g>
+
+      {/* Rotation handle */}
+      {!hasExpressionCoords(item.data) && (
+        <>
+          <line
+            className="rotation-handle-stem"
+            x1={cx} y1={minY - pad}
+            x2={cx} y2={stemTopY}
+            stroke="var(--color-editor-apply-bg, #0969da)"
+            strokeWidth={1.5}
+            pointerEvents="none"
+          />
+          <circle
+            className="rotation-handle-knob"
+            cx={cx} cy={stemTopY}
+            r={6}
+            fill="var(--color-editor-apply-bg, #0969da)"
+            stroke="white"
+            strokeWidth={1.5}
+            style={{ cursor: 'grab' }}
+            pointerEvents="all"
+            data-rotation-handle="true"
+          />
+          {/* Invisible enlarged hit target for rotation handle */}
+          <circle
+            cx={cx} cy={stemTopY}
+            r={16}
+            fill="transparent"
+            pointerEvents="all"
+            style={{ cursor: 'grab' }}
+            data-rotation-handle="true"
+          />
+        </>
+      )}
+
+      {/* Angle label during rotation */}
+      {rotatingItem && Math.abs(rotAngleDeg) > 0.5 && (
+        <text
+          className="rotation-angle-label"
+          x={cx + 20} y={stemTopY}
+          fill="var(--color-editor-apply-bg, #0969da)"
+          fontSize={14}
+          fontWeight={600}
+          pointerEvents="none"
+        >
+          {rotAngleDeg.toFixed(1)}°
+        </text>
+      )}
     </g>
   )
 }
