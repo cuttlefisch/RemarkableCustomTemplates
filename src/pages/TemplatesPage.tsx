@@ -4,17 +4,22 @@ import { TemplateEditor } from '../components/TemplateEditor'
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary'
 import { DrawingToolbar } from '../components/DrawingToolbar'
 import { DrawingOverlay } from '../components/DrawingOverlay'
+import type { IndexedPathItem } from '../components/DrawingOverlay'
 import { parseTemplate } from '../lib/parser'
 import { removeEntry } from '../lib/registry'
-import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode } from '../lib/customTemplates'
+import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode, upsertColorConstant } from '../lib/customTemplates'
 import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
-import { buildScaleConstants } from '../lib/drawingShapes'
-import type { PathItem } from '../types/template'
+import { resolveConstants } from '../lib/expression'
+import { buildScaleConstants, reorderItem, rotatePathData } from '../lib/drawingShapes'
+import { computeViewBox, zoomAtPoint } from '../lib/drawingViewport'
+import { extractColorConstants } from '../lib/color'
+import type { PathItem, PathData, ConstantEntry } from '../types/template'
 import type { ScalingMode } from '../lib/drawingShapes'
 import type { TemplateRegistryEntry } from '../types/registry'
 import type { RemarkableTemplate } from '../types/template'
 import { useRegistryContext } from '../hooks/useRegistry'
 import { useDrawingEditor } from '../hooks/useDrawingEditor'
+import { useUndoRedo } from '../hooks/useUndoRedo'
 
 function DeviceIcon({ width, height }: { width: number; height: number }) {
   const maxH = 18
@@ -48,7 +53,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
 
   // Editor state
   const [editorOpen, setEditorOpen] = useState(false)
-  const [editorJson, setEditorJson] = useState('')
+  const { value: editorJson, setValue: setEditorJson, undo: editorUndo, redo: editorRedo, canUndo: editorCanUndo, canRedo: editorCanRedo } = useUndoRedo('')
   const [pendingName, setPendingName] = useState('')
   const [editorError, setEditorError] = useState<string | null>(null)
 
@@ -91,21 +96,16 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         }
       }
 
-      // Set supportedScreens if fixed mode
-      if (scalingMode.type === 'fixed') {
-        parsed.supportedScreens = (parsed.supportedScreens as string[] | undefined) ?? [deviceId]
-      }
-
       const items = (parsed.items ?? []) as unknown[]
       parsed.items = [...items, newItem]
 
       const newJson = JSON.stringify(parsed, null, 2)
       setEditorJson(newJson)
       setTemplate(parseTemplate(JSON.parse(newJson)))
-    } catch {
-      // If JSON is malformed, ignore the commit
+    } catch (err) {
+      console.warn('[drawing-commit] Failed to commit shape:', err instanceof Error ? err.message : String(err))
     }
-  }, [editorJson, deviceId])
+  }, [editorJson, setEditorJson])
 
   const handleDrawingDelete = useCallback((index: number) => {
     try {
@@ -115,15 +115,140 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       const newJson = JSON.stringify(parsed, null, 2)
       setEditorJson(newJson)
       setTemplate(parseTemplate(JSON.parse(newJson)))
-    } catch {
-      // If JSON is malformed, ignore the delete
+    } catch (err) {
+      console.warn('[drawing-delete] Failed to delete item:', err instanceof Error ? err.message : String(err))
     }
-  }, [editorJson])
+  }, [editorJson, setEditorJson])
+
+  const handlePathEdit = useCallback((itemIndex: number, newData: PathData) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      items[itemIndex] = { ...(items[itemIndex] as Record<string, unknown>), data: newData }
+      parsed.items = items
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+    } catch (err) {
+      console.warn('[drawing-path-edit] Failed to edit path:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson])
 
   const { state: drawingState, dispatch: drawingDispatch } = useDrawingEditor({
     onCommit: handleDrawingCommit,
     onDelete: handleDrawingDelete,
+    onPathEdit: handlePathEdit,
   })
+
+  const handleDrawingMove = useCallback((fromIndex: number, direction: 'up' | 'down' | 'top' | 'bottom') => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      const newItems = reorderItem(items, fromIndex, direction)
+      if (newItems === items) return
+      parsed.items = newItems
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+      let newIndex = fromIndex
+      if (direction === 'up' && fromIndex < items.length - 1) newIndex = fromIndex + 1
+      else if (direction === 'down' && fromIndex > 0) newIndex = fromIndex - 1
+      else if (direction === 'top') newIndex = items.length - 1
+      else if (direction === 'bottom') newIndex = 0
+      drawingDispatch({ type: 'SELECT_ITEM', index: newIndex })
+    } catch (err) {
+      console.warn('[drawing-move] Failed to move item:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson, drawingDispatch])
+
+  const handleDrawingRotate = useCallback((index: number, angleDeg: number) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      const item = items[index] as PathItem | undefined
+      if (!item || item.type !== 'path') return
+      const rotated = rotatePathData(item.data, angleDeg)
+      if (!rotated) return
+      const newItem = { ...item, data: rotated }
+      parsed.items = items.map((it, i) => i === index ? newItem : it)
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch (err) {
+      console.warn('[drawing-rotate] Failed to rotate item:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson])
+
+  const handleBackgroundColorChange = useCallback((color: string) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const constants = (parsed.constants ?? []) as ConstantEntry[]
+      parsed.constants = upsertColorConstant(constants, 'background', color)
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch (err) {
+      console.warn('[drawing-bg-color] Failed to change background color:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson])
+
+  // Handle move/rotate intents from reducer
+  useEffect(() => {
+    if (drawingState.moveItemIntent) {
+      handleDrawingMove(drawingState.moveItemIntent.index, drawingState.moveItemIntent.direction)
+      drawingDispatch({ type: 'CLEAR_MOVE_INTENT' })
+    }
+  }, [drawingState.moveItemIntent, handleDrawingMove, drawingDispatch])
+
+  useEffect(() => {
+    if (drawingState.rotateIntent) {
+      handleDrawingRotate(drawingState.rotateIntent.index, drawingState.rotateIntent.angle)
+      drawingDispatch({ type: 'CLEAR_ROTATE_INTENT' })
+    }
+  }, [drawingState.rotateIntent, handleDrawingRotate, drawingDispatch])
+
+  // Fix 1: Re-parse template when editorJson changes in drawing mode
+  // Catches all sources: undo, redo, commit, delete, rotate, move, etc.
+  useEffect(() => {
+    if (!drawingMode || !editorJson) return
+    try {
+      setTemplate(parseTemplate(JSON.parse(editorJson)))
+    } catch {
+      // Ignore malformed JSON
+    }
+  }, [editorJson, drawingMode])
+
+  // Fix 1: Global Ctrl+Z / Ctrl+Shift+Z in drawing mode
+  useEffect(() => {
+    if (!drawingMode) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        if (e.shiftKey) {
+          editorRedo()
+        } else {
+          editorUndo()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [drawingMode, editorUndo, editorRedo])
+
+  // Fix 4: Auto-save drawing edits with debounce
+  useEffect(() => {
+    if (!drawingMode || !selected?.isCustom || !editorJson) return
+    const slug = selected.filename.replace('custom/', '')
+    const timer = setTimeout(() => {
+      fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editorJson }),
+      }).catch((err) => {
+        console.warn('[drawing-autosave] Auto-save failed:', err instanceof Error ? err.message : String(err))
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [editorJson, drawingMode, selected])
 
   const deviceGroups = useMemo<DeviceGroup[]>(() => {
     const groups = new Map<string, typeof DEVICES[string][]>()
@@ -168,7 +293,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         setLoadingTemplate(false)
       })
     return () => controller.abort()
-  }, [selected])
+  }, [selected, setEditorJson])
 
   // Derived: all unique categories from merged registry
   const allCategories = mergedRegistry
@@ -657,26 +782,83 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
               </div>
             </div>
 
-            {drawingMode && template && (
-              <DrawingToolbar state={drawingState} dispatch={drawingDispatch} deviceId={deviceId} />
-            )}
+            {drawingMode && template && (() => {
+              const bgColor = extractColorConstants(template.constants)['background'] ?? '#ffffff'
+              return (
+                <DrawingToolbar
+                  state={drawingState}
+                  dispatch={drawingDispatch}
+                  deviceId={deviceId}
+                  backgroundColor={bgColor}
+                  onBackgroundColorChange={handleBackgroundColorChange}
+                  onMove={handleDrawingMove}
+                  onRotate={handleDrawingRotate}
+                  canUndo={editorCanUndo}
+                  canRedo={editorCanRedo}
+                  onUndo={editorUndo}
+                  onRedo={editorRedo}
+                />
+              )
+            })()}
             <div className="preview-stage">
               {loadingTemplate && <p className="stage-hint">Loading...</p>}
               {error && <p className="stage-hint stage-error">{error}</p>}
               {template && (
                 <CanvasErrorBoundary resetKey={editorJson}>
-                  {drawingMode ? (
-                    <div className="drawing-editor-wrapper">
-                      <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
-                      <DrawingOverlay
-                        state={drawingState}
-                        dispatch={drawingDispatch}
-                        templateWidth={deviceBuiltins(template.orientation, deviceId).templateWidth}
-                        templateHeight={deviceBuiltins(template.orientation, deviceId).templateHeight}
-                        items={template.items.filter((item): item is PathItem => item.type === 'path')}
-                      />
-                    </div>
-                  ) : (
+                  {drawingMode ? (() => {
+                    const builtins = deviceBuiltins(template.orientation, deviceId)
+                    const resolved = resolveConstants(template.constants, builtins)
+                    const indexedItems: IndexedPathItem[] = template.items
+                      .map((item, i) => ({ item, originalIndex: i }))
+                      .filter((entry): entry is IndexedPathItem => entry.item.type === 'path') as IndexedPathItem[]
+                    const vb = computeViewBox(
+                      builtins.templateWidth,
+                      builtins.templateHeight,
+                      drawingState.zoom,
+                      drawingState.panOffset,
+                    )
+                    const viewBoxStr = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`
+                    return (
+                      <TemplateCanvas
+                        template={template}
+                        className="preview-svg"
+                        deviceId={deviceId}
+                        viewBox={viewBoxStr}
+                      >
+                        <DrawingOverlay
+                          state={drawingState}
+                          dispatch={drawingDispatch}
+                          templateWidth={builtins.templateWidth}
+                          templateHeight={builtins.templateHeight}
+                          items={indexedItems}
+                          resolvedConstants={resolved}
+                          onWheel={(e) => {
+                            e.preventDefault()
+                            const target = e.target as SVGElement
+                            const svg = target.ownerSVGElement ?? (target as unknown as SVGSVGElement)
+                            if (!svg || !('getScreenCTM' in svg)) return
+                            const ctm = (svg as SVGSVGElement).getScreenCTM()
+                            if (!ctm) return
+                            const inv = ctm.inverse()
+                            const cursorPt = {
+                              x: e.clientX * inv.a + e.clientY * inv.c + inv.e,
+                              y: e.clientX * inv.b + e.clientY * inv.d + inv.f,
+                            }
+                            const delta = e.deltaY > 0 ? -0.1 : 0.1
+                            const result = zoomAtPoint(
+                              drawingState.zoom,
+                              drawingState.panOffset,
+                              delta,
+                              cursorPt,
+                              builtins.templateWidth,
+                              builtins.templateHeight,
+                            )
+                            drawingDispatch({ type: 'ZOOM', zoom: result.zoom, pan: result.pan })
+                          }}
+                        />
+                      </TemplateCanvas>
+                    )
+                  })() : (
                     <TemplateCanvas template={template} className="preview-svg" deviceId={deviceId} />
                   )}
                 </CanvasErrorBoundary>

@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent } from '@testing-library/react'
 import { DrawingOverlay } from '../components/DrawingOverlay'
+import type { IndexedPathItem } from '../components/DrawingOverlay'
 import { initialDrawingEditorState } from '../hooks/useDrawingEditor'
 import type { DrawingEditorState } from '../hooks/useDrawingEditor'
-import type { PathItem } from '../types/template'
 
 // jsdom doesn't implement getScreenCTM, so we mock it on the prototype
 beforeEach(() => {
-  // Define getScreenCTM as a function on SVGSVGElement.prototype if not present
   Object.defineProperty(SVGSVGElement.prototype, 'getScreenCTM', {
     configurable: true,
     writable: true,
@@ -17,38 +16,44 @@ beforeEach(() => {
   })
 })
 
-function renderOverlay(overrides: Partial<DrawingEditorState> = {}, items: PathItem[] = []) {
+function renderOverlay(overrides: Partial<DrawingEditorState> = {}, items: IndexedPathItem[] = []) {
   const dispatch = vi.fn()
   const state = { ...initialDrawingEditorState, ...overrides }
   render(
-    <DrawingOverlay
-      state={state}
-      dispatch={dispatch}
-      templateWidth={1404}
-      templateHeight={1872}
-      items={items}
-    />,
+    <svg viewBox="0 0 1404 1872" xmlns="http://www.w3.org/2000/svg">
+      <DrawingOverlay
+        state={state}
+        dispatch={dispatch}
+        templateWidth={1404}
+        templateHeight={1872}
+        items={items}
+      />
+    </svg>,
   )
   return { dispatch }
 }
 
 describe('DrawingOverlay', () => {
-  it('renders SVG with correct viewBox', () => {
+  it('renders a g element with data-drawing attribute', () => {
     renderOverlay()
-    const svg = document.querySelector('.drawing-overlay') as SVGSVGElement
-    expect(svg.getAttribute('viewBox')).toBe('0 0 1404 1872')
+    const g = document.querySelector('[data-drawing]') as SVGGElement
+    expect(g).not.toBeNull()
+    expect(g.tagName.toLowerCase()).toBe('g')
   })
 
-  it('sets preserveAspectRatio on SVG', () => {
+  it('renders inside parent SVG (single CTM)', () => {
     renderOverlay()
-    const svg = document.querySelector('.drawing-overlay') as SVGSVGElement
-    expect(svg.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+    const svg = document.querySelector('svg')
+    expect(svg).not.toBeNull()
+    // The g is a direct child of the test wrapper svg
+    const g = document.querySelector('[data-drawing]') as SVGGElement
+    expect(g.ownerSVGElement).toBe(svg)
   })
 
   it('mouse click dispatches CANVAS_CLICK for drawing tools', () => {
     const { dispatch } = renderOverlay({ activeTool: 'point' })
-    const svg = document.querySelector('.drawing-overlay')!
-    fireEvent.mouseDown(svg, { clientX: 100, clientY: 200 })
+    const g = document.querySelector('[data-drawing]')!
+    fireEvent.mouseDown(g, { clientX: 100, clientY: 200 })
     expect(dispatch).toHaveBeenCalledWith({
       type: 'CANVAS_CLICK',
       point: expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
@@ -61,16 +66,16 @@ describe('DrawingOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'CANCEL' })
   })
 
-  it('cursor class changes with active tool', () => {
+  it('cursor style changes with active tool', () => {
     renderOverlay({ activeTool: 'line' })
-    const svg = document.querySelector('.drawing-overlay') as SVGSVGElement
-    expect(svg.style.cursor).toBe('crosshair')
+    const g = document.querySelector('[data-drawing]') as SVGGElement
+    expect(g.style.cursor).toBe('crosshair')
   })
 
   it('cursor is default for select tool', () => {
     renderOverlay({ activeTool: 'select' })
-    const svg = document.querySelector('.drawing-overlay') as SVGSVGElement
-    expect(svg.style.cursor).toBe('default')
+    const g = document.querySelector('[data-drawing]') as SVGGElement
+    expect(g.style.cursor).toBe('default')
   })
 
   it('renders in-progress polygon with vertex dots and edges', () => {

@@ -38,7 +38,9 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
             const raw = readFileSync(resolve(config.customDir, file), 'utf8')
             const parsed = JSON.parse(raw)
             fileMap[`custom/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
-          } catch { /* skip broken */ }
+          } catch (err) {
+            console.warn(`[backup] Skipping broken custom template "${file}": ${err instanceof Error ? err.message : String(err)}`)
+          }
         }
       }
     }
@@ -50,7 +52,9 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
             const raw = readFileSync(resolve(config.debugDir, file), 'utf8')
             const parsed = JSON.parse(raw)
             fileMap[`debug/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
-          } catch { /* skip broken */ }
+          } catch (err) {
+            console.warn(`[backup] Skipping broken debug template "${file}": ${err instanceof Error ? err.message : String(err)}`)
+          }
         }
       }
     }
@@ -59,7 +63,9 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
     if (existsSync(config.rmMethodsDeployedManifest)) {
       try {
         fileMap['manifests/.deployed-manifest'] = strToU8(readFileSync(config.rmMethodsDeployedManifest, 'utf8'))
-      } catch { /* skip if unreadable */ }
+      } catch (err) {
+        console.warn(`[backup] Skipping deployed manifest: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
 
     // Include rm-methods-dist files (UUID triplets + manifest) for full deploy restore
@@ -67,7 +73,9 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
       for (const file of readdirSync(config.rmMethodsDistDir)) {
         try {
           fileMap[`rm-methods-dist/${file}`] = new Uint8Array(readFileSync(resolve(config.rmMethodsDistDir, file)))
-        } catch { /* skip unreadable */ }
+        } catch (err) {
+          console.warn(`[backup] Skipping rm-methods-dist file "${file}": ${err instanceof Error ? err.message : String(err)}`)
+        }
       }
     }
 

@@ -73,8 +73,8 @@ export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus: 
       const r = await fetch('/api/backups')
       const data = (await r.json()) as { backups: AppBackupEntry[] }
       setAppBackups(data.backups)
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[load-app-backups]', err instanceof Error ? err.message : String(err))
     } finally {
       setLoadingAppBackups(false)
     }
@@ -95,8 +95,8 @@ export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus: 
         const r = await fetch(`/api/devices/${deviceId}/backups`)
         const data = (await r.json()) as { backups: DeviceBackupEntry[] }
         if (!cancelled) setDeviceBackups(data.backups)
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error('[load-device-backups]', err instanceof Error ? err.message : String(err))
       } finally {
         if (!cancelled) setLoadingDeviceBackups(false)
       }
@@ -228,8 +228,8 @@ export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus: 
           if (cleanupResult.ok) {
             cleanupRemoved = cleanupResult.removed ?? []
           }
-        } catch {
-          // cleanup is best-effort
+        } catch (err) {
+          console.warn('[restore-cleanup]', err instanceof Error ? err.message : String(err))
         }
         setCleaningUp(false)
       }

@@ -12,6 +12,18 @@ function escapeUnicode(str: string): string {
   return str.replace(/[\u0080-\uFFFF]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
 }
 
+/** Strip supportedScreens from template JSON — it causes xochitl to hide templates on non-matching devices. */
+function stripSupportedScreens(content: string): string {
+  try {
+    const obj = JSON.parse(content) as Record<string, unknown>
+    if ('supportedScreens' in obj) {
+      delete obj.supportedScreens
+      return JSON.stringify(obj, null, 2)
+    }
+  } catch { /* not valid JSON, return as-is */ }
+  return content
+}
+
 export interface ClassicBuildResult {
   /** Map of filename → file content (Buffer for .template, string for registry) */
   files: Record<string, Buffer | string>
@@ -55,7 +67,9 @@ export function buildClassicDist(config: ServerConfig): ClassicBuildResult {
         if (Array.isArray(tpl.categories)) {
           return { ...entry, categories: ['Custom', ...tpl.categories.filter((c: unknown) => c !== 'Custom')] }
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.warn(`[build-classic] Failed to sync categories from "${entry.filename}": ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
     return entry
   })
@@ -88,7 +102,7 @@ export function buildClassicDist(config: ServerConfig): ClassicBuildResult {
     const file = `${entry.filename}.template`
     const filePath = resolve(config.debugDir, file)
     if (existsSync(filePath) && !copiedFilenames.has(file)) {
-      files[file] = resolveStringConstants(readFileSync(filePath, 'utf8'))
+      files[file] = stripSupportedScreens(resolveStringConstants(readFileSync(filePath, 'utf8')))
       copiedFilenames.add(file)
     }
   }
@@ -97,7 +111,7 @@ export function buildClassicDist(config: ServerConfig): ClassicBuildResult {
   if (existsSync(config.customDir)) {
     for (const file of readdirSync(config.customDir)) {
       if (file.endsWith('.template') && !copiedFilenames.has(file)) {
-        files[file] = resolveStringConstants(readFileSync(resolve(config.customDir, file), 'utf8'))
+        files[file] = stripSupportedScreens(resolveStringConstants(readFileSync(resolve(config.customDir, file), 'utf8')))
         copiedFilenames.add(file)
       }
     }

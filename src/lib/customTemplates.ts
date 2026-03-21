@@ -38,7 +38,7 @@ export function buildBackgroundItem(): GroupItem {
 
 // ─── Color constant helpers ───────────────────────────────────────────────────
 
-function findColorConstantValue(constants: ConstantEntry[], key: string): string | undefined {
+export function findColorConstantValue(constants: ConstantEntry[], key: string): string | undefined {
   for (const entry of constants) {
     if (key in entry) {
       const v = entry[key]
@@ -48,7 +48,7 @@ function findColorConstantValue(constants: ConstantEntry[], key: string): string
   return undefined
 }
 
-function upsertColorConstant(constants: ConstantEntry[], key: string, value: string): ConstantEntry[] {
+export function upsertColorConstant(constants: ConstantEntry[], key: string, value: string): ConstantEntry[] {
   const idx = constants.findIndex(e => key in e)
   if (idx >= 0) {
     return constants.map((e, i) => i === idx ? { [key]: value } : e)
@@ -149,9 +149,15 @@ export function resolveStringConstants(json: string): string {
     // Exact match for color fields
     if (typeof result.fillColor === 'string' && result.fillColor in nonScalarMap) {
       result.fillColor = nonScalarMap[result.fillColor]
+    } else if (typeof result.fillColor === 'string' && !result.fillColor.startsWith('#')) {
+      console.warn(`[resolveStringConstants] Unresolved fillColor "${result.fillColor}" — defaulting to "#000000"`)
+      result.fillColor = '#000000'
     }
     if (typeof result.strokeColor === 'string' && result.strokeColor in nonScalarMap) {
       result.strokeColor = nonScalarMap[result.strokeColor]
+    } else if (typeof result.strokeColor === 'string' && !result.strokeColor.startsWith('#')) {
+      console.warn(`[resolveStringConstants] Unresolved strokeColor "${result.strokeColor}" — defaulting to "#000000"`)
+      result.strokeColor = '#000000'
     }
     // Exact match for TextItem text
     if (typeof result.text === 'string' && result.text in nonScalarMap) {

@@ -5,7 +5,8 @@
  * recursively renders the item tree into React SVG elements.
  */
 
-import type { ReactElement } from 'react'
+import { forwardRef } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type {
   RemarkableTemplate,
   TemplateItem,
@@ -36,31 +37,39 @@ interface TemplateCanvasProps {
   className?: string
   /** Device to render for. Defaults to 'rm'. */
   deviceId?: DeviceId
+  /** Optional viewBox override (for zoom/pan). */
+  viewBox?: string
+  /** Children rendered as last elements inside the SVG (e.g. DrawingOverlay). */
+  children?: ReactNode
 }
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export function TemplateCanvas({ template, className, deviceId = 'rm' }: TemplateCanvasProps): ReactElement {
-  const builtins = deviceBuiltins(template.orientation, deviceId)
-  const constants = resolveConstants(template.constants, builtins)
-  const { templateWidth, templateHeight } = builtins
-  const isDark = template.categories.includes('Dark')
-  const colorConstants = extractColorConstants(template.constants)
+export const TemplateCanvas = forwardRef<SVGSVGElement, TemplateCanvasProps>(
+  function TemplateCanvas({ template, className, deviceId = 'rm', viewBox: viewBoxOverride, children }, ref): ReactElement {
+    const builtins = deviceBuiltins(template.orientation, deviceId)
+    const constants = resolveConstants(template.constants, builtins)
+    const { templateWidth, templateHeight } = builtins
+    const isDark = template.categories.includes('Dark')
+    const colorConstants = extractColorConstants(template.constants)
 
-  return (
-    <svg
-      viewBox={`0 0 ${templateWidth} ${templateHeight}`}
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      style={{ aspectRatio: `${templateWidth} / ${templateHeight}` }}
-    >
-      <rect width={templateWidth} height={templateHeight} fill={colorConstants['background'] ?? (isDark ? '#000000' : '#ffffff')} />
-      {template.items.map((item, i) => (
-        <ItemView key={item.id ?? i} item={item} constants={constants} colorConstants={colorConstants} />
-      ))}
-    </svg>
-  )
-}
+    return (
+      <svg
+        ref={ref}
+        viewBox={viewBoxOverride ?? `0 0 ${templateWidth} ${templateHeight}`}
+        xmlns="http://www.w3.org/2000/svg"
+        className={className}
+        style={{ aspectRatio: `${templateWidth} / ${templateHeight}` }}
+      >
+        <rect width={templateWidth} height={templateHeight} fill={colorConstants['background'] ?? (isDark ? '#000000' : '#ffffff')} />
+        {template.items.map((item, i) => (
+          <ItemView key={item.id ?? i} item={item} constants={constants} colorConstants={colorConstants} />
+        ))}
+        {children}
+      </svg>
+    )
+  },
+)
 
 // ─── Item dispatcher ──────────────────────────────────────────────────────────
 

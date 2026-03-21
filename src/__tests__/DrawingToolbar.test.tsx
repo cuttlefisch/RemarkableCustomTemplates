@@ -7,7 +7,21 @@ import type { DrawingEditorState } from '../hooks/useDrawingEditor'
 function renderToolbar(overrides: Partial<DrawingEditorState> = {}) {
   const dispatch = vi.fn()
   const state = { ...initialDrawingEditorState, ...overrides }
-  render(<DrawingToolbar state={state} dispatch={dispatch} deviceId="rm" />)
+  render(
+    <DrawingToolbar
+      state={state}
+      dispatch={dispatch}
+      deviceId="rm"
+      backgroundColor="#ffffff"
+      onBackgroundColorChange={vi.fn()}
+      onMove={vi.fn()}
+      onRotate={vi.fn()}
+      canUndo={false}
+      canRedo={false}
+      onUndo={vi.fn()}
+      onRedo={vi.fn()}
+    />,
+  )
   return { dispatch }
 }
 
@@ -19,6 +33,8 @@ describe('DrawingToolbar', () => {
     expect(screen.getByTitle('Line')).toBeDefined()
     expect(screen.getByTitle('Polygon')).toBeDefined()
     expect(screen.getByTitle('Regular Polygon')).toBeDefined()
+    expect(screen.getByTitle('Circle')).toBeDefined()
+    expect(screen.getByTitle('Bezier Curve')).toBeDefined()
   })
 
   it('active tool has active class', () => {
@@ -39,6 +55,14 @@ describe('DrawingToolbar', () => {
         state={{ ...initialDrawingEditorState, activeTool: 'line' }}
         dispatch={vi.fn()}
         deviceId="rm"
+        backgroundColor="#ffffff"
+        onBackgroundColorChange={vi.fn()}
+        onMove={vi.fn()}
+        onRotate={vi.fn()}
+        canUndo={false}
+        canRedo={false}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
       />,
     )
     expect(screen.queryByTitle('Number of sides')).toBeNull()
@@ -49,6 +73,14 @@ describe('DrawingToolbar', () => {
         state={{ ...initialDrawingEditorState, activeTool: 'regularPolygon' }}
         dispatch={vi.fn()}
         deviceId="rm"
+        backgroundColor="#ffffff"
+        onBackgroundColorChange={vi.fn()}
+        onMove={vi.fn()}
+        onRotate={vi.fn()}
+        canUndo={false}
+        canRedo={false}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
       />,
     )
     expect(screen.getByTitle('Number of sides')).toBeDefined()
@@ -103,8 +135,38 @@ describe('DrawingToolbar', () => {
   it('help popover contains guidance for tools and scaling', () => {
     renderToolbar()
     fireEvent.click(screen.getByTitle('Drawing help'))
-    expect(screen.getByText(/Click to place a cross marker/)).toBeDefined()
+    expect(screen.getByText(/Click to place a marker/)).toBeDefined()
     expect(screen.getByText(/Shapes scale to fit any device/)).toBeDefined()
-    expect(screen.getByText(/Press/)).toBeDefined()
+    expect(screen.getByText(/Scroll wheel/)).toBeDefined()
+  })
+
+  it('algorithm selector renders when bezier tool active', () => {
+    renderToolbar({ activeTool: 'bezier' })
+    expect(screen.getByText('C-R')).toBeDefined()
+    expect(screen.getByText('Hobby')).toBeDefined()
+  })
+
+  it('algorithm selector does not render for other tools', () => {
+    renderToolbar({ activeTool: 'line' })
+    expect(screen.queryByText('C-R')).toBeNull()
+    expect(screen.queryByText('Hobby')).toBeNull()
+  })
+
+  it('clicking algorithm button dispatches SET_BEZIER_ALGORITHM', () => {
+    const { dispatch } = renderToolbar({ activeTool: 'bezier' })
+    fireEvent.click(screen.getByText('Hobby'))
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_BEZIER_ALGORITHM', algorithm: 'hobby' })
+  })
+
+  it('point shape selector renders when point tool active', () => {
+    renderToolbar({ activeTool: 'point' })
+    expect(screen.getByTitle('Point shape: dot')).toBeDefined()
+    expect(screen.getByTitle('Point shape: cross')).toBeDefined()
+    expect(screen.getByTitle('Point shape: diamond')).toBeDefined()
+  })
+
+  it('point shape selector does not render for other tools', () => {
+    renderToolbar({ activeTool: 'line' })
+    expect(screen.queryByTitle('Point shape: dot')).toBeNull()
   })
 })
