@@ -737,6 +737,24 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
   border-radius: 2px;
 }
 
+/* ── Drawing mode canvas ────────────────────────────────────────────────── */
+
+.preview-stage.drawing-mode {
+  padding: 0;
+  overflow: hidden;           /* viewBox handles viewport, no scrollbars */
+}
+
+.preview-stage.drawing-mode .preview-svg {
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+  aspect-ratio: unset;        /* fill container, let preserveAspectRatio handle it */
+}
+
 /* ── Drawing editor ─────────────────────────────────────────────────────── */
 
 /* Drawing color label */

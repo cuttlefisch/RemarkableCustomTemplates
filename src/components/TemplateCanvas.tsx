@@ -59,7 +59,8 @@ export const TemplateCanvas = forwardRef<SVGSVGElement, TemplateCanvasProps>(
         viewBox={viewBoxOverride ?? `0 0 ${templateWidth} ${templateHeight}`}
         xmlns="http://www.w3.org/2000/svg"
         className={className}
-        style={{ aspectRatio: `${templateWidth} / ${templateHeight}` }}
+        preserveAspectRatio="xMidYMid meet"
+        style={viewBoxOverride ? undefined : { aspectRatio: `${templateWidth} / ${templateHeight}` }}
       >
         <rect width={templateWidth} height={templateHeight} fill={colorConstants['background'] ?? (isDark ? '#000000' : '#ffffff')} />
         {template.items.map((item, i) => (

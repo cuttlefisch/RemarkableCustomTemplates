@@ -280,10 +280,10 @@ describe('buildScaleConstants', () => {
   })
 
   it('generates correct scale constants for Paper Pro Move', () => {
-    const constants = buildScaleConstants(954, 1696)
+    const constants = buildScaleConstants(814, 1454)
     expect(constants).toEqual([
-      { drawnScaleX: 'templateWidth / 954' },
-      { drawnScaleY: 'templateHeight / 1696' },
+      { drawnScaleX: 'templateWidth / 814' },
+      { drawnScaleY: 'templateHeight / 1454' },
     ])
   })
 })

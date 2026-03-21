@@ -800,7 +800,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                 />
               )
             })()}
-            <div className="preview-stage">
+            <div className={`preview-stage${drawingMode ? ' drawing-mode' : ''}`}>
               {loadingTemplate && <p className="stage-hint">Loading...</p>}
               {error && <p className="stage-hint stage-error">{error}</p>}
               {template && (
@@ -844,7 +844,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                               x: e.clientX * inv.a + e.clientY * inv.c + inv.e,
                               y: e.clientX * inv.b + e.clientY * inv.d + inv.f,
                             }
-                            const delta = e.deltaY > 0 ? -0.1 : 0.1
+                            const delta = e.deltaY > 0 ? -0.15 : 0.15
                             const result = zoomAtPoint(
                               drawingState.zoom,
                               drawingState.panOffset,
