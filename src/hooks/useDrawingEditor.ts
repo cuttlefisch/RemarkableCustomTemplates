@@ -5,7 +5,7 @@
  * The hook wraps it with side-effects (commit callback, clearing committed items).
  */
 
-import { useReducer, useEffect, useCallback } from 'react'
+import { useReducer, useEffect, useRef, useCallback } from 'react'
 import type { PathItem } from '../types/template'
 import type { Point, ScalingMode, ShapeProps } from '../lib/drawingShapes'
 import {
@@ -218,21 +218,27 @@ interface UseDrawingEditorOptions {
 export function useDrawingEditor({ onCommit, onDelete }: UseDrawingEditorOptions) {
   const [state, dispatch] = useReducer(drawingEditorReducer, initialDrawingEditorState)
 
+  // Use refs to always have the latest callbacks without triggering effects
+  const onCommitRef = useRef(onCommit)
+  const onDeleteRef = useRef(onDelete)
+  useEffect(() => { onCommitRef.current = onCommit }, [onCommit])
+  useEffect(() => { onDeleteRef.current = onDelete }, [onDelete])
+
   // Handle committed items
   useEffect(() => {
     if (state.committedItem) {
-      onCommit(state.committedItem, state.scalingMode)
+      onCommitRef.current(state.committedItem, state.scalingMode)
       dispatch({ type: 'CLEAR_COMMITTED' })
     }
-  }, [state.committedItem, state.scalingMode, onCommit])
+  }, [state.committedItem, state.scalingMode])
 
   // Handle deleted items
   useEffect(() => {
     if (state.deletedItemIndex !== null) {
-      onDelete(state.deletedItemIndex)
+      onDeleteRef.current(state.deletedItemIndex)
       dispatch({ type: 'CLEAR_DELETED' })
     }
-  }, [state.deletedItemIndex, onDelete])
+  }, [state.deletedItemIndex])
 
   const setScalingModeForDevice = useCallback((_deviceId: string, baseWidth: number, baseHeight: number) => {
     dispatch({

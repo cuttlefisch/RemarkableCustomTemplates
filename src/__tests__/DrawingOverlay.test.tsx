@@ -39,6 +39,12 @@ describe('DrawingOverlay', () => {
     expect(svg.getAttribute('viewBox')).toBe('0 0 1404 1872')
   })
 
+  it('sets preserveAspectRatio on SVG', () => {
+    renderOverlay()
+    const svg = document.querySelector('.drawing-overlay') as SVGSVGElement
+    expect(svg.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet')
+  })
+
   it('mouse click dispatches CANVAS_CLICK for drawing tools', () => {
     const { dispatch } = renderOverlay({ activeTool: 'point' })
     const svg = document.querySelector('.drawing-overlay')!

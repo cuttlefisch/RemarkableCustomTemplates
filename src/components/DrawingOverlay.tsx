@@ -80,6 +80,7 @@ export function DrawingOverlay({
       ref={svgRef}
       className="drawing-overlay"
       viewBox={`0 0 ${templateWidth} ${templateHeight}`}
+      preserveAspectRatio="xMidYMid meet"
       style={{ cursor }}
       data-tool={state.activeTool}
       onMouseDown={handleMouseDown}
