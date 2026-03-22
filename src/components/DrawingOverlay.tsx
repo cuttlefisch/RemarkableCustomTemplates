@@ -12,15 +12,15 @@ import type { PathItem } from '../types/template'
 import type { ResolvedConstants } from '../lib/expression'
 import { screenToTemplate } from '../lib/drawingCoords'
 import { distanceBetween } from '../lib/drawingCoords'
-import { resolvePathDataNumeric, computePathBounds as computePathBoundsFromShapes, extractBezierHandles } from '../lib/drawingShapes'
+import { resolvePathDataNumeric, computePathBounds as computePathBoundsFromShapes, extractBezierHandles, computeScaleFactors } from '../lib/drawingShapes'
 import type { BezierHandles, Point } from '../lib/drawingShapes'
 
 const SNAP_THRESHOLD = 15
 
 // Bezier handle sizing (template coordinate space, e.g. 1404×1872)
 const HIT_RADIUS = 20          // invisible hit target — easy to click
-const VISUAL_KNOT_RADIUS = 5   // visible knot dot
-const VISUAL_CP_RADIUS = 4     // visible control point dot
+const VISUAL_KNOT_RADIUS = 7   // visible knot dot
+const VISUAL_CP_RADIUS = 5     // visible control point dot
 
 export interface IndexedPathItem {
   item: PathItem
@@ -84,6 +84,44 @@ export function DrawingOverlay({
           }
         }
 
+        // Check for scale handle drag
+        if (target.getAttribute('data-scale-handle') === 'true' && state.selectedItemIndex !== null) {
+          const pos = target.getAttribute('data-scale-position')!
+          const found = items.find(({ originalIndex }) => originalIndex === state.selectedItemIndex)
+          if (found) {
+            let bounds = computePathBounds(found.item.data)
+            if (!bounds && resolvedConstants) {
+              const resolved = resolvePathDataNumeric(found.item.data, resolvedConstants)
+              if (resolved) bounds = computePathBoundsFromShapes(resolved)
+            }
+            if (bounds) {
+              const { minX, minY, maxX, maxY } = bounds
+              const cx = (minX + maxX) / 2
+              const cy = (minY + maxY) / 2
+              // Anchor is the opposite corner/edge in path coords
+              const anchorMap: Record<string, Point> = {
+                tl: { x: maxX, y: maxY }, t: { x: cx, y: maxY }, tr: { x: minX, y: maxY },
+                l: { x: maxX, y: cy }, r: { x: minX, y: cy },
+                bl: { x: maxX, y: minY }, b: { x: cx, y: minY }, br: { x: minX, y: minY },
+              }
+              const handlePosMap: Record<string, Point> = {
+                tl: { x: minX, y: minY }, t: { x: cx, y: minY }, tr: { x: maxX, y: minY },
+                l: { x: minX, y: cy }, r: { x: maxX, y: cy },
+                bl: { x: minX, y: maxY }, b: { x: cx, y: maxY }, br: { x: maxX, y: maxY },
+              }
+              dispatch({
+                type: 'START_SCALE_DRAG',
+                itemIndex: state.selectedItemIndex,
+                handlePosition: pos,
+                anchor: anchorMap[pos],
+                handlePos: handlePosMap[pos],
+                bounds,
+              })
+              return
+            }
+          }
+        }
+
         // Check for bezier handle drag
         const handleType = target.getAttribute('data-handle-type') as 'knot' | 'cp1' | 'cp2' | null
         const handleIndex = target.getAttribute('data-handle-index')
@@ -136,6 +174,11 @@ export function DrawingOverlay({
 
       const point = screenToTemplate(e.nativeEvent, svg)
 
+      if (state.scalingItem) {
+        dispatch({ type: 'UPDATE_SCALE_DRAG', point })
+        return
+      }
+
       if (state.rotatingItem) {
         const angle = Math.atan2(
           point.y - state.rotatingItem.center.y,
@@ -157,10 +200,14 @@ export function DrawingOverlay({
 
       dispatch({ type: 'CANVAS_MOUSE_MOVE', point })
     },
-    [dispatch, getSvg, state.draggingHandle, state.draggingItem, state.rotatingItem],
+    [dispatch, getSvg, state.draggingHandle, state.draggingItem, state.rotatingItem, state.scalingItem],
   )
 
   const handleMouseUp = useCallback(() => {
+    if (state.scalingItem) {
+      dispatch({ type: 'END_SCALE_DRAG' })
+      return
+    }
     if (state.rotatingItem) {
       dispatch({ type: 'END_ROTATION' })
       return
@@ -173,11 +220,12 @@ export function DrawingOverlay({
       dispatch({ type: 'END_HANDLE_DRAG' })
       return
     }
-  }, [state.draggingHandle, state.draggingItem, state.rotatingItem, dispatch])
+  }, [state.draggingHandle, state.draggingItem, state.rotatingItem, state.scalingItem, dispatch])
 
   // Keydown handling is centralized in TemplatesPage
 
-  const cursor = state.draggingItem ? 'move'
+  const cursor = state.scalingItem ? 'grabbing'
+    : state.draggingItem ? 'move'
     : state.rotatingItem ? 'grabbing'
     : state.activeTool === 'select' ? 'default'
     : 'crosshair'
@@ -236,6 +284,58 @@ export function DrawingOverlay({
         )
       })()}
 
+      {/* Rotation ghost preview */}
+      {state.rotatingItem && (() => {
+        const found = items.find(({ originalIndex }) => originalIndex === state.rotatingItem!.itemIndex)
+        if (!found) return null
+        let d = buildSimpleD(found.item)
+        if (!d && resolvedConstants) {
+          const resolved = resolvePathDataNumeric(found.item.data, resolvedConstants)
+          if (resolved) d = buildSimpleDFromData(resolved)
+        }
+        if (!d) return null
+        const { center, startAngle, currentAngle } = state.rotatingItem!
+        const angleDeg = (currentAngle - startAngle) * 180 / Math.PI
+        return (
+          <path
+            d={d}
+            transform={`rotate(${angleDeg}, ${center.x}, ${center.y})`}
+            fill="none"
+            stroke="var(--color-editor-apply-bg, #0969da)"
+            strokeWidth={2}
+            opacity={0.5}
+            pointerEvents="none"
+          />
+        )
+      })()}
+
+      {/* Scale ghost preview */}
+      {state.scalingItem && (() => {
+        const found = items.find(({ originalIndex }) => originalIndex === state.scalingItem!.itemIndex)
+        if (!found) return null
+        let d = buildSimpleD(found.item)
+        if (!d && resolvedConstants) {
+          const resolved = resolvePathDataNumeric(found.item.data, resolvedConstants)
+          if (resolved) d = buildSimpleDFromData(resolved)
+        }
+        if (!d) return null
+        const { handlePosition, anchor, originalHandlePos, currentPos } = state.scalingItem!
+        const { scaleX, scaleY } = computeScaleFactors(handlePosition, anchor, originalHandlePos, currentPos)
+        const ox = anchor.x
+        const oy = anchor.y
+        return (
+          <path
+            d={d}
+            transform={`translate(${ox},${oy}) scale(${scaleX},${scaleY}) translate(${-ox},${-oy})`}
+            fill="none"
+            stroke="var(--color-editor-apply-bg, #0969da)"
+            strokeWidth={2}
+            opacity={0.5}
+            pointerEvents="none"
+          />
+        )
+      })()}
+
       {/* Selection indicator / Bezier handle overlay */}
       {state.selectedItemIndex !== null && (() => {
         const found = items.find(({ originalIndex }) => originalIndex === state.selectedItemIndex)
@@ -249,7 +349,7 @@ export function DrawingOverlay({
         if (handles) {
           return <BezierHandleOverlay handles={handles} draggingHandle={state.draggingHandle} />
         }
-        return <SelectionIndicator item={found.item} resolvedConstants={resolvedConstants} rotatingItem={state.rotatingItem} />
+        return <SelectionIndicator item={found.item} resolvedConstants={resolvedConstants} rotatingItem={state.rotatingItem} scalingItem={state.scalingItem} />
       })()}
 
       {/* In-progress shape feedback */}
@@ -306,10 +406,17 @@ function buildSimpleDFromData(data: PathItem['data']): string | null {
 
 // ─── Selection indicator ─────────────────────────────────────────────────────
 
-function SelectionIndicator({ item, resolvedConstants, rotatingItem }: {
+const HANDLE_POSITIONS = ['tl', 't', 'tr', 'r', 'br', 'b', 'bl', 'l'] as const
+const HANDLE_CURSORS: Record<string, string> = {
+  tl: 'nwse-resize', tr: 'nesw-resize', bl: 'nesw-resize', br: 'nwse-resize',
+  t: 'ns-resize', b: 'ns-resize', l: 'ew-resize', r: 'ew-resize',
+}
+
+function SelectionIndicator({ item, resolvedConstants, rotatingItem, scalingItem }: {
   item: PathItem
   resolvedConstants?: ResolvedConstants
   rotatingItem: DrawingEditorState['rotatingItem']
+  scalingItem: DrawingEditorState['scalingItem']
 }) {
   let bounds = computePathBounds(item.data)
   if (!bounds && resolvedConstants) {
@@ -339,7 +446,7 @@ function SelectionIndicator({ item, resolvedConstants, rotatingItem }: {
 
   const pad = 6
   const { minX, minY, maxX, maxY } = bounds
-  const handleSize = 6
+  const handleSize = 10
   const cx = (minX + maxX) / 2
   const cy = (minY + maxY) / 2
   const stemLength = 30
@@ -357,36 +464,42 @@ function SelectionIndicator({ item, resolvedConstants, rotatingItem }: {
   return (
     <g className="selection-handle" transform={rotTransform}>
       {/* Bounding box */}
-      <g pointerEvents="none">
-        <rect
-          x={minX - pad} y={minY - pad}
-          width={maxX - minX + pad * 2} height={maxY - minY + pad * 2}
-          fill="none"
-          stroke="var(--color-editor-apply-bg, #0969da)"
-          strokeWidth={1.5}
-          strokeDasharray="6 3"
-        />
-        {/* 8 handles: corners + midpoints */}
-        {[
-          [minX - pad, minY - pad],
-          [cx, minY - pad],
-          [maxX + pad, minY - pad],
-          [maxX + pad, (minY + maxY) / 2],
-          [maxX + pad, maxY + pad],
-          [cx, maxY + pad],
-          [minX - pad, maxY + pad],
-          [minX - pad, (minY + maxY) / 2],
-        ].map(([hx, hy], i) => (
+      <rect
+        x={minX - pad} y={minY - pad}
+        width={maxX - minX + pad * 2} height={maxY - minY + pad * 2}
+        fill="none"
+        stroke="var(--color-editor-apply-bg, #0969da)"
+        strokeWidth={1.5}
+        strokeDasharray="6 3"
+        pointerEvents="none"
+      />
+      {/* 8 interactive scale handles: corners + midpoints */}
+      {[
+        [minX - pad, minY - pad],
+        [cx, minY - pad],
+        [maxX + pad, minY - pad],
+        [maxX + pad, (minY + maxY) / 2],
+        [maxX + pad, maxY + pad],
+        [cx, maxY + pad],
+        [minX - pad, maxY + pad],
+        [minX - pad, (minY + maxY) / 2],
+      ].map(([hx, hy], i) => {
+        const pos = HANDLE_POSITIONS[i]
+        return (
           <rect
             key={i}
             x={hx - handleSize / 2} y={hy - handleSize / 2}
             width={handleSize} height={handleSize}
             fill="white"
             stroke="var(--color-editor-apply-bg, #0969da)"
-            strokeWidth={1.5}
+            strokeWidth={2}
+            style={{ cursor: scalingItem ? 'grabbing' : HANDLE_CURSORS[pos] }}
+            pointerEvents="all"
+            data-scale-handle="true"
+            data-scale-position={pos}
           />
-        ))}
-      </g>
+        )
+      })}
 
       {/* Rotation handle */}
       <line
@@ -400,10 +513,10 @@ function SelectionIndicator({ item, resolvedConstants, rotatingItem }: {
       <circle
         className="rotation-handle-knob"
         cx={cx} cy={stemTopY}
-        r={6}
-        fill="var(--color-editor-apply-bg, #0969da)"
-        stroke="white"
-        strokeWidth={1.5}
+        r={7}
+        fill="white"
+        stroke="var(--color-editor-apply-bg, #0969da)"
+        strokeWidth={2}
         style={{ cursor: 'grab' }}
         pointerEvents="all"
         data-rotation-handle="true"
@@ -493,8 +606,25 @@ function BezierHandleOverlay({
 
   function getCp(segIdx: number, cpIdx: 0 | 1): Point {
     const handleType = cpIdx === 0 ? 'cp1' : 'cp2'
+    // Direct CP drag
     if (draggingHandle?.handleType === handleType && draggingHandle.handleIndex === segIdx) {
       return draggingHandle.currentPos
+    }
+    // Linked knot drag — translate connected CPs by knot delta
+    if (draggingHandle?.handleType === 'knot') {
+      const knotIdx = draggingHandle.handleIndex
+      const isOutgoing = cpIdx === 0 && segIdx === knotIdx
+      const isIncoming = cpIdx === 1 && segIdx === knotIdx - 1
+      const isOutgoingWrapped = cpIdx === 0 && closed && knotIdx === knots.length - 1 && segIdx === 0
+      const isIncomingWrapped = cpIdx === 1 && closed && knotIdx === 0 && segIdx === segCount - 1
+
+      if (isOutgoing || isIncoming || isOutgoingWrapped || isIncomingWrapped) {
+        const oldKnot = knots[knotIdx]
+        const dx = draggingHandle.currentPos.x - oldKnot.x
+        const dy = draggingHandle.currentPos.y - oldKnot.y
+        const cp = controlPoints[segIdx][cpIdx]
+        return { x: cp.x + dx, y: cp.y + dy }
+      }
     }
     return controlPoints[segIdx][cpIdx]
   }
@@ -514,16 +644,16 @@ function BezierHandleOverlay({
               x1={startKnot.x} y1={startKnot.y}
               x2={cp1.x} y2={cp1.y}
               stroke="var(--color-editor-apply-bg, #0969da)"
-              strokeWidth={1}
-              opacity={0.6}
+              strokeWidth={1.5}
+              opacity={0.7}
             />
             <line
               className="bezier-tangent-line"
               x1={endKnot.x} y1={endKnot.y}
               x2={cp2.x} y2={cp2.y}
               stroke="var(--color-editor-apply-bg, #0969da)"
-              strokeWidth={1}
-              opacity={0.6}
+              strokeWidth={1.5}
+              opacity={0.7}
             />
           </g>
         )
@@ -557,14 +687,14 @@ function BezierHandleOverlay({
               cx={cp1.x} cy={cp1.y} r={VISUAL_CP_RADIUS}
               fill="white"
               stroke="var(--color-editor-apply-bg, #0969da)"
-              strokeWidth={1.5}
+              strokeWidth={2}
               pointerEvents="none"
             />
             <circle
               cx={cp2.x} cy={cp2.y} r={VISUAL_CP_RADIUS}
               fill="white"
               stroke="var(--color-editor-apply-bg, #0969da)"
-              strokeWidth={1.5}
+              strokeWidth={2}
               pointerEvents="none"
             />
           </g>
@@ -588,9 +718,9 @@ function BezierHandleOverlay({
             {/* Visual circle */}
             <circle
               cx={k.x} cy={k.y} r={VISUAL_KNOT_RADIUS}
-              fill="var(--color-editor-apply-bg, #0969da)"
-              stroke="white"
-              strokeWidth={1.5}
+              fill="white"
+              stroke="var(--color-editor-apply-bg, #0969da)"
+              strokeWidth={2}
               pointerEvents="none"
             />
           </g>

@@ -11,6 +11,7 @@ import {
   CircleIcon, BezierIcon, UndoIcon, RedoIcon, DeleteIcon,
   SendBackIcon, SendBackwardIcon, BringForwardIcon, BringFrontIcon,
   ZoomInIcon, ZoomOutIcon, ZoomFitIcon,
+  FlipHorizontalIcon, FlipVerticalIcon, RotateCWIcon, RotateCCWIcon,
 } from './DrawingIcons'
 
 interface DrawingToolbarProps {
@@ -23,6 +24,7 @@ interface DrawingToolbarProps {
   onForegroundColorChange: (color: string) => void
   onMove: (index: number, direction: 'up' | 'down' | 'top' | 'bottom') => void
   onRotate: (index: number, angleDeg: number) => void
+  onFlip: (index: number, axis: 'horizontal' | 'vertical') => void
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -51,6 +53,7 @@ export function DrawingToolbar({
   onForegroundColorChange,
   onMove,
   onRotate,
+  onFlip,
   canUndo,
   canRedo,
   onUndo,
@@ -77,10 +80,6 @@ export function DrawingToolbar({
 
   const zoomPercent = Math.round(state.zoom * 100)
   const hasSelection = state.selectedItemIndex !== null
-
-  // Suppress unused variable warning — onRotate is kept in the interface
-  // for the Phase 4 rotation handle integration
-  void onRotate
 
   return (
     <div className="drawing-toolbar" role="toolbar" aria-label="Drawing tools">
@@ -321,6 +320,39 @@ export function DrawingToolbar({
               aria-label="Bring to front (Shift+])"
             >
               <BringFrontIcon />
+            </button>
+
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onFlip(state.selectedItemIndex!, 'horizontal')}
+              title="Flip Horizontal (H)"
+              aria-label="Flip Horizontal (H)"
+            >
+              <FlipHorizontalIcon />
+            </button>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onFlip(state.selectedItemIndex!, 'vertical')}
+              title="Flip Vertical (J)"
+              aria-label="Flip Vertical (J)"
+            >
+              <FlipVerticalIcon />
+            </button>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onRotate(state.selectedItemIndex!, 90)}
+              title="Rotate 90° CW"
+              aria-label="Rotate 90° CW"
+            >
+              <RotateCWIcon />
+            </button>
+            <button
+              className="drawing-layer-btn"
+              onClick={() => onRotate(state.selectedItemIndex!, -90)}
+              title="Rotate 90° CCW"
+              aria-label="Rotate 90° CCW"
+            >
+              <RotateCCWIcon />
             </button>
           </>
         )}

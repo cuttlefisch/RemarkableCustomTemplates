@@ -123,7 +123,7 @@ describe('DrawingOverlay', () => {
     const allCircles = document.querySelectorAll('.bezier-handle-overlay circle:not([data-handle-type])')
     for (const circle of allCircles) {
       const r = Number(circle.getAttribute('r'))
-      expect(r).toBeLessThanOrEqual(6)
+      expect(r).toBeLessThanOrEqual(8)
     }
   })
 })

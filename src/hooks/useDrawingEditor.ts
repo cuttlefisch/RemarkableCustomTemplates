@@ -19,6 +19,7 @@ import {
   buildBezierItem,
   buildBezierItemHobby,
   rebuildBezierPathData,
+  computeScaleFactors,
 } from '../lib/drawingShapes'
 import { distanceBetween } from '../lib/drawingCoords'
 
@@ -81,6 +82,22 @@ export interface DrawingEditorState {
     startAngle: number
     currentAngle: number
   } | null
+  // Scale drag state
+  scalingItem: {
+    itemIndex: number
+    handlePosition: string
+    anchor: Point
+    originalHandlePos: Point
+    currentPos: Point
+    originalBounds: { minX: number; minY: number; maxX: number; maxY: number }
+  } | null
+  // Scale intent (handled by parent)
+  scaleIntent: {
+    index: number
+    scaleX: number
+    scaleY: number
+    origin: Point
+  } | null
   // FG pin for stroke/fill colors
   strokeUseForeground: boolean
   fillUseForeground: boolean
@@ -131,6 +148,11 @@ export type DrawingAction =
   | { type: 'START_ROTATION'; itemIndex: number; center: Point; startAngle: number }
   | { type: 'UPDATE_ROTATION'; angle: number }
   | { type: 'END_ROTATION' }
+  // Scale drag
+  | { type: 'START_SCALE_DRAG'; itemIndex: number; handlePosition: string; anchor: Point; handlePos: Point; bounds: { minX: number; minY: number; maxX: number; maxY: number } }
+  | { type: 'UPDATE_SCALE_DRAG'; point: Point }
+  | { type: 'END_SCALE_DRAG' }
+  | { type: 'CLEAR_SCALE_INTENT' }
   // FG pin
   | { type: 'SET_STROKE_USE_FOREGROUND'; enabled: boolean }
   | { type: 'SET_FILL_USE_FOREGROUND'; enabled: boolean }
@@ -166,6 +188,8 @@ export const initialDrawingEditorState: DrawingEditorState = {
   nudgeIntent: null,
   draggingItem: null,
   rotatingItem: null,
+  scalingItem: null,
+  scaleIntent: null,
   strokeUseForeground: false,
   fillUseForeground: false,
 }
@@ -182,9 +206,35 @@ function applyHandleEdit(
   const newCPs = handles.controlPoints.map(([cp1, cp2]) => [{ ...cp1 }, { ...cp2 }] as [Point, Point])
 
   switch (handleType) {
-    case 'knot':
+    case 'knot': {
+      const oldKnot = handles.knots[handleIndex]
+      const dx = newPos.x - oldKnot.x
+      const dy = newPos.y - oldKnot.y
       newKnots[handleIndex] = newPos
+
+      // Translate outgoing CP (segment starting at this knot)
+      if (handleIndex < newCPs.length) {
+        newCPs[handleIndex][0] = {
+          x: newCPs[handleIndex][0].x + dx,
+          y: newCPs[handleIndex][0].y + dy,
+        }
+      } else if (handles.closed) {
+        newCPs[0][0] = { x: newCPs[0][0].x + dx, y: newCPs[0][0].y + dy }
+      }
+
+      // Translate incoming CP (segment ending at this knot)
+      if (handleIndex > 0) {
+        const seg = handleIndex - 1
+        newCPs[seg][1] = {
+          x: newCPs[seg][1].x + dx,
+          y: newCPs[seg][1].y + dy,
+        }
+      } else if (handles.closed) {
+        const seg = newCPs.length - 1
+        newCPs[seg][1] = { x: newCPs[seg][1].x + dx, y: newCPs[seg][1].y + dy }
+      }
       break
+    }
     case 'cp1':
       newCPs[handleIndex] = [newPos, newCPs[handleIndex][1]]
       break
@@ -400,6 +450,45 @@ export function drawingEditorReducer(
         rotatingItem: null,
       }
     }
+
+    // Scale drag
+    case 'START_SCALE_DRAG':
+      return {
+        ...state,
+        scalingItem: {
+          itemIndex: action.itemIndex,
+          handlePosition: action.handlePosition,
+          anchor: action.anchor,
+          originalHandlePos: action.handlePos,
+          currentPos: action.handlePos,
+          originalBounds: action.bounds,
+        },
+      }
+
+    case 'UPDATE_SCALE_DRAG':
+      if (!state.scalingItem) return state
+      return {
+        ...state,
+        scalingItem: { ...state.scalingItem, currentPos: action.point },
+      }
+
+    case 'END_SCALE_DRAG': {
+      if (!state.scalingItem) return state
+      const { itemIndex, handlePosition, anchor, originalHandlePos, currentPos } = state.scalingItem
+      const { scaleX, scaleY } = computeScaleFactors(handlePosition, anchor, originalHandlePos, currentPos)
+      // Skip if no meaningful scale change
+      if (Math.abs(scaleX - 1) < 0.001 && Math.abs(scaleY - 1) < 0.001) {
+        return { ...state, scalingItem: null }
+      }
+      return {
+        ...state,
+        scalingItem: null,
+        scaleIntent: { index: itemIndex, scaleX, scaleY, origin: anchor },
+      }
+    }
+
+    case 'CLEAR_SCALE_INTENT':
+      return { ...state, scaleIntent: null }
 
     // FG pin
     case 'SET_STROKE_USE_FOREGROUND':

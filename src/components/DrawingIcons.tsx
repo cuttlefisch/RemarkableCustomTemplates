@@ -196,6 +196,50 @@ export function ZoomOutIcon() {
   )
 }
 
+// ── Transform Icons ──────────────────────────────────────────────────────
+
+/** Flip horizontal — two horizontal arrows with vertical dashed center line */
+export function FlipHorizontalIcon() {
+  return (
+    <Icon>
+      <line x1={9} y1={3} x2={9} y2={15} strokeDasharray="2 2" />
+      <path d="M6 7 L3 9 L6 11" />
+      <path d="M12 7 L15 9 L12 11" />
+    </Icon>
+  )
+}
+
+/** Flip vertical — two vertical arrows with horizontal dashed center line */
+export function FlipVerticalIcon() {
+  return (
+    <Icon>
+      <line x1={3} y1={9} x2={15} y2={9} strokeDasharray="2 2" />
+      <path d="M7 6 L9 3 L11 6" />
+      <path d="M7 12 L9 15 L11 12" />
+    </Icon>
+  )
+}
+
+/** Rotate clockwise — curved arrow CW */
+export function RotateCWIcon() {
+  return (
+    <Icon>
+      <path d="M14 5 A6 6 0 1 0 15 10" />
+      <path d="M12 3 L14 5 L12 7" />
+    </Icon>
+  )
+}
+
+/** Rotate counter-clockwise — curved arrow CCW */
+export function RotateCCWIcon() {
+  return (
+    <Icon>
+      <path d="M4 5 A6 6 0 1 1 3 10" />
+      <path d="M6 3 L4 5 L6 7" />
+    </Icon>
+  )
+}
+
 /** Zoom to fit — four corner brackets */
 export function ZoomFitIcon() {
   return (

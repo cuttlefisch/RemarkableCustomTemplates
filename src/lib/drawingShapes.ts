@@ -345,6 +345,16 @@ export function extractBezierHandles(data: PathData): BezierHandles | null {
 
   if (controlPoints.length === 0) return null
 
+  // Deduplicate: closed paths (e.g. circles) may have the last knot identical
+  // to the first. Remove it to restore the invariant: N knots ↔ N CP pairs.
+  if (closed && knots.length === controlPoints.length + 1) {
+    const first = knots[0]
+    const last = knots[knots.length - 1]
+    if (Math.abs(first.x - last.x) < 1e-6 && Math.abs(first.y - last.y) < 1e-6) {
+      knots.pop()
+    }
+  }
+
   return { knots, controlPoints, closed }
 }
 
@@ -356,7 +366,7 @@ export function rebuildBezierPathData(handles: BezierHandles): PathData {
 
   for (let i = 0; i < handles.controlPoints.length; i++) {
     const [cp1, cp2] = handles.controlPoints[i]
-    const knot = handles.knots[i + 1]
+    const knot = handles.knots[(i + 1) % handles.knots.length]
     data.push('C', cp1.x, cp1.y, cp2.x, cp2.y, knot.x, knot.y)
   }
 
@@ -875,6 +885,92 @@ export function rotatePathDataResolved(
   const resolved = resolvePathDataNumeric(data, constants)
   if (!resolved) return null
   return rotatePathData(resolved, angleDeg, center)
+}
+
+// ─── Scaling ──────────────────────────────────────────────────────────────
+
+/**
+ * Scale all coordinates in a PathData array around an origin point.
+ * Returns null if the path contains expression strings.
+ */
+export function scalePathData(
+  data: PathData, scaleX: number, scaleY: number, origin: Point,
+): PathData | null {
+  const commands = new Set(['M', 'L', 'C', 'Z'])
+  const newData: PathData = []
+  let coordIndex = 0
+
+  for (let i = 0; i < data.length; i++) {
+    const token = data[i]
+    if (typeof token === 'string' && commands.has(token)) {
+      newData.push(token)
+      coordIndex = 0
+    } else if (typeof token === 'number') {
+      if (coordIndex % 2 === 0) {
+        newData.push(roundCoord(origin.x + (token - origin.x) * scaleX))
+      } else {
+        newData.push(roundCoord(origin.y + (token - origin.y) * scaleY))
+      }
+      coordIndex++
+    } else {
+      return null // expression string
+    }
+  }
+  return newData
+}
+
+/**
+ * Scale PathData, resolving expression strings if needed.
+ */
+export function scalePathDataResolved(
+  data: PathData, scaleX: number, scaleY: number, origin: Point,
+  constants: ResolvedConstants,
+): PathData | null {
+  const direct = scalePathData(data, scaleX, scaleY, origin)
+  if (direct) return direct
+  const resolved = resolvePathDataNumeric(data, constants)
+  if (!resolved) return null
+  return scalePathData(resolved, scaleX, scaleY, origin)
+}
+
+/**
+ * Compute scale factors from a bounding-box handle drag.
+ * Returns { scaleX, scaleY } based on handle position and drag delta.
+ */
+export function computeScaleFactors(
+  handlePosition: string,
+  anchor: Point,
+  originalHandlePos: Point,
+  currentPos: Point,
+): { scaleX: number; scaleY: number } {
+  const MIN_SCALE = 0.01
+
+  const dxOrig = originalHandlePos.x - anchor.x
+  const dyOrig = originalHandlePos.y - anchor.y
+  const dxCurr = currentPos.x - anchor.x
+  const dyCurr = currentPos.y - anchor.y
+
+  let rawScaleX = Math.abs(dxOrig) > 1e-6 ? dxCurr / dxOrig : 1
+  let rawScaleY = Math.abs(dyOrig) > 1e-6 ? dyCurr / dyOrig : 1
+
+  // Edge handles: lock one axis
+  if (handlePosition === 't' || handlePosition === 'b') rawScaleX = 1
+  if (handlePosition === 'l' || handlePosition === 'r') rawScaleY = 1
+
+  // Corner handles: proportional (uniform scale)
+  if (['tl', 'tr', 'bl', 'br'].includes(handlePosition)) {
+    const absX = Math.abs(rawScaleX)
+    const absY = Math.abs(rawScaleY)
+    const uniform = Math.max(absX, absY)
+    rawScaleX = uniform * Math.sign(rawScaleX || 1)
+    rawScaleY = uniform * Math.sign(rawScaleY || 1)
+  }
+
+  // Clamp to avoid zero-scale
+  if (Math.abs(rawScaleX) < MIN_SCALE) rawScaleX = MIN_SCALE * Math.sign(rawScaleX || 1)
+  if (Math.abs(rawScaleY) < MIN_SCALE) rawScaleY = MIN_SCALE * Math.sign(rawScaleY || 1)
+
+  return { scaleX: rawScaleX, scaleY: rawScaleY }
 }
 
 export function resolvePathDataNumeric(data: PathData, constants: ResolvedConstants): PathData | null {

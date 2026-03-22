@@ -11,7 +11,7 @@ import { removeEntry } from '../lib/registry'
 import { buildCustomEntry, buildDefaultTemplate, mergeCategories, validateCustomName, injectColorConstants, mapForegroundColors, getCollegeIconCode, upsertColorConstant } from '../lib/customTemplates'
 import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
 import { resolveConstants } from '../lib/expression'
-import { buildScaleConstants, reorderItem, rotatePathDataResolved, translatePathItemResolved } from '../lib/drawingShapes'
+import { buildScaleConstants, reorderItem, rotatePathDataResolved, translatePathItemResolved, scalePathDataResolved, computePathBounds as computePathBoundsFromShapes, resolvePathDataNumeric } from '../lib/drawingShapes'
 import { extractColorConstants } from '../lib/color'
 import type { PathItem, PathData, ConstantEntry } from '../types/template'
 import type { ScalingMode } from '../lib/drawingShapes'
@@ -112,15 +112,49 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         parsed.categories = [...categories, 'Drawn']
       }
 
-      // Inject scale constants if proportional and not already present
+      // Inject scale constants if proportional and not already present.
+      // If constants exist with a different base (device switch), remap
+      // the new item's expression coordinates so they stay consistent.
       if (scalingMode.type === 'proportional') {
         const constants = (parsed.constants ?? []) as Record<string, unknown>[]
-        const hasScale = constants.some(c => 'drawnScaleX' in c)
-        if (!hasScale) {
+        const existingX = constants.find(c => 'drawnScaleX' in c)
+        if (!existingX) {
           parsed.constants = [
             ...buildScaleConstants(scalingMode.baseWidth, scalingMode.baseHeight),
             ...constants,
           ]
+        } else {
+          // Extract existing base and remap if device changed
+          const exprX = String((existingX as Record<string, string>).drawnScaleX)
+          const matchX = exprX.match(/templateWidth\s*\/\s*([\d.]+)/)
+          const existingY = constants.find(c => 'drawnScaleY' in c)
+          const exprY = existingY ? String((existingY as Record<string, string>).drawnScaleY) : ''
+          const matchY = exprY.match(/templateHeight\s*\/\s*([\d.]+)/)
+
+          if (matchX && matchY) {
+            const existBaseW = parseFloat(matchX[1])
+            const existBaseH = parseFloat(matchY[1])
+            const ratioX = existBaseW / scalingMode.baseWidth
+            const ratioY = existBaseH / scalingMode.baseHeight
+
+            if (Math.abs(ratioX - 1) > 0.001 || Math.abs(ratioY - 1) > 0.001) {
+              newItem = {
+                ...newItem,
+                data: newItem.data.map(token => {
+                  if (typeof token !== 'string') return token
+                  const mX = token.match(/^drawnScaleX\s*\*\s*([\d.]+)$/)
+                  if (mX) {
+                    return `drawnScaleX * ${parseFloat((parseFloat(mX[1]) * ratioX).toFixed(4))}`
+                  }
+                  const mY = token.match(/^drawnScaleY\s*\*\s*([\d.]+)$/)
+                  if (mY) {
+                    return `drawnScaleY * ${parseFloat((parseFloat(mY[1]) * ratioY).toFixed(4))}`
+                  }
+                  return token
+                }),
+              }
+            }
+          }
         }
       }
 
@@ -167,6 +201,16 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     onPathEdit: handlePathEdit,
   })
 
+  // Sync drawing scaling mode with active device
+  useEffect(() => {
+    if (!drawingMode) return
+    const device = DEVICES[deviceId]
+    drawingDispatch({
+      type: 'SET_SCALING_MODE',
+      mode: { type: 'proportional', baseWidth: device.portraitWidth, baseHeight: device.portraitHeight },
+    })
+  }, [drawingMode, deviceId, drawingDispatch])
+
   const handleDrawingMove = useCallback((fromIndex: number, direction: 'up' | 'down' | 'top' | 'bottom') => {
     try {
       const parsed = JSON.parse(editorJson) as Record<string, unknown>
@@ -206,6 +250,58 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       setTemplate(parseTemplate(JSON.parse(newJson)))
     } catch (err) {
       console.warn('[drawing-rotate] Failed to rotate item:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson, deviceId])
+
+  const handleScale = useCallback((index: number, scaleX: number, scaleY: number, origin: { x: number; y: number }) => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      const item = items[index] as PathItem | undefined
+      if (!item || item.type !== 'path') return
+      const tpl = parseTemplate(parsed)
+      const builtins = deviceBuiltins(tpl.orientation, deviceId)
+      const resolved = resolveConstants(tpl.constants, builtins)
+      const scaled = scalePathDataResolved(item.data, scaleX, scaleY, origin, resolved)
+      if (!scaled) return
+      const newItem = { ...item, data: scaled }
+      parsed.items = items.map((it, i) => i === index ? newItem : it)
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch (err) {
+      console.warn('[drawing-scale] Failed to scale item:', err instanceof Error ? err.message : String(err))
+    }
+  }, [editorJson, setEditorJson, deviceId])
+
+  const handleFlip = useCallback((index: number, axis: 'horizontal' | 'vertical') => {
+    try {
+      const parsed = JSON.parse(editorJson) as Record<string, unknown>
+      const items = (parsed.items ?? []) as unknown[]
+      const item = items[index] as PathItem | undefined
+      if (!item || item.type !== 'path') return
+      const tpl = parseTemplate(parsed)
+      const builtins = deviceBuiltins(tpl.orientation, deviceId)
+      const resolved = resolveConstants(tpl.constants, builtins)
+      // Compute bounds center for flip origin
+      let bounds = computePathBoundsFromShapes(item.data)
+      if (!bounds) {
+        const resolvedData = resolvePathDataNumeric(item.data, resolved)
+        if (resolvedData) bounds = computePathBoundsFromShapes(resolvedData)
+      }
+      if (!bounds) return
+      const center = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }
+      const sx = axis === 'horizontal' ? -1 : 1
+      const sy = axis === 'vertical' ? -1 : 1
+      const scaled = scalePathDataResolved(item.data, sx, sy, center, resolved)
+      if (!scaled) return
+      const newItem = { ...item, data: scaled }
+      parsed.items = items.map((it, i) => i === index ? newItem : it)
+      const newJson = JSON.stringify(parsed, null, 2)
+      setEditorJson(newJson)
+      setTemplate(parseTemplate(JSON.parse(newJson)))
+    } catch (err) {
+      console.warn('[drawing-flip] Failed to flip item:', err instanceof Error ? err.message : String(err))
     }
   }, [editorJson, setEditorJson, deviceId])
 
@@ -279,6 +375,13 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
   }, [drawingState.nudgeIntent, handleNudge, drawingDispatch])
 
+  useEffect(() => {
+    if (drawingState.scaleIntent) {
+      handleScale(drawingState.scaleIntent.index, drawingState.scaleIntent.scaleX, drawingState.scaleIntent.scaleY, drawingState.scaleIntent.origin)
+      drawingDispatch({ type: 'CLEAR_SCALE_INTENT' })
+    }
+  }, [drawingState.scaleIntent, handleScale, drawingDispatch])
+
   // Fix 1: Re-parse template when editorJson changes in drawing mode
   // Catches all sources: undo, redo, commit, delete, rotate, move, etc.
   useEffect(() => {
@@ -323,6 +426,18 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         if (action) {
           e.preventDefault()
           drawingDispatch(action)
+          return
+        }
+
+        // Flip shortcuts
+        if (e.key.toLowerCase() === 'h' && drawingState.selectedItemIndex !== null) {
+          e.preventDefault()
+          handleFlip(drawingState.selectedItemIndex, 'horizontal')
+          return
+        }
+        if (e.key.toLowerCase() === 'j' && drawingState.selectedItemIndex !== null) {
+          e.preventDefault()
+          handleFlip(drawingState.selectedItemIndex, 'vertical')
           return
         }
 
@@ -401,7 +516,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [drawingMode, editorUndo, editorRedo, drawingDispatch, drawingState.fillEnabled, drawingState.inProgress, drawingState.selectedItemIndex, drawingState.zoom, drawingState.panOffset])
+  }, [drawingMode, editorUndo, editorRedo, drawingDispatch, drawingState.fillEnabled, drawingState.inProgress, drawingState.selectedItemIndex, drawingState.zoom, drawingState.panOffset, handleFlip])
 
   // Fix 4: Auto-save drawing edits with debounce
   // Note: we use a ref for selected.filename to avoid re-triggering on selected changes
@@ -1074,6 +1189,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                   onForegroundColorChange={handleForegroundColorChange}
                   onMove={handleDrawingMove}
                   onRotate={handleDrawingRotate}
+                  onFlip={handleFlip}
                   canUndo={editorCanUndo}
                   canRedo={editorCanRedo}
                   onUndo={editorUndo}

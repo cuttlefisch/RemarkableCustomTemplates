@@ -22,6 +22,8 @@ import {
   rotatePathData,
   computePathBounds,
   resolvePathDataNumeric,
+  scalePathData,
+  computeScaleFactors,
 } from '../lib/drawingShapes'
 import type { Point, ShapeProps, ScalingMode } from '../lib/drawingShapes'
 
@@ -600,9 +602,31 @@ describe('extractBezierHandles', () => {
     )
     const handles = extractBezierHandles(item.data)
     expect(handles).not.toBeNull()
-    expect(handles!.knots).toHaveLength(4) // 3 segments = 4 knots (last wraps to first)
+    expect(handles!.knots).toHaveLength(3) // 3 knots for 3 segments (closed)
     expect(handles!.controlPoints).toHaveLength(3)
     expect(handles!.closed).toBe(true)
+  })
+
+  it('circle: extracts 4 knots and 4 CPs (not 5/4)', () => {
+    const item = buildCircleItem({ x: 500, y: 500 }, 100, DEFAULT_PROPS, FIXED)
+    const handles = extractBezierHandles(item.data)
+    expect(handles).not.toBeNull()
+    expect(handles!.knots).toHaveLength(4)
+    expect(handles!.controlPoints).toHaveLength(4)
+    expect(handles!.closed).toBe(true)
+  })
+
+  it('circle round-trip: extract → rebuild → re-extract gives same handles', () => {
+    const item = buildCircleItem({ x: 500, y: 500 }, 100, DEFAULT_PROPS, FIXED)
+    const handles1 = extractBezierHandles(item.data)!
+    const rebuilt = rebuildBezierPathData(handles1)
+    const handles2 = extractBezierHandles(rebuilt)!
+    expect(handles2.knots).toHaveLength(4)
+    expect(handles2.controlPoints).toHaveLength(4)
+    for (let i = 0; i < 4; i++) {
+      expect(handles2.knots[i].x).toBeCloseTo(handles1.knots[i].x, 4)
+      expect(handles2.knots[i].y).toBeCloseTo(handles1.knots[i].y, 4)
+    }
   })
 
   it('returns null for polygon PathData (has L commands)', () => {
@@ -867,5 +891,85 @@ describe('buildBezierItemHobby', () => {
       }
     }
     expect(diffCount).toBeGreaterThan(0)
+  })
+})
+
+// ─── scalePathData ──────────────────────────────────────────────────────────
+
+describe('scalePathData', () => {
+  it('scales coordinates around origin', () => {
+    const data = ['M' as const, 100, 200, 'L' as const, 300, 400]
+    const result = scalePathData(data, 2, 2, { x: 0, y: 0 })
+    expect(result).not.toBeNull()
+    expect(result).toEqual(['M', 200, 400, 'L', 600, 800])
+  })
+
+  it('scales around non-zero origin', () => {
+    const data = ['M' as const, 100, 100, 'L' as const, 200, 200]
+    const result = scalePathData(data, 2, 2, { x: 100, y: 100 })
+    expect(result).toEqual(['M', 100, 100, 'L', 300, 300])
+  })
+
+  it('flips horizontally with scaleX=-1', () => {
+    const data = ['M' as const, 0, 0, 'L' as const, 100, 0]
+    const result = scalePathData(data, -1, 1, { x: 50, y: 0 })
+    expect(result).not.toBeNull()
+    // x=0 → 50 + (0-50)*-1 = 100; x=100 → 50 + (100-50)*-1 = 0
+    expect(result![1]).toBe(100)
+    expect(result![4]).toBe(0)
+  })
+
+  it('returns null for expression paths', () => {
+    const data = ['M' as const, 'drawnScaleX * 100', 'drawnScaleY * 200']
+    expect(scalePathData(data, 2, 2, { x: 0, y: 0 })).toBeNull()
+  })
+
+  it('preserves Z command', () => {
+    const data = ['M' as const, 0, 0, 'L' as const, 100, 0, 'L' as const, 100, 100, 'Z' as const]
+    const result = scalePathData(data, 1.5, 1.5, { x: 0, y: 0 })
+    expect(result![result!.length - 1]).toBe('Z')
+  })
+
+  it('handles C command coordinates', () => {
+    const data = ['M' as const, 0, 0, 'C' as const, 10, 20, 30, 40, 50, 60]
+    const result = scalePathData(data, 2, 3, { x: 0, y: 0 })
+    expect(result).toEqual(['M', 0, 0, 'C', 20, 60, 60, 120, 100, 180])
+  })
+})
+
+// ─── computeScaleFactors ────────────────────────────────────────────────────
+
+describe('computeScaleFactors', () => {
+  const anchor = { x: 0, y: 0 }
+  const handlePos = { x: 100, y: 100 }
+
+  it('corner handle: proportional scale', () => {
+    const { scaleX, scaleY } = computeScaleFactors('br', anchor, handlePos, { x: 200, y: 150 })
+    // max(abs(2), abs(1.5)) = 2, both positive
+    expect(scaleX).toBe(2)
+    expect(scaleY).toBe(2)
+  })
+
+  it('edge handle t: locks scaleX=1', () => {
+    const { scaleX, scaleY } = computeScaleFactors('t', anchor, handlePos, { x: 200, y: 50 })
+    expect(scaleX).toBe(1)
+    expect(scaleY).toBe(0.5)
+  })
+
+  it('edge handle r: locks scaleY=1', () => {
+    const { scaleX, scaleY } = computeScaleFactors('r', anchor, handlePos, { x: 50, y: 200 })
+    expect(scaleX).toBe(0.5)
+    expect(scaleY).toBe(1)
+  })
+
+  it('negative scale (flip) when dragging past anchor', () => {
+    const { scaleX } = computeScaleFactors('r', anchor, handlePos, { x: -50, y: 100 })
+    expect(scaleX).toBe(-0.5)
+  })
+
+  it('clamps to min scale', () => {
+    const { scaleX, scaleY } = computeScaleFactors('br', anchor, handlePos, { x: 0.001, y: 0.001 })
+    expect(Math.abs(scaleX)).toBeGreaterThanOrEqual(0.01)
+    expect(Math.abs(scaleY)).toBeGreaterThanOrEqual(0.01)
   })
 })

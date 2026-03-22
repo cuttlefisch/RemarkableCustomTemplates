@@ -555,6 +555,66 @@ describe('Handle drag', () => {
     expect(data[5]).toBe(25)  // cp1 y
   })
 
+  it('dragging knot translates connected control points', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_HANDLE_DRAG',
+      itemIndex: 0,
+      handleType: 'knot',
+      handleIndex: 1, // middle knot at (100, 50)
+      handles: sampleHandles,
+      startPos: { x: 100, y: 50 },
+    })
+    // Move knot by (+20, +10) → new pos (120, 60)
+    state = dispatch(state, { type: 'UPDATE_HANDLE_DRAG', point: { x: 120, y: 60 } })
+    state = dispatch(state, { type: 'END_HANDLE_DRAG' })
+    const data = state.pathEditIntent!.newData
+    // Knot 1 should be at (120, 60)
+    expect(data).toContain(120)
+    expect(data).toContain(60)
+    // Outgoing CP of knot 1 = segment 1 cp1, was (130, 60) → (150, 70)
+    expect(data).toContain(150)
+    expect(data).toContain(70)
+    // Incoming CP to knot 1 = segment 0 cp2, was (70, 40) → (90, 50)
+    expect(data).toContain(90)
+    // Knot 0 should be unchanged at (0, 0)
+    expect(data[1]).toBe(0)
+    expect(data[2]).toBe(0)
+    // Knot 2 should be unchanged at (200, 0)
+    expect(data).toContain(200)
+  })
+
+  it('dragging knot translates CPs in closed curve (wrap around)', () => {
+    const closedHandles: BezierHandles = {
+      knots: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+      ],
+      controlPoints: [
+        [{ x: 30, y: 0 }, { x: 70, y: 0 }],   // seg 0: knot0→knot1
+        [{ x: 100, y: 30 }, { x: 100, y: 70 }], // seg 1: knot1→knot2
+        [{ x: 70, y: 100 }, { x: 0, y: 30 }],   // seg 2: knot2→knot0
+      ],
+      closed: true,
+    }
+    // Drag knot 0 by (+10, +5)
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_HANDLE_DRAG',
+      itemIndex: 0,
+      handleType: 'knot',
+      handleIndex: 0,
+      handles: closedHandles,
+      startPos: { x: 0, y: 0 },
+    })
+    state = dispatch(state, { type: 'UPDATE_HANDLE_DRAG', point: { x: 10, y: 5 } })
+    state = dispatch(state, { type: 'END_HANDLE_DRAG' })
+    const data = state.pathEditIntent!.newData
+    // Outgoing CP = seg 0 cp1: (30,0) → (40,5)
+    expect(data).toContain(40)
+    // Incoming CP (wrapped) = seg 2 cp2: (0,30) → (10,35)
+    expect(data).toContain(35)
+  })
+
   it('CLEAR_PATH_EDIT_INTENT clears intent', () => {
     let state = dispatch(initialDrawingEditorState, {
       type: 'START_HANDLE_DRAG',
@@ -722,6 +782,93 @@ describe('FG pin actions', () => {
     expect(state.fillUseForeground).toBe(true)
     state = dispatch(state, { type: 'SET_FILL_USE_FOREGROUND', enabled: false })
     expect(state.fillUseForeground).toBe(false)
+  })
+})
+
+// ─── Scale drag ──────────────────────────────────────────────────────────
+
+describe('scale drag actions', () => {
+  const bounds = { minX: 0, minY: 0, maxX: 100, maxY: 100 }
+
+  it('START_SCALE_DRAG sets scalingItem', () => {
+    const state = dispatch(initialDrawingEditorState, {
+      type: 'START_SCALE_DRAG',
+      itemIndex: 1,
+      handlePosition: 'br',
+      anchor: { x: 0, y: 0 },
+      handlePos: { x: 100, y: 100 },
+      bounds,
+    })
+    expect(state.scalingItem).not.toBeNull()
+    expect(state.scalingItem!.itemIndex).toBe(1)
+    expect(state.scalingItem!.handlePosition).toBe('br')
+  })
+
+  it('UPDATE_SCALE_DRAG updates currentPos', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_SCALE_DRAG',
+      itemIndex: 0,
+      handlePosition: 'br',
+      anchor: { x: 0, y: 0 },
+      handlePos: { x: 100, y: 100 },
+      bounds,
+    })
+    state = dispatch(state, { type: 'UPDATE_SCALE_DRAG', point: { x: 200, y: 150 } })
+    expect(state.scalingItem!.currentPos).toEqual({ x: 200, y: 150 })
+  })
+
+  it('END_SCALE_DRAG sets scaleIntent and clears scalingItem', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_SCALE_DRAG',
+      itemIndex: 2,
+      handlePosition: 'br',
+      anchor: { x: 0, y: 0 },
+      handlePos: { x: 100, y: 100 },
+      bounds,
+    })
+    state = dispatch(state, { type: 'UPDATE_SCALE_DRAG', point: { x: 200, y: 200 } })
+    state = dispatch(state, { type: 'END_SCALE_DRAG' })
+    expect(state.scalingItem).toBeNull()
+    expect(state.scaleIntent).not.toBeNull()
+    expect(state.scaleIntent!.index).toBe(2)
+    expect(state.scaleIntent!.scaleX).toBe(2)
+    expect(state.scaleIntent!.scaleY).toBe(2)
+  })
+
+  it('END_SCALE_DRAG with negligible scale does not set scaleIntent', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_SCALE_DRAG',
+      itemIndex: 0,
+      handlePosition: 'br',
+      anchor: { x: 0, y: 0 },
+      handlePos: { x: 100, y: 100 },
+      bounds,
+    })
+    // currentPos stays at handlePos (no UPDATE_SCALE_DRAG dispatched)
+    state = dispatch(state, { type: 'END_SCALE_DRAG' })
+    expect(state.scalingItem).toBeNull()
+    expect(state.scaleIntent).toBeNull()
+  })
+
+  it('CLEAR_SCALE_INTENT clears scaleIntent', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'START_SCALE_DRAG',
+      itemIndex: 0,
+      handlePosition: 'r',
+      anchor: { x: 0, y: 0 },
+      handlePos: { x: 100, y: 50 },
+      bounds,
+    })
+    state = dispatch(state, { type: 'UPDATE_SCALE_DRAG', point: { x: 200, y: 50 } })
+    state = dispatch(state, { type: 'END_SCALE_DRAG' })
+    expect(state.scaleIntent).not.toBeNull()
+    state = dispatch(state, { type: 'CLEAR_SCALE_INTENT' })
+    expect(state.scaleIntent).toBeNull()
+  })
+
+  it('defaults: scalingItem and scaleIntent are null', () => {
+    expect(initialDrawingEditorState.scalingItem).toBeNull()
+    expect(initialDrawingEditorState.scaleIntent).toBeNull()
   })
 })
 
