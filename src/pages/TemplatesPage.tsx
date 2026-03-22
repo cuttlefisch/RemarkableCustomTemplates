@@ -1147,8 +1147,9 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                       className={`edit-json-btn${drawingMode ? ' active' : ''}`}
                       onClick={() => setDrawingMode(d => !d)}
                       disabled={!template}
+                      title="Visual drawing editor (Beta — may have bugs)"
                     >
-                      {drawingMode ? 'Close Draw' : 'Draw'}
+                      {drawingMode ? 'Close Draw' : 'Draw'} <span className="beta-badge">Beta</span>
                     </button>
                   )}
                   <button

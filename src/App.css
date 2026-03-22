@@ -548,6 +548,18 @@ body {
   cursor: default;
 }
 
+.beta-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--color-tag-ls-bg);
+  color: var(--color-tag-ls-text);
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
 /* ── Tag: custom ─────────────────────────────────────────────────────────── */
 
 .tag-custom { background: var(--color-tag-custom-bg); color: var(--color-tag-custom-text); }
