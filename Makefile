@@ -68,7 +68,8 @@ clean: ## Remove build artifacts and caches
 # ── Docker ───────────────────────────────────────────────────────────────────
 
 docker-up: ## Build and start the app via Docker Compose
-	docker compose up --build -d
+	@docker compose up --build -d
+	@printf '\n  reMarkable Template Browser\n  ➜ http://localhost:%s\n\n' "$${PORT:-3000}"
 
 docker-down: ## Stop the Docker containers
 	docker compose down

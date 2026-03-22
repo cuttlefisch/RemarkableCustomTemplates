@@ -160,7 +160,8 @@ export function useDevices(): UseDevices {
       if (!res.ok) return false
       setActiveDeviceId(id)
       return true
-    } catch {
+    } catch (err) {
+      console.error('[set-active-device]', err instanceof Error ? err.message : String(err))
       return false
     }
   }, [])

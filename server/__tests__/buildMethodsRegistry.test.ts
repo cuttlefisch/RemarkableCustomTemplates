@@ -29,8 +29,14 @@ describe('buildMethodsRegistry', () => {
     }))
     writeFileSync(resolve(tmpDir, `${uuid}.template`), JSON.stringify({
       name: 'Test Template',
+      author: 'Test',
+      templateVersion: '1.0',
+      formatVersion: 1,
+      categories: ['Custom', 'Grid'],
       orientation: 'portrait',
       labels: ['Custom', 'Grid'],
+      constants: [],
+      items: [],
     }))
 
     const result = await buildMethodsRegistry({ tempDir: tmpDir, outputDir })
@@ -44,6 +50,9 @@ describe('buildMethodsRegistry', () => {
     expect(registry.templates[0].categories).toEqual(['Custom', 'Grid'])
     expect(registry.templates[0].rmMethodsId).toBe(uuid)
     expect(registry.templates[0].origin).toBe('custom-methods')
+    // iconData should be generated from a valid template
+    expect(registry.templates[0].iconData).toBeDefined()
+    expect(typeof registry.templates[0].iconData).toBe('string')
 
     // Template file should be copied to output
     expect(existsSync(resolve(outputDir, `${uuid}.template`))).toBe(true)
@@ -67,7 +76,13 @@ describe('buildMethodsRegistry', () => {
     }))
     writeFileSync(resolve(tmpDir, `${uuid}.template`), JSON.stringify({
       name: 'Custom Tpl',
+      author: 'Test',
+      templateVersion: '1.0',
+      formatVersion: 1,
+      categories: ['Grid'],
       orientation: 'landscape',
+      constants: [],
+      items: [],
     }))
 
     const manifestPath = resolve(tmpDir, '.manifest')
@@ -82,6 +97,7 @@ describe('buildMethodsRegistry', () => {
     const registry = JSON.parse(readFileSync(resolve(outputDir, 'methods-registry.json'), 'utf8'))
     expect(registry.templates[0].origin).toBe('custom-methods')
     expect(registry.templates[0].landscape).toBe(true)
+    expect(registry.templates[0].iconData).toBeDefined()
   })
 
   it('classifies template with "Custom" label as custom-methods', async () => {

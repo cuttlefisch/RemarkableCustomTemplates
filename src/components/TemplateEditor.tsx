@@ -153,14 +153,19 @@ export function TemplateEditor({
         <button className="editor-apply-btn" onClick={handleApply}>
           {buttonLabel}
         </button>
-        {isCustom && onDelete && (
-          <button className="editor-delete-btn" onClick={onDelete}>
-            Delete
-          </button>
-        )}
         <button className="editor-close-btn" onClick={onClose}>
           Close
         </button>
+        {isCustom && onDelete && (
+          <button
+            className="editor-delete-btn"
+            onClick={() => {
+              if (window.confirm(`Delete "${pendingName}"? This cannot be undone.`)) onDelete()
+            }}
+          >
+            Delete
+          </button>
+        )}
       </div>
 
       {error && (

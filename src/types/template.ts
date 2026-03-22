@@ -94,7 +94,9 @@ export interface RemarkableTemplate {
   items: TemplateItem[]
   /** Labels shown in xochitl (rm_methods format); synced from categories on export. */
   labels?: string[]
-  /** Device models this template supports, e.g. ["rm", "rmPP"]. */
+  /** Device models this template supports, e.g. ["rm", "rmPP"].
+   *  WARNING: xochitl hides templates with this field on non-matching devices.
+   *  Stripped during build/deploy to avoid breaking cross-device visibility. */
   supportedScreens?: string[]
   /** Base64-encoded SVG icon (150×200 portrait or 200×150 landscape). */
   iconData?: string

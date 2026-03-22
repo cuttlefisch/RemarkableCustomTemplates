@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All commands run from project root:
+All commands run from project root via `make`:
 
 ```bash
-pnpm test              # run all tests once (Vitest)
-pnpm test:watch        # watch mode
-pnpm test:coverage     # with v8 coverage
-pnpm dev               # Fastify server + Vite dev server (concurrently)
-pnpm server:dev        # Fastify server only (port 3001)
-pnpm build             # tsc + vite build (frontend)
-pnpm lint              # ESLint
-make pull-rm-methods   # pull rm_methods templates from device
-docker compose up      # run via Docker (port 3000)
+make help              # show all available targets
+make setup             # install Node.js, pnpm, and project dependencies
+make dev               # Fastify server + Vite dev server
+make test              # run all tests once (Vitest)
+make lint              # ESLint
+make build             # tsc + vite build (frontend)
+make docker-up         # build and start via Docker Compose (port 3000)
+make docker-down       # stop Docker containers
+make docker-logs       # follow Docker container logs
+make docker-clean      # stop and remove volumes (resets all data)
 ```
 
 Run a single test file:
@@ -118,7 +119,26 @@ The dev server merges `debug-registry.json` + `methods-registry.json` + official
 
 ### UI structure
 
-Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a sidebar listing all templates with source filter chips (Classic / Methods) that filter by `origin` / `isCustom`, plus category, orientation, and name search filters. The Device page supports multi-device management with tab-based device selection, per-device SSH key setup, sync status comparison, selective deploy, and remove-all with backup.
+Two pages: **Templates** (`/`) and **Device & Sync** (`/device`). The Templates page has a collapsible, resizable sidebar with list and card view modes, source filter chips (Classic / Methods), category/orientation/name search filters, and SVG thumbnails. Custom templates support a visual drawing editor and a JSON editor, with resizable panel boundaries. The Device page supports multi-device management with tab-based device selection, per-device SSH key setup, sync status comparison, selective deploy, and remove-all with backup.
+
+### Drawing editor
+
+Custom templates can be edited visually via the **Draw** button. The editor uses a state-machine reducer (`useDrawingEditor`) with ~45 action types. Side effects (auto-save, item moves) use an **intent pattern**: the reducer sets an intent field (e.g. `moveItemIntent`), and `useEffect` in `TemplatesPage` executes the mutation and clears the intent.
+
+```
+TemplatesPage (orchestrator)
+  ├── DrawingToolbar        — tool/property controls, adaptive overflow
+  │     └── useToolbarOverflow  — ResizeObserver progressive disclosure
+  ├── DrawingOverlay        — SVG interaction layer (click/drag/rotate/scale)
+  │     └── useViewport     — pan/zoom state
+  └── TemplateCanvas        — pure SVG render (shared with preview)
+
+lib/drawingShapes.ts      — shape builders, Hobby spline, path transforms
+lib/drawingCoords.ts      — screen↔template coordinate conversion
+lib/drawingViewport.ts    — viewport math (zoom-to-fit, pan bounds)
+```
+
+7 tools: select, point, line, polygon, regular polygon, circle, bezier (Catmull-Rom / Hobby). Scaling modes: **Adaptive** (coordinates scale proportionally via expressions) and **Fixed** (pixel-exact for one device). The toolbar uses `ResizeObserver` to hide groups into an overflow menu in priority order (P0: undo/tools → P3: zoom/coords). Panels (sidebar ↔ preview ↔ JSON editor) are resizable via drag dividers with localStorage persistence.
 
 ### Themes (`src/themes/`)
 

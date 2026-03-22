@@ -34,6 +34,7 @@ function parseEntry(raw: unknown): TemplateRegistryEntry {
     ...(e['isCustom'] === true ? { isCustom: true as const } : {}),
     ...(typeof e['rmMethodsId'] === 'string' ? { rmMethodsId: e['rmMethodsId'] } : {}),
     ...(typeof e['origin'] === 'string' ? { origin: e['origin'] } : {}),
+    ...(typeof e['iconData'] === 'string' ? { iconData: e['iconData'] } : {}),
   }
 }
 

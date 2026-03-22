@@ -12,6 +12,8 @@ export interface TemplateRegistryEntry {
   rmMethodsId?: string
   /** Origin tag for methods templates pulled from the device. */
   origin?: 'official-methods' | 'custom-methods' | string
+  /** Base64-encoded SVG thumbnail for sidebar display. */
+  iconData?: string
 }
 
 export interface TemplateRegistry {

@@ -6,6 +6,8 @@ interface Props {
   deviceId: string | null
   deviceName: string
   configured: boolean
+  deviceModel?: string
+  firmwareVersion?: string
   onSyncComplete?: () => void
 }
 
@@ -241,6 +243,8 @@ function OpButton({
   variant = 'primary',
   disabled = false,
   title,
+  deviceModel,
+  firmwareVersion,
 }: {
   label: string
   loadingLabel: string
@@ -248,6 +252,8 @@ function OpButton({
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
   title?: string
+  deviceModel?: string
+  firmwareVersion?: string
 }) {
   const cls =
     variant === 'danger'
@@ -264,7 +270,7 @@ function OpButton({
         <ProgressBar progress={op.progress} label={loadingLabel} />
       )}
       {op.result && !op.result.ok && (
-        <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} />
+        <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
       )}
       {op.result?.ok && (
         <div className="device-op-result">
@@ -465,7 +471,7 @@ function ClassicSyncStatusSection({ classic }: { classic: ClassicSyncStatus | nu
   )
 }
 
-function SyncStatusSection({ syncStatus, autoRefreshed }: { syncStatus: ReturnType<typeof useSyncStatus>; autoRefreshed: boolean }) {
+function SyncStatusSection({ syncStatus, autoRefreshed, deviceModel, firmwareVersion }: { syncStatus: ReturnType<typeof useSyncStatus>; autoRefreshed: boolean; deviceModel?: string; firmwareVersion?: string }) {
   const { loading, status, error, check } = syncStatus
 
   const allSynced = status && status.summary.total > 0 && status.summary.synced === status.summary.total
@@ -488,7 +494,7 @@ function SyncStatusSection({ syncStatus, autoRefreshed }: { syncStatus: ReturnTy
 
       {error && (
         <div style={{ marginTop: 8 }}>
-          <ErrorDetails error={error.message} hint={error.hint} rawError={error.rawError} />
+          <ErrorDetails error={error.message} hint={error.hint} rawError={error.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
         </div>
       )}
 
@@ -560,7 +566,7 @@ function SelectiveDeploySection({
       selective.selectAll(deployableTemplates.map(t => t.uuid))
     }
     prevTemplateCount.current = deployableTemplates.length
-  }, [deployableTemplates.length, selective])
+  }, [deployableTemplates, selective])
 
   if (!selective.showSelector) {
     return (
@@ -647,7 +653,7 @@ function SelectiveDeploySection({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplete }: Props) {
+export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, firmwareVersion, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
   const [showPullHelp, setShowPullHelp] = useState(false)
   const [autoRefreshed, setAutoRefreshed] = useState(false)
@@ -752,7 +758,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
               </div>
             )}
 
-            <SyncStatusSection syncStatus={syncStatus} autoRefreshed={autoRefreshed} />
+            <SyncStatusSection syncStatus={syncStatus} autoRefreshed={autoRefreshed} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
 
             <div className="device-op-section">
               <h3 className="device-op-section-title">Pull from {deviceName}</h3>
@@ -779,6 +785,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   op={pullMethods}
                   disabled={anyOpRunning}
                   title={`Download methods templates (official + custom) from ${deviceName}`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
                 <OpButton
                   label={`Pull Classic from ${deviceName}`}
@@ -787,6 +795,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   variant="secondary"
                   disabled={anyOpRunning}
                   title={`Download classic templates from ${deviceName}`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
               </div>
             </div>
@@ -808,6 +818,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   title={selective.showSelector && selective.selectedIds.size === 0
                     ? 'Select at least one template to deploy'
                     : `Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
                 <OpButton
                   label={`Classic Deploy to ${deviceName}`}
@@ -816,6 +828,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   variant="secondary"
                   disabled={anyOpRunning}
                   title={`Push classic templates to ${deviceName} — single device only, wiped on firmware updates`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
               </div>
               <p className="device-card-hint">
@@ -837,6 +851,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   variant="danger"
                   disabled={anyOpRunning}
                   title={`Revert ${deviceName} to the state before your last deploy`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
                 <OpButton
                   label="Rollback to Original"
@@ -845,6 +861,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   variant="danger"
                   disabled={anyOpRunning}
                   title={`Restore ${deviceName} to its pre-app state`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
                 <OpButton
                   label="Rollback Classic"
@@ -853,6 +871,8 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
                   variant="danger"
                   disabled={anyOpRunning}
                   title={`Restore ${deviceName} from the most recent classic template backup`}
+                  deviceModel={deviceModel}
+                  firmwareVersion={firmwareVersion}
                 />
               </div>
             </div>
@@ -943,7 +963,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, onSyncComplet
 
               {removeAll.phase === 'error' && removeAll.errorInfo && (
                 <div>
-                  <ErrorDetails error={removeAll.errorInfo.message} hint={removeAll.errorInfo.hint} rawError={removeAll.errorInfo.rawError}>
+                  <ErrorDetails error={removeAll.errorInfo.message} hint={removeAll.errorInfo.hint} rawError={removeAll.errorInfo.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion}>
                     <button
                       className="device-card-btn device-card-btn-secondary"
                       onClick={removeAll.reset}

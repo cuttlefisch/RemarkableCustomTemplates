@@ -54,6 +54,9 @@ ENV PORT=3000
 
 EXPOSE 3000
 
+HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/templates/templates.json').then(r=>{if(!r.ok)throw r.status;process.exit(0)}).catch(()=>process.exit(1))"
+
 # Install tsx for runtime TypeScript execution
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"

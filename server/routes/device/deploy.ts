@@ -86,7 +86,9 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
             for (const ext of ['.template', '.metadata', '.content']) {
               try {
                 await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(devicePaths.originalBackup, `${uuid}${ext}`))
-              } catch { /* file may not exist */ }
+              } catch (err) {
+                console.warn(`[deploy] Skipping original ${uuid}${ext}: ${err instanceof Error ? err.message : String(err)}`)
+              }
               origCount++
               stream.progress('Capturing original device state', origCount, totalOrigFiles)
             }
@@ -121,7 +123,9 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
           for (const ext of ['.template', '.metadata', '.content']) {
             try {
               await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(backupDir, `${uuid}${ext}`))
-            } catch { /* file may not exist */ }
+            } catch (err) {
+              console.warn(`[deploy] Skipping backup ${uuid}${ext}: ${err instanceof Error ? err.message : String(err)}`)
+            }
             backupCount++
             stream.progress('Backing up current deployment', backupCount, totalBackupFiles)
           }
@@ -193,7 +197,9 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
                 writeFileSync(config.methodsRegistry, JSON.stringify(filtered, null, 2), 'utf8')
                 steps.push(`Cleaned up ${removed} stale methods entries`)
               }
-            } catch { /* methods-registry.json may be malformed */ }
+            } catch (err) {
+              console.warn(`[deploy] Failed to clean methods-registry.json: ${err instanceof Error ? err.message : String(err)}`)
+            }
           }
           for (const uuid of orphans) {
             const templateFile = resolve(config.methodsDir, `${uuid}.template`)

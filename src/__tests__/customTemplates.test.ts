@@ -343,7 +343,7 @@ describe('resolveStringConstants', () => {
     expect(result.items[0]?.strokeColor).toBe('#445566')
   })
 
-  it('leaves unknown constant names unchanged', () => {
+  it('replaces unresolved color references with fallback #000000', () => {
     const json = makeTemplateJson(
       [{ foreground: '#000000' }],
       [{ type: 'path', fillColor: 'unknownConst', strokeColor: '#000000', data: [] }],
@@ -351,7 +351,8 @@ describe('resolveStringConstants', () => {
     const result = JSON.parse(resolveStringConstants(json)) as {
       items: { fillColor?: string }[]
     }
-    expect(result.items[0]?.fillColor).toBe('unknownConst')
+    // Unresolved non-hex color references are replaced to prevent xochitl parse errors
+    expect(result.items[0]?.fillColor).toBe('#000000')
   })
 
   it('no-op effect when no color constants in template', () => {

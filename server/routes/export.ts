@@ -54,7 +54,9 @@ export default function exportRoutes(app: FastifyInstance, config: ServerConfig)
           if (Array.isArray(tpl.categories)) {
             return { ...entry, categories: ['Custom', ...tpl.categories.filter((c: unknown) => c !== 'Custom')] }
           }
-        } catch { /* ignore */ }
+        } catch (err) {
+          console.warn(`[export] Failed to sync categories from "${entry.filename}":`, err instanceof Error ? err.message : String(err))
+        }
       }
       return entry
     })

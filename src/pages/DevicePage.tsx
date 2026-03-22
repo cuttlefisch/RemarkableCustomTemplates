@@ -52,7 +52,7 @@ export function DevicePage() {
         )}
 
         <DeviceConnectionCard devicesState={devicesState} />
-        <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} onSyncComplete={handleSyncComplete} />
+        <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} deviceModel={activeDevice?.deviceModel} firmwareVersion={activeDevice?.firmwareVersion} onSyncComplete={handleSyncComplete} />
         <DeviceImportExportCard
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}

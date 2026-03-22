@@ -17,6 +17,7 @@ interface MethodsRegistryEntry {
   categories: string[]
   rmMethodsId?: string
   origin?: string
+  iconData?: string
 }
 
 export interface ImportCustomMethodsConfig {
@@ -78,6 +79,7 @@ export function importCustomMethodsEntries(config: ImportCustomMethodsConfig): n
       categories: entry.categories,
       isCustom: true,
       rmMethodsId: entry.rmMethodsId,
+      ...(entry.iconData ? { iconData: entry.iconData } : {}),
     })
     imported++
   }

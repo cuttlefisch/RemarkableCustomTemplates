@@ -8,12 +8,16 @@ export function ErrorDetails({
   error,
   hint,
   rawError,
+  deviceModel,
+  firmwareVersion,
   className = 'device-op-result error',
   children,
 }: {
   error: string
   hint?: string
   rawError?: string
+  deviceModel?: string
+  firmwareVersion?: string
   className?: string
   children?: ReactNode
 }) {
@@ -25,6 +29,8 @@ export function ErrorDetails({
       `**Error:** ${error}`,
       `**Raw:** ${rawError ?? 'N/A'}`,
       `**Hint:** ${hint ?? 'N/A'}`,
+      `**Device:** ${deviceModel ?? 'N/A'}`,
+      `**Firmware:** ${firmwareVersion ?? 'N/A'}`,
       `**URL:** ${window.location.href}`,
       `**Time:** ${new Date().toISOString()}`,
       `**UA:** ${navigator.userAgent}`,

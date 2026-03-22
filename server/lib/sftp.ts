@@ -116,8 +116,9 @@ export async function pullFiles(
     try {
       await pullFile(sftp, `${remoteDir}/${filename}`, resolve(localDir, filename))
       pulled.push(filename)
-    } catch {
-      // Skip files that don't exist
+    } catch (err) {
+      // Skip files that don't exist on device
+      console.warn(`[sftp-pull] Skipping "${filename}": ${err instanceof Error ? err.message : String(err)}`)
     }
     processed++
     onProgress?.(processed, filenames.length)
@@ -145,8 +146,9 @@ export async function removeFiles(
         })
       })
       removed.push(filename)
-    } catch {
-      // Skip files that don't exist
+    } catch (err) {
+      // Skip files that don't exist on device
+      console.warn(`[sftp-remove] Skipping "${filename}": ${err instanceof Error ? err.message : String(err)}`)
     }
     processed++
     onProgress?.(processed, filenames.length)

@@ -1,0 +1,661 @@
+/**
+ * Drawing editor state management via useReducer.
+ *
+ * The reducer is a pure function — fully testable without DOM.
+ * The hook wraps it with side-effects (commit callback, clearing committed items).
+ */
+
+import { useReducer, useEffect, useRef, useCallback } from 'react'
+import type { PathItem, PathData } from '../types/template'
+import type { Point, ScalingMode, ShapeProps, BezierHandles } from '../lib/drawingShapes'
+import {
+  buildPointItem,
+  buildDotItem,
+  buildDiamondItem,
+  buildLineItem,
+  buildPolygonItem,
+  buildRegularPolygonItem,
+  buildCircleItem,
+  buildBezierItem,
+  buildBezierItemHobby,
+  rebuildBezierPathData,
+  computeScaleFactors,
+} from '../lib/drawingShapes'
+import { distanceBetween } from '../lib/drawingCoords'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type DrawingTool = 'select' | 'point' | 'line' | 'polygon' | 'regularPolygon' | 'circle' | 'bezier'
+export type PointShape = 'dot' | 'cross' | 'diamond'
+export type BezierAlgorithm = 'catmull-rom' | 'hobby'
+
+export interface InProgressShape {
+  tool: DrawingTool
+  vertices: Point[]
+}
+
+export interface DrawingEditorState {
+  activeTool: DrawingTool
+  regularPolygonSides: number
+  scalingMode: ScalingMode
+  inProgress: InProgressShape | null
+  cursorPos: Point | null
+  selectedItemIndex: number | null
+  pointShape: PointShape
+  fillEnabled: boolean
+  fillColor: string
+  strokeColor: string
+  strokeWidth: number
+  committedItem: PathItem | null
+  deletedItemIndex: number | null
+  // Zoom/pan
+  zoom: number
+  panOffset: Point
+  // Layering intent (handled by parent)
+  moveItemIntent: { index: number; direction: 'up' | 'down' | 'top' | 'bottom' } | null
+  // Rotation intent (handled by parent)
+  rotateIntent: { index: number; angle: number } | null
+  // Bezier algorithm
+  bezierAlgorithm: BezierAlgorithm
+  // Handle drag state
+  draggingHandle: {
+    itemIndex: number
+    handleType: 'knot' | 'cp1' | 'cp2'
+    handleIndex: number
+    originalHandles: BezierHandles
+    currentPos: Point
+  } | null
+  // Path edit intent (handled by parent)
+  pathEditIntent: { itemIndex: number; newData: PathData } | null
+  // Nudge intent (handled by parent)
+  nudgeIntent: { index: number; dx: number; dy: number } | null
+  // Item drag state (drag-to-move)
+  draggingItem: {
+    itemIndex: number
+    startPos: Point
+    currentOffset: Point
+  } | null
+  // Rotation drag state
+  rotatingItem: {
+    itemIndex: number
+    center: Point
+    startAngle: number
+    currentAngle: number
+  } | null
+  // Scale drag state
+  scalingItem: {
+    itemIndex: number
+    handlePosition: string
+    anchor: Point
+    originalHandlePos: Point
+    currentPos: Point
+    originalBounds: { minX: number; minY: number; maxX: number; maxY: number }
+  } | null
+  // Scale intent (handled by parent)
+  scaleIntent: {
+    index: number
+    scaleX: number
+    scaleY: number
+    origin: Point
+  } | null
+  // FG pin for stroke/fill colors
+  strokeUseForeground: boolean
+  fillUseForeground: boolean
+}
+
+export type DrawingAction =
+  | { type: 'SET_TOOL'; tool: DrawingTool }
+  | { type: 'SET_REGULAR_SIDES'; sides: number }
+  | { type: 'SET_SCALING_MODE'; mode: ScalingMode }
+  | { type: 'CANVAS_CLICK'; point: Point }
+  | { type: 'CANVAS_MOUSE_MOVE'; point: Point }
+  | { type: 'CANCEL' }
+  | { type: 'SELECT_ITEM'; index: number | null }
+  | { type: 'DELETE_SELECTED' }
+  | { type: 'SET_FILL_ENABLED'; enabled: boolean }
+  | { type: 'SET_FILL_COLOR'; color: string }
+  | { type: 'SET_STROKE_COLOR'; color: string }
+  | { type: 'SET_STROKE_WIDTH'; width: number }
+  | { type: 'CLEAR_COMMITTED' }
+  | { type: 'CLEAR_DELETED' }
+  | { type: 'FINISH_BEZIER' }
+  // Zoom/pan
+  | { type: 'ZOOM'; zoom: number; pan: Point }
+  | { type: 'ZOOM_TO_FIT' }
+  // Layering
+  | { type: 'MOVE_ITEM'; index: number; direction: 'up' | 'down' | 'top' | 'bottom' }
+  | { type: 'CLEAR_MOVE_INTENT' }
+  // Rotation
+  | { type: 'ROTATE_SELECTED'; angle: number }
+  | { type: 'CLEAR_ROTATE_INTENT' }
+  // Point shape
+  | { type: 'SET_POINT_SHAPE'; shape: PointShape }
+  // Bezier algorithm
+  | { type: 'SET_BEZIER_ALGORITHM'; algorithm: BezierAlgorithm }
+  // Handle drag
+  | { type: 'START_HANDLE_DRAG'; itemIndex: number; handleType: 'knot' | 'cp1' | 'cp2'; handleIndex: number; handles: BezierHandles; startPos: Point }
+  | { type: 'UPDATE_HANDLE_DRAG'; point: Point }
+  | { type: 'END_HANDLE_DRAG' }
+  | { type: 'CLEAR_PATH_EDIT_INTENT' }
+  // Nudge
+  | { type: 'NUDGE_SELECTED'; dx: number; dy: number }
+  | { type: 'CLEAR_NUDGE_INTENT' }
+  // Item drag (drag-to-move)
+  | { type: 'START_ITEM_DRAG'; itemIndex: number; startPos: Point }
+  | { type: 'UPDATE_ITEM_DRAG'; point: Point }
+  | { type: 'END_ITEM_DRAG' }
+  // Rotation drag
+  | { type: 'START_ROTATION'; itemIndex: number; center: Point; startAngle: number }
+  | { type: 'UPDATE_ROTATION'; angle: number }
+  | { type: 'END_ROTATION' }
+  // Scale drag
+  | { type: 'START_SCALE_DRAG'; itemIndex: number; handlePosition: string; anchor: Point; handlePos: Point; bounds: { minX: number; minY: number; maxX: number; maxY: number } }
+  | { type: 'UPDATE_SCALE_DRAG'; point: Point }
+  | { type: 'END_SCALE_DRAG' }
+  | { type: 'CLEAR_SCALE_INTENT' }
+  // FG pin
+  | { type: 'SET_STROKE_USE_FOREGROUND'; enabled: boolean }
+  | { type: 'SET_FILL_USE_FOREGROUND'; enabled: boolean }
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const SNAP_THRESHOLD = 15
+const POINT_SIZE = 10
+
+// ─── Initial state ───────────────────────────────────────────────────────────
+
+export const initialDrawingEditorState: DrawingEditorState = {
+  activeTool: 'select',
+  regularPolygonSides: 6,
+  scalingMode: { type: 'proportional', baseWidth: 1404, baseHeight: 1872 },
+  inProgress: null,
+  cursorPos: null,
+  selectedItemIndex: null,
+  pointShape: 'dot',
+  fillEnabled: false,
+  fillColor: '#cccccc',
+  strokeColor: '#000000',
+  strokeWidth: 2,
+  committedItem: null,
+  deletedItemIndex: null,
+  zoom: 1.0,
+  panOffset: { x: 0, y: 0 },
+  moveItemIntent: null,
+  rotateIntent: null,
+  bezierAlgorithm: 'catmull-rom',
+  draggingHandle: null,
+  pathEditIntent: null,
+  nudgeIntent: null,
+  draggingItem: null,
+  rotatingItem: null,
+  scalingItem: null,
+  scaleIntent: null,
+  strokeUseForeground: false,
+  fillUseForeground: false,
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function applyHandleEdit(
+  handles: BezierHandles,
+  handleType: 'knot' | 'cp1' | 'cp2',
+  handleIndex: number,
+  newPos: Point,
+): BezierHandles {
+  const newKnots = [...handles.knots]
+  const newCPs = handles.controlPoints.map(([cp1, cp2]) => [{ ...cp1 }, { ...cp2 }] as [Point, Point])
+
+  switch (handleType) {
+    case 'knot': {
+      const oldKnot = handles.knots[handleIndex]
+      const dx = newPos.x - oldKnot.x
+      const dy = newPos.y - oldKnot.y
+      newKnots[handleIndex] = newPos
+
+      // Translate outgoing CP (segment starting at this knot)
+      if (handleIndex < newCPs.length) {
+        newCPs[handleIndex][0] = {
+          x: newCPs[handleIndex][0].x + dx,
+          y: newCPs[handleIndex][0].y + dy,
+        }
+      } else if (handles.closed) {
+        newCPs[0][0] = { x: newCPs[0][0].x + dx, y: newCPs[0][0].y + dy }
+      }
+
+      // Translate incoming CP (segment ending at this knot)
+      if (handleIndex > 0) {
+        const seg = handleIndex - 1
+        newCPs[seg][1] = {
+          x: newCPs[seg][1].x + dx,
+          y: newCPs[seg][1].y + dy,
+        }
+      } else if (handles.closed) {
+        const seg = newCPs.length - 1
+        newCPs[seg][1] = { x: newCPs[seg][1].x + dx, y: newCPs[seg][1].y + dy }
+      }
+      break
+    }
+    case 'cp1':
+      newCPs[handleIndex] = [newPos, newCPs[handleIndex][1]]
+      break
+    case 'cp2':
+      newCPs[handleIndex] = [newCPs[handleIndex][0], newPos]
+      break
+  }
+
+  return { knots: newKnots, controlPoints: newCPs, closed: handles.closed }
+}
+
+function getShapeProps(state: DrawingEditorState): ShapeProps {
+  return {
+    fillEnabled: state.fillEnabled,
+    fillColor: state.fillUseForeground ? 'foreground' : state.fillColor,
+    strokeColor: state.strokeUseForeground ? 'foreground' : state.strokeColor,
+    strokeWidth: state.strokeWidth,
+  }
+}
+
+// ─── Reducer ─────────────────────────────────────────────────────────────────
+
+export function drawingEditorReducer(
+  state: DrawingEditorState,
+  action: DrawingAction,
+): DrawingEditorState {
+  switch (action.type) {
+    case 'SET_TOOL':
+      return {
+        ...state,
+        activeTool: action.tool,
+        inProgress: null,
+        selectedItemIndex: action.tool !== 'select' ? null : state.selectedItemIndex,
+      }
+
+    case 'SET_REGULAR_SIDES':
+      return { ...state, regularPolygonSides: action.sides }
+
+    case 'SET_SCALING_MODE':
+      return { ...state, scalingMode: action.mode }
+
+    case 'CANVAS_CLICK':
+      return handleCanvasClick(state, action.point)
+
+    case 'CANVAS_MOUSE_MOVE':
+      return { ...state, cursorPos: action.point }
+
+    case 'CANCEL':
+      return { ...state, inProgress: null }
+
+    case 'SELECT_ITEM':
+      return { ...state, selectedItemIndex: action.index }
+
+    case 'DELETE_SELECTED':
+      if (state.selectedItemIndex === null) return state
+      return {
+        ...state,
+        deletedItemIndex: state.selectedItemIndex,
+        selectedItemIndex: null,
+      }
+
+    case 'SET_FILL_ENABLED':
+      return { ...state, fillEnabled: action.enabled }
+
+    case 'SET_FILL_COLOR':
+      return { ...state, fillColor: action.color }
+
+    case 'SET_STROKE_COLOR':
+      return { ...state, strokeColor: action.color }
+
+    case 'SET_STROKE_WIDTH':
+      return { ...state, strokeWidth: action.width }
+
+    case 'CLEAR_COMMITTED':
+      return { ...state, committedItem: null }
+
+    case 'CLEAR_DELETED':
+      return { ...state, deletedItemIndex: null }
+
+    case 'FINISH_BEZIER':
+      return handleFinishBezier(state)
+
+    // Zoom/pan
+    case 'ZOOM':
+      return { ...state, zoom: action.zoom, panOffset: action.pan }
+
+    case 'ZOOM_TO_FIT':
+      return { ...state, zoom: 1.0, panOffset: { x: 0, y: 0 } }
+
+    // Layering
+    case 'MOVE_ITEM':
+      return { ...state, moveItemIntent: { index: action.index, direction: action.direction } }
+
+    case 'CLEAR_MOVE_INTENT':
+      return { ...state, moveItemIntent: null }
+
+    // Rotation
+    case 'ROTATE_SELECTED':
+      if (state.selectedItemIndex === null) return state
+      return { ...state, rotateIntent: { index: state.selectedItemIndex, angle: action.angle } }
+
+    case 'CLEAR_ROTATE_INTENT':
+      return { ...state, rotateIntent: null }
+
+    // Point shape
+    case 'SET_POINT_SHAPE':
+      return { ...state, pointShape: action.shape }
+
+    // Bezier algorithm
+    case 'SET_BEZIER_ALGORITHM':
+      return { ...state, bezierAlgorithm: action.algorithm }
+
+    // Handle drag
+    case 'START_HANDLE_DRAG':
+      return {
+        ...state,
+        draggingHandle: {
+          itemIndex: action.itemIndex,
+          handleType: action.handleType,
+          handleIndex: action.handleIndex,
+          originalHandles: action.handles,
+          currentPos: action.startPos,
+        },
+      }
+
+    case 'UPDATE_HANDLE_DRAG':
+      if (!state.draggingHandle) return state
+      return {
+        ...state,
+        draggingHandle: { ...state.draggingHandle, currentPos: action.point },
+      }
+
+    case 'END_HANDLE_DRAG': {
+      if (!state.draggingHandle) return state
+      const { itemIndex, handleType, handleIndex, originalHandles, currentPos } = state.draggingHandle
+      const newHandles = applyHandleEdit(originalHandles, handleType, handleIndex, currentPos)
+      return {
+        ...state,
+        draggingHandle: null,
+        pathEditIntent: { itemIndex, newData: rebuildBezierPathData(newHandles) },
+      }
+    }
+
+    case 'CLEAR_PATH_EDIT_INTENT':
+      return { ...state, pathEditIntent: null }
+
+    // Nudge
+    case 'NUDGE_SELECTED':
+      if (state.selectedItemIndex === null) return state
+      return { ...state, nudgeIntent: { index: state.selectedItemIndex, dx: action.dx, dy: action.dy } }
+
+    case 'CLEAR_NUDGE_INTENT':
+      return { ...state, nudgeIntent: null }
+
+    // Item drag (drag-to-move)
+    case 'START_ITEM_DRAG':
+      return {
+        ...state,
+        draggingItem: { itemIndex: action.itemIndex, startPos: action.startPos, currentOffset: { x: 0, y: 0 } },
+      }
+
+    case 'UPDATE_ITEM_DRAG':
+      if (!state.draggingItem) return state
+      return {
+        ...state,
+        draggingItem: {
+          ...state.draggingItem,
+          currentOffset: {
+            x: action.point.x - state.draggingItem.startPos.x,
+            y: action.point.y - state.draggingItem.startPos.y,
+          },
+        },
+      }
+
+    case 'END_ITEM_DRAG':
+      if (!state.draggingItem) return state
+      return {
+        ...state,
+        nudgeIntent: {
+          index: state.draggingItem.itemIndex,
+          dx: state.draggingItem.currentOffset.x,
+          dy: state.draggingItem.currentOffset.y,
+        },
+        draggingItem: null,
+      }
+
+    // Rotation drag
+    case 'START_ROTATION':
+      return {
+        ...state,
+        rotatingItem: {
+          itemIndex: action.itemIndex,
+          center: action.center,
+          startAngle: action.startAngle,
+          currentAngle: action.startAngle,
+        },
+      }
+
+    case 'UPDATE_ROTATION':
+      if (!state.rotatingItem) return state
+      return {
+        ...state,
+        rotatingItem: { ...state.rotatingItem, currentAngle: action.angle },
+      }
+
+    case 'END_ROTATION': {
+      if (!state.rotatingItem) return state
+      const angleDeg = (state.rotatingItem.currentAngle - state.rotatingItem.startAngle) * 180 / Math.PI
+      if (Math.abs(angleDeg) < 0.1) return { ...state, rotatingItem: null }
+      return {
+        ...state,
+        rotateIntent: { index: state.rotatingItem.itemIndex, angle: angleDeg },
+        rotatingItem: null,
+      }
+    }
+
+    // Scale drag
+    case 'START_SCALE_DRAG':
+      return {
+        ...state,
+        scalingItem: {
+          itemIndex: action.itemIndex,
+          handlePosition: action.handlePosition,
+          anchor: action.anchor,
+          originalHandlePos: action.handlePos,
+          currentPos: action.handlePos,
+          originalBounds: action.bounds,
+        },
+      }
+
+    case 'UPDATE_SCALE_DRAG':
+      if (!state.scalingItem) return state
+      return {
+        ...state,
+        scalingItem: { ...state.scalingItem, currentPos: action.point },
+      }
+
+    case 'END_SCALE_DRAG': {
+      if (!state.scalingItem) return state
+      const { itemIndex, handlePosition, anchor, originalHandlePos, currentPos } = state.scalingItem
+      const { scaleX, scaleY } = computeScaleFactors(handlePosition, anchor, originalHandlePos, currentPos)
+      // Skip if no meaningful scale change
+      if (Math.abs(scaleX - 1) < 0.001 && Math.abs(scaleY - 1) < 0.001) {
+        return { ...state, scalingItem: null }
+      }
+      return {
+        ...state,
+        scalingItem: null,
+        scaleIntent: { index: itemIndex, scaleX, scaleY, origin: anchor },
+      }
+    }
+
+    case 'CLEAR_SCALE_INTENT':
+      return { ...state, scaleIntent: null }
+
+    // FG pin
+    case 'SET_STROKE_USE_FOREGROUND':
+      return { ...state, strokeUseForeground: action.enabled }
+
+    case 'SET_FILL_USE_FOREGROUND':
+      return { ...state, fillUseForeground: action.enabled }
+
+    default:
+      return state
+  }
+}
+
+function handleCanvasClick(state: DrawingEditorState, point: Point): DrawingEditorState {
+  const props = getShapeProps(state)
+  const { scalingMode } = state
+
+  switch (state.activeTool) {
+    case 'point': {
+      let item: PathItem
+      switch (state.pointShape) {
+        case 'cross':
+          item = buildPointItem(point, POINT_SIZE, props, scalingMode)
+          break
+        case 'diamond':
+          item = buildDiamondItem(point, POINT_SIZE, props, scalingMode)
+          break
+        case 'dot':
+        default:
+          item = buildDotItem(point, POINT_SIZE, props, scalingMode)
+          break
+      }
+      return { ...state, committedItem: item, inProgress: null }
+    }
+
+    case 'line': {
+      if (!state.inProgress) {
+        return { ...state, inProgress: { tool: 'line', vertices: [point] } }
+      }
+      const start = state.inProgress.vertices[0]
+      const item = buildLineItem(start, point, props, scalingMode)
+      return { ...state, committedItem: item, inProgress: null }
+    }
+
+    case 'polygon': {
+      if (!state.inProgress) {
+        return { ...state, inProgress: { tool: 'polygon', vertices: [point] } }
+      }
+      const vertices = state.inProgress.vertices
+      if (vertices.length >= 3 && distanceBetween(point, vertices[0]) <= SNAP_THRESHOLD) {
+        const item = buildPolygonItem(vertices, true, props, scalingMode)
+        return { ...state, committedItem: item, inProgress: null }
+      }
+      if (vertices.length >= 1 && vertices.length < 3 && distanceBetween(point, vertices[0]) <= SNAP_THRESHOLD) {
+        return state
+      }
+      return {
+        ...state,
+        inProgress: { tool: 'polygon', vertices: [...vertices, point] },
+      }
+    }
+
+    case 'regularPolygon': {
+      if (!state.inProgress) {
+        return { ...state, inProgress: { tool: 'regularPolygon', vertices: [point] } }
+      }
+      const center = state.inProgress.vertices[0]
+      const radius = distanceBetween(center, point)
+      const item = buildRegularPolygonItem(center, radius, state.regularPolygonSides, props, scalingMode)
+      return { ...state, committedItem: item, inProgress: null }
+    }
+
+    case 'circle': {
+      if (!state.inProgress) {
+        return { ...state, inProgress: { tool: 'circle', vertices: [point] } }
+      }
+      const center = state.inProgress.vertices[0]
+      const radius = distanceBetween(center, point)
+      const item = buildCircleItem(center, radius, props, scalingMode)
+      return { ...state, committedItem: item, inProgress: null }
+    }
+
+    case 'bezier': {
+      if (!state.inProgress) {
+        return { ...state, inProgress: { tool: 'bezier', vertices: [point] } }
+      }
+      const vertices = state.inProgress.vertices
+      // Close if clicking near first vertex (3+ vertices)
+      if (vertices.length >= 3 && distanceBetween(point, vertices[0]) <= SNAP_THRESHOLD) {
+        const build = state.bezierAlgorithm === 'hobby' ? buildBezierItemHobby : buildBezierItem
+        const item = build(vertices, true, props, scalingMode)
+        return { ...state, committedItem: item, inProgress: null }
+      }
+      if (vertices.length >= 1 && vertices.length < 3 && distanceBetween(point, vertices[0]) <= SNAP_THRESHOLD) {
+        return state
+      }
+      return {
+        ...state,
+        inProgress: { tool: 'bezier', vertices: [...vertices, point] },
+      }
+    }
+
+    case 'select':
+    default:
+      return state
+  }
+}
+
+function handleFinishBezier(state: DrawingEditorState): DrawingEditorState {
+  if (!state.inProgress || state.inProgress.tool !== 'bezier') return state
+  const vertices = state.inProgress.vertices
+  if (vertices.length < 2) return state
+  const props = getShapeProps(state)
+  const build = state.bezierAlgorithm === 'hobby' ? buildBezierItemHobby : buildBezierItem
+  const item = build(vertices, false, props, state.scalingMode)
+  return { ...state, committedItem: item, inProgress: null }
+}
+
+// ─── Hook ────────────────────────────────────────────────────────────────────
+
+interface UseDrawingEditorOptions {
+  onCommit: (item: PathItem, scalingMode: ScalingMode) => void
+  onDelete: (index: number) => void
+  onPathEdit: (itemIndex: number, newData: PathData) => void
+}
+
+export function useDrawingEditor({ onCommit, onDelete, onPathEdit }: UseDrawingEditorOptions) {
+  const [state, dispatch] = useReducer(drawingEditorReducer, initialDrawingEditorState)
+
+  // Use refs to always have the latest callbacks without triggering effects
+  const onCommitRef = useRef(onCommit)
+  const onDeleteRef = useRef(onDelete)
+  const onPathEditRef = useRef(onPathEdit)
+  useEffect(() => { onCommitRef.current = onCommit }, [onCommit])
+  useEffect(() => { onDeleteRef.current = onDelete }, [onDelete])
+  useEffect(() => { onPathEditRef.current = onPathEdit }, [onPathEdit])
+
+  // Handle committed items
+  useEffect(() => {
+    if (state.committedItem) {
+      onCommitRef.current(state.committedItem, state.scalingMode)
+      dispatch({ type: 'CLEAR_COMMITTED' })
+    }
+  }, [state.committedItem, state.scalingMode])
+
+  // Handle deleted items
+  useEffect(() => {
+    if (state.deletedItemIndex !== null) {
+      onDeleteRef.current(state.deletedItemIndex)
+      dispatch({ type: 'CLEAR_DELETED' })
+    }
+  }, [state.deletedItemIndex])
+
+  // Handle path edit intents (from handle dragging)
+  useEffect(() => {
+    if (state.pathEditIntent) {
+      onPathEditRef.current(state.pathEditIntent.itemIndex, state.pathEditIntent.newData)
+      dispatch({ type: 'CLEAR_PATH_EDIT_INTENT' })
+    }
+  }, [state.pathEditIntent])
+
+  const setScalingModeForDevice = useCallback((_deviceId: string, baseWidth: number, baseHeight: number) => {
+    dispatch({
+      type: 'SET_SCALING_MODE',
+      mode: { type: 'proportional', baseWidth, baseHeight },
+    })
+  }, [])
+
+  return { state, dispatch, setScalingModeForDevice }
+}

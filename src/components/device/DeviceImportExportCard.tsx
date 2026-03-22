@@ -18,7 +18,10 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
     fetch('/api/sample-templates/hidden')
       .then(r => r.json())
       .then((data: { hidden: string[] }) => setHiddenSamplesCount(data.hidden.length))
-      .catch(() => setHiddenSamplesCount(0))
+      .catch((err) => {
+        console.error('[load-hidden-samples]', err instanceof Error ? err.message : String(err))
+        setHiddenSamplesCount(0)
+      })
   }, [])
 
   async function handleRestoreAllSamples() {

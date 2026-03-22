@@ -72,6 +72,8 @@ export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
       if (labels.length === 0) labels = ['Custom']
 
       const enriched: Record<string, unknown> = { ...tplObj, iconData, labels }
+      // supportedScreens causes xochitl to hide templates on non-matching devices
+      delete enriched.supportedScreens
       const contentHash = templateContentHash(enriched)
       const prevEntry = prevManifest.templates[uuid]
       const sourceVersion = typeof tplObj.templateVersion === 'string' ? tplObj.templateVersion : '1.0.0'
@@ -86,8 +88,19 @@ export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
         contentHash,
         createdTime: prevEntry?.createdTime ?? nowMs,
       }
-    } catch {
-      files[`${uuid}.template`] = resolvedContent
+    } catch (err) {
+      console.warn(`[build-methods] Failed to parse/enrich template "${entry.name}" (${uuid}): ${err instanceof Error ? err.message : String(err)}`)
+      console.warn(`[build-methods]   → Falling back to raw content (no iconData, no labels). Template may be hidden on device.`)
+      // Still strip supportedScreens even in fallback path
+      let fallbackContent = resolvedContent
+      try {
+        const fallbackObj = JSON.parse(resolvedContent) as Record<string, unknown>
+        if ('supportedScreens' in fallbackObj) {
+          delete fallbackObj.supportedScreens
+          fallbackContent = JSON.stringify(fallbackObj, null, 2)
+        }
+      } catch { /* already malformed, use as-is */ }
+      files[`${uuid}.template`] = fallbackContent
       labels = (entry.categories ?? ['Custom']).filter((l: string) => l.length > 0)
       if (labels.length === 0) labels = ['Custom']
 

@@ -80,6 +80,25 @@ describe('parseRegistry', () => {
       templates: [{ name: 'X', filename: 'X', categories: ['Lines'] }],
     })).toThrow()
   })
+
+  it('preserves iconData when present', () => {
+    const raw = {
+      templates: [{
+        name: 'X', filename: 'X', iconCode: '\ue9fe', categories: ['Lines'],
+        iconData: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=',
+      }],
+    }
+    const result = parseRegistry(raw)
+    expect(result.templates[0]?.iconData).toBe('PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=')
+  })
+
+  it('omits iconData when absent', () => {
+    const raw = {
+      templates: [{ name: 'X', filename: 'X', iconCode: '\ue9fe', categories: ['Lines'] }],
+    }
+    const result = parseRegistry(raw)
+    expect(result.templates[0]?.iconData).toBeUndefined()
+  })
 })
 
 describe('addEntry', () => {
