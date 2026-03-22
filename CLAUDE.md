@@ -103,19 +103,36 @@ Groups use `boundingBox` as the tile size. The `repeat` config drives `computeTi
 
 ### Device constants
 
-| Device | Portrait W×H | Notes |
+| Device | Template W×H | Notes |
 |--------|-------------|-------|
 | rm (RM 1 & 2) | 1404×1872 | same pixel dimensions |
 | rmPP (Paper Pro) | 1620×2160 | |
 | rmPPM (Paper Pro Move) | 814×1454 | template coords; physical panel is 954×1696 |
 
-`paperOriginX = templateWidth/2 - templateHeight/2` (negative in portrait, positive in landscape). Pages are stamped with the creating device's dimensions at page creation time; no cross-device coordinate correction is needed.
+These dimensions are for **template rendering** (`templateWidth`/`templateHeight` builtins). Notebook `.content` files always use **1404×1872** for `customZoomPageWidth`/`customZoomPageHeight` regardless of device — all devices share this coordinate system and scale internally.
+
+Device codenames from `/sys/devices/soc0/machine`: RM1 = `"reMarkable 1.0"`, RM2 = `"reMarkable 2.0"`, Paper Pro = `"reMarkable ferrari"`, PPM = `"reMarkable Chiappa"`.
+
+`paperOriginX = templateWidth/2 - templateHeight/2` (negative in portrait, positive in landscape).
 
 ### Registry (`lib/registry.ts`, `types/registry.ts`)
 
 `templates.json` is the registry: a list of `TemplateRegistryEntry` with `name`, `filename`, `iconCode`, `landscape`, `categories`, optional `rmMethodsId` (UUID), and optional `origin` (`"official-methods"` or `"custom-methods"` for pulled methods templates). Parsed with `parseRegistry()`; mutated with `addEntry()`, `removeEntry()`, `updateEntry()`, `filterByCategory()`.
 
 The dev server merges `debug-registry.json` + `methods-registry.json` + official `templates.json` into the served `GET /templates/templates.json`. The frontend loads `custom-registry.json` separately.
+
+### Notebook files (`lib/notebookGenerator.ts`, `server/routes/notebook.ts`)
+
+Notebooks use cPages v2 format with CRDT timestamps and fractional indexing. All devices share the **1404×1872** coordinate system for `.content` files (`customZoomPageWidth`/`customZoomPageHeight`), regardless of device model. Device-specific dimensions are only for template rendering.
+
+**Per-device `.rm` file strategy** (critical — getting this wrong breaks rendering):
+- **rmPPM (PPM)**: MUST deploy 423-byte `.rm` stubs — without them, broken zoom/dimensions
+- **rm (RM1/RM2)**: Do NOT deploy `.rm` files — device creates native 408-byte files on first page access
+- **rmPP (Paper Pro)**: Do NOT deploy `.rm` files — **UNTESTED**, assumed like RM1, needs community validation
+
+`generateEmptyRmFile(deviceId)` returns the PPM blob for `'rmPPM'` and `null` for all other devices. Deploy and export routes use this to conditionally include `.rm` files. See `docs/notebook-format.md` for full reverse-engineering details.
+
+**Notebook deploy is in BETA** — Paper Pro behavior is untested.
 
 ### UI structure
 

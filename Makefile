@@ -51,7 +51,11 @@ install: ## Install project dependencies (assumes Node.js and pnpm are present)
 	pnpm install
 
 dev: ## Start the Fastify API server + Vite dev server
-	pnpm dev
+	@echo ""
+	@echo "  Starting dev server..."
+	@echo "  ➜ http://localhost:5173"
+	@echo ""
+	@pnpm dev
 
 test: ## Run all tests once
 	pnpm test

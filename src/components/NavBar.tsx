@@ -14,6 +14,13 @@ export function NavBar() {
   return (
     <nav className="nav-bar">
       <NavLink
+        to="/device"
+        className={({ isActive }) => `nav-link${isActive ? ' active' : ''}${isBusy && !isActive ? ' disabled' : ''}`}
+        onClick={handleClick}
+      >
+        Devices
+      </NavLink>
+      <NavLink
         to="/"
         end
         className={({ isActive }) => `nav-link${isActive ? ' active' : ''}${isBusy && !isActive ? ' disabled' : ''}`}
@@ -22,11 +29,11 @@ export function NavBar() {
         Templates
       </NavLink>
       <NavLink
-        to="/device"
+        to="/notebook"
         className={({ isActive }) => `nav-link${isActive ? ' active' : ''}${isBusy && !isActive ? ' disabled' : ''}`}
         onClick={handleClick}
       >
-        Device
+        Notebooks <span className="beta-badge">Beta</span>
       </NavLink>
       {isBusy && <span className="nav-busy-hint">Operation in progress…</span>}
       <div className="theme-switcher">

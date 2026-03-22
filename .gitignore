@@ -49,6 +49,12 @@ lerna-debug.log*
 *.sln
 *.sw?
 
+# Notebook deploy staging
+notebook-dist/
+
+# Claude Code local settings (contains device IPs, SSH key paths)
+.claude/settings.local.json
+
 # Environment
 .env
 .envrc

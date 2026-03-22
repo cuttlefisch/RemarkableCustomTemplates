@@ -901,6 +901,65 @@
   font-style: italic;
 }
 
+/* ── Preferred device type card ─────────────────────────────────── */
+
+.device-preferred-card {
+  margin-bottom: 20px;
+}
+
+.device-preferred-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.device-preferred-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 16px;
+  border: 2px solid var(--color-card-border, var(--border-primary));
+  border-radius: 8px;
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 140px;
+}
+
+.device-preferred-option:hover {
+  border-color: var(--color-accent, var(--accent-primary));
+  background: var(--bg-hover);
+}
+
+.device-preferred-option.active {
+  border-color: var(--color-accent, var(--accent-primary));
+  background: var(--color-accent-bg, var(--bg-hover));
+}
+
+.device-preferred-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.device-preferred-dims {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.device-preferred-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-accent, var(--accent-primary));
+  color: var(--color-accent-text-on-accent, white);
+}
+
 /* ── Device selector tabs (browser-tab style) ─────────────────────── */
 
 .device-selector-bar {

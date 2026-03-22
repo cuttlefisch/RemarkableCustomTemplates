@@ -6,7 +6,7 @@
  * All routes are exercised via Fastify app.inject() — no running server needed.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
-import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { writeFileSync, mkdirSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createApp } from '../app.ts'
@@ -796,6 +796,147 @@ describe('device SSH integration', () => {
         const body = JSON.parse(res.body)
         expect(body.count).toBe(0)
         expect(body.error).toContain('No deploy history')
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+  })
+
+  // ─── deploy-notebook ─────────────────────────────────────────────────
+
+  describe('deploy-notebook', () => {
+    it('pushes .content, .metadata, .local to device and restarts xochitl', async () => {
+      createDevice(config, mockServer)
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/deploy-notebook',
+          payload: {
+            name: 'Test Notebook',
+            pageGroups: [
+              { id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 2 },
+              { id: 'g2', templateRef: '66d2157c-test:p', templateName: 'Custom Grid', count: 1 },
+            ],
+          },
+        })
+        expect(res.statusCode).toBe(200)
+
+        const events = parseNdjson(res.body)
+        const doneEvent = events.find(e => e.type === 'done')
+        expect(doneEvent).toBeDefined()
+
+        const steps = (doneEvent as unknown as { steps: string[] }).steps
+        expect(steps.some(s => s.includes('3 pages'))).toBe(true)
+        // Default device is 'rm' (RM1/RM2) — no .rm stubs, so only 3 metadata files
+        expect(steps.some(s => s.includes('3 files'))).toBe(true)
+        expect(steps.some(s => s.includes('xochitl'))).toBe(true)
+
+        // Verify the notebook UUID was returned
+        const notebookUuid = (doneEvent as unknown as { notebookUuid: string }).notebookUuid
+        expect(notebookUuid).toBeDefined()
+        expect(notebookUuid.length).toBe(36) // UUID format
+
+        // Verify files were pushed to mock device
+        const xochitlDir = resolve(mockServer.fsRoot, 'home/root/.local/share/remarkable/xochitl')
+        expect(existsSync(resolve(xochitlDir, `${notebookUuid}.content`))).toBe(true)
+        expect(existsSync(resolve(xochitlDir, `${notebookUuid}.metadata`))).toBe(true)
+        expect(existsSync(resolve(xochitlDir, `${notebookUuid}.local`))).toBe(true)
+
+        // Verify content structure
+        const content = JSON.parse(readFileSync(resolve(xochitlDir, `${notebookUuid}.content`), 'utf8'))
+        expect(content.fileType).toBe('notebook')
+        expect(content.formatVersion).toBe(2)
+        expect(content.pageCount).toBe(3)
+        expect(content.cPages.pages).toHaveLength(3)
+        expect(content.cPages.pages[0].template.value).toBe('Blank')
+        expect(content.cPages.pages[2].template.value).toBe('66d2157c-test:p')
+
+        // Verify metadata structure
+        const metadata = JSON.parse(readFileSync(resolve(xochitlDir, `${notebookUuid}.metadata`), 'utf8'))
+        expect(metadata.type).toBe('DocumentType')
+        expect(metadata.visibleName).toBe('Test Notebook')
+
+        // Verify .local structure
+        const local = JSON.parse(readFileSync(resolve(xochitlDir, `${notebookUuid}.local`), 'utf8'))
+        expect(local.contentFormatVersion).toBe(2)
+
+        // Default device is 'rm' (RM1/RM2) — no .rm stubs deployed
+        // Device creates its own native .rm files on first page access
+        const pageDir = resolve(xochitlDir, notebookUuid)
+        expect(existsSync(pageDir)).toBe(true)
+        const rmFiles = readdirSync(pageDir).filter(f => f.endsWith('.rm'))
+        expect(rmFiles).toHaveLength(0) // RM1/RM2 don't need .rm stubs
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns 400 for missing name', async () => {
+      createDevice(config, mockServer)
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/deploy-notebook',
+          payload: {
+            pageGroups: [{ id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 1 }],
+          },
+        })
+        expect(res.statusCode).toBe(400)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns 400 for unconfigured device', async () => {
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/no-such-device/deploy-notebook',
+          payload: {
+            name: 'Test',
+            pageGroups: [{ id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 1 }],
+          },
+        })
+        expect(res.statusCode).toBe(400)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('includes .rm stubs when deploying to PPM', async () => {
+      createDevice(config, mockServer)
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/deploy-notebook',
+          payload: {
+            name: 'PPM Notebook',
+            deviceId: 'rmPPM',
+            pageGroups: [
+              { id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 3 },
+            ],
+          },
+        })
+        expect(res.statusCode).toBe(200)
+
+        const events = parseNdjson(res.body)
+        const doneEvent = events.find(e => e.type === 'done')
+        expect(doneEvent).toBeDefined()
+
+        const steps = (doneEvent as unknown as { steps: string[] }).steps
+        // PPM needs .rm stubs: 3 metadata + 3 .rm = 6 files
+        expect(steps.some(s => s.includes('6 files'))).toBe(true)
+
+        // Verify .rm files were pushed to mock device
+        const notebookUuid = (doneEvent as unknown as { notebookUuid: string }).notebookUuid
+        const xochitlDir = resolve(mockServer.fsRoot, 'home/root/.local/share/remarkable/xochitl')
+        const pageDir = resolve(xochitlDir, notebookUuid)
+        const rmFiles = readdirSync(pageDir).filter(f => f.endsWith('.rm'))
+        expect(rmFiles).toHaveLength(3)
       } finally {
         await app.close()
       }

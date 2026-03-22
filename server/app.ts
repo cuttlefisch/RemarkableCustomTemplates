@@ -23,6 +23,7 @@ import deviceBackupRoutes from './routes/device/backups.ts'
 import deviceRemoveAllRoutes from './routes/device/removeAll.ts'
 import deviceSyncStatusRoutes from './routes/device/syncStatus.ts'
 import sampleTemplateRoutes from './routes/sampleTemplates.ts'
+import notebookRoutes from './routes/notebook.ts'
 import { backfillAllIcons } from './lib/backfillIcons.ts'
 
 export async function createApp(config: ServerConfig) {
@@ -55,6 +56,7 @@ export async function createApp(config: ServerConfig) {
   deviceRemoveAllRoutes(app, config)
   deviceSyncStatusRoutes(app, config)
   sampleTemplateRoutes(app, config)
+  notebookRoutes(app, config)
 
   // Backfill iconData for any registry entries missing it
   backfillAllIcons(config)

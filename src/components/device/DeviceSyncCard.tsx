@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ErrorDetails } from './ErrorDetails'
+import { ProgressBar } from '../ProgressBar'
 import { useBusy } from '../../hooks/useBusy'
+import { readNdjsonStream, type NdjsonProgress } from '../../lib/ndjsonClient'
 
 interface Props {
   deviceId: string | null
@@ -13,11 +15,7 @@ interface Props {
 
 type OpResult = { ok: true; message: string; steps?: string[] } | { ok: false; error: string; hint?: string; rawError?: string }
 
-interface ProgressState {
-  phase: string
-  current?: number
-  total?: number
-}
+type ProgressState = NdjsonProgress
 
 // ---------------------------------------------------------------------------
 // Sync status types & hook
@@ -107,43 +105,6 @@ type RemoveAllPhase = 'idle' | 'loading-preview' | 'preview' | 'executing' | 'do
 interface RemoveAllPreview { count: number; templates: { uuid: string; name: string }[]; error?: string }
 interface RemoveAllResult { ok: boolean; steps?: string[]; backupFilename?: string; error?: string; hint?: string }
 
-async function readNdjsonStream(
-  response: Response,
-  onProgress: (p: ProgressState) => void,
-): Promise<Record<string, unknown>> {
-  const reader = response.body!.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let finalData: Record<string, unknown> = {}
-
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-
-    const lines = buffer.split('\n')
-    buffer = lines.pop()! // keep incomplete line in buffer
-
-    for (const line of lines) {
-      if (!line.trim()) continue
-      const event = JSON.parse(line) as Record<string, unknown>
-      if (event.type === 'progress') {
-        onProgress({
-          phase: event.phase as string,
-          current: event.current as number | undefined,
-          total: event.total as number | undefined,
-        })
-      } else if (event.type === 'done') {
-        finalData = event
-      } else if (event.type === 'error') {
-        throw { error: event.error as string, hint: event.hint as string | undefined, rawError: event.rawError as string | undefined }
-      }
-    }
-  }
-
-  return finalData
-}
-
 function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: () => void; bodyFn?: () => Record<string, unknown> | undefined }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<OpResult | null>(null)
@@ -209,32 +170,7 @@ function useDeviceOp(url: string, options?: { confirmMsg?: string; onSuccess?: (
   return { loading, result, progress, run }
 }
 
-function ProgressBar({ progress, label }: { progress: ProgressState | null; label?: string }) {
-  const phase = progress?.phase ?? label
-  const pct = progress?.current != null && progress?.total
-    ? Math.round((progress.current / progress.total) * 100)
-    : null
-
-  return (
-    <div className="device-progress">
-      <div className="device-progress-label">
-        {phase}
-        {pct != null && ` ${progress!.current}/${progress!.total}`}
-      </div>
-      <div className="device-progress-bar">
-        <div
-          className={`device-progress-fill${pct == null ? ' indeterminate' : ''}`}
-          style={pct != null ? { width: `${pct}%` } : undefined}
-        />
-      </div>
-      {progress && (
-        <p className="device-progress-tip">
-          Tip: Swipe or tap on your reMarkable screen to keep it awake — transfers go faster when the device isn't dozing.
-        </p>
-      )}
-    </div>
-  )
-}
+// ProgressBar is imported from ../ProgressBar
 
 function OpButton({
   label,
@@ -267,7 +203,7 @@ function OpButton({
         {op.loading ? loadingLabel : label}
       </button>
       {op.loading && (
-        <ProgressBar progress={op.progress} label={loadingLabel} />
+        <ProgressBar progress={op.progress} label={loadingLabel} showTip />
       )}
       {op.result && !op.result.ok && (
         <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
@@ -929,7 +865,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   <button className="device-card-btn device-card-btn-danger" disabled>
                     Removing templates...
                   </button>
-                  <ProgressBar progress={removeAll.progress} label="Removing templates..." />
+                  <ProgressBar progress={removeAll.progress} label="Removing templates..." showTip />
                 </div>
               )}
 

@@ -6,6 +6,7 @@ import {
   computeTileRange,
   deviceBuiltins,
   collectMissingConstants,
+  deviceModelToDeviceId,
   DEVICES,
 } from '../lib/renderer'
 import type { DeviceId } from '../lib/renderer'
@@ -238,6 +239,39 @@ describe('DEVICES', () => {
     for (const spec of Object.values(DEVICES)) {
       expect(spec.portraitHeight).toBeGreaterThan(spec.portraitWidth)
     }
+  })
+})
+
+// ─── deviceModelToDeviceId ────────────────────────────────────────────────────
+
+describe('deviceModelToDeviceId', () => {
+  it('maps "reMarkable 1.0" to rm', () => {
+    expect(deviceModelToDeviceId('reMarkable 1.0')).toBe('rm')
+  })
+
+  it('maps "reMarkable 2.0" to rm', () => {
+    expect(deviceModelToDeviceId('reMarkable 2.0')).toBe('rm')
+  })
+
+  it('maps "reMarkable ferrari" to rmPP (Paper Pro codename)', () => {
+    expect(deviceModelToDeviceId('reMarkable ferrari')).toBe('rmPP')
+  })
+
+  it('maps "reMarkable Chiappa" to rmPPM (Paper Pro Move codename)', () => {
+    expect(deviceModelToDeviceId('reMarkable Chiappa')).toBe('rmPPM')
+  })
+
+  it('maps friendly names with "Paper Pro Move"', () => {
+    expect(deviceModelToDeviceId('reMarkable Paper Pro Move')).toBe('rmPPM')
+  })
+
+  it('maps friendly names with "Paper Pro"', () => {
+    expect(deviceModelToDeviceId('reMarkable Paper Pro')).toBe('rmPP')
+  })
+
+  it('returns null for undefined/empty', () => {
+    expect(deviceModelToDeviceId(undefined)).toBeNull()
+    expect(deviceModelToDeviceId('')).toBeNull()
   })
 })
 

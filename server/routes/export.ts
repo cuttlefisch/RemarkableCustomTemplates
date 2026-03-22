@@ -1,6 +1,8 @@
 /**
  * GET /api/export-templates — zip official + custom + debug templates
  * GET /api/export-rm-methods — zip in rm_methods UUID format
+ * GET /api/export-template/:uuid — export single template by rmMethodsId
+ * GET /api/export-template-by-name/:slug — export single template by filename slug
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -127,6 +129,86 @@ export default function exportRoutes(app: FastifyInstance, config: ServerConfig)
     return reply
       .header('content-type', 'application/zip')
       .header('content-disposition', 'attachment; filename="remarkable-rm-methods.zip"')
+      .header('content-length', String(zipped.length))
+      .send(Buffer.from(zipped))
+  })
+
+  // GET /api/export-template/:uuid — export single template by rmMethodsId
+  app.get<{ Params: { uuid: string } }>('/api/export-template/:uuid', async (request, reply) => {
+    const { uuid } = request.params
+    const result = buildRmMethodsDist(config)
+
+    // Filter to just this template's files
+    const prefix = `${uuid}.`
+    const filtered: Record<string, Uint8Array> = {}
+    for (const [name, content] of Object.entries(result.files)) {
+      if (name.startsWith(prefix)) {
+        filtered[name] = strToU8(content)
+      }
+    }
+
+    if (Object.keys(filtered).length === 0) {
+      return reply.status(404).send({ error: `Template ${uuid} not found in build output` })
+    }
+
+    const templateName = result.manifest.templates[uuid]?.name ?? uuid
+    const safeName = templateName.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const zipped = zipSync(filtered)
+    return reply
+      .header('content-type', 'application/zip')
+      .header('content-disposition', `attachment; filename="${safeName}.rm-methods.zip"`)
+      .header('content-length', String(zipped.length))
+      .send(Buffer.from(zipped))
+  })
+
+  // GET /api/export-template-by-name/:slug — export single template by filename slug
+  // Slug is the short name (e.g. "P My Template"), URL-encoded
+  app.get<{ Params: { slug: string } }>('/api/export-template-by-name/:slug', async (request, reply) => {
+    const slug = decodeURIComponent(request.params.slug)
+
+    // Build all (assigns UUIDs to entries that don't have one yet)
+    const result = buildRmMethodsDist(config)
+
+    // Look up the UUID for this template slug in the registries
+    type RegEntry = { filename: string; rmMethodsId?: string }
+    let matchedUuid: string | undefined
+    for (const regPath of [config.customRegistry, config.debugRegistry]) {
+      try {
+        const reg = JSON.parse(readFileSync(regPath, 'utf8')) as { templates: RegEntry[] }
+        const entry = reg.templates.find(e => {
+          const shortName = e.filename.replace(/^(custom|debug)\//, '')
+          return shortName === slug
+        })
+        if (entry?.rmMethodsId) {
+          matchedUuid = entry.rmMethodsId
+          break
+        }
+      } catch { /* registry not found */ }
+    }
+
+    if (!matchedUuid) {
+      return reply.status(404).send({ error: `Template "${slug}" not found in registries` })
+    }
+
+    // Filter to just this template's files
+    const prefix = `${matchedUuid}.`
+    const filtered: Record<string, Uint8Array> = {}
+    for (const [name, content] of Object.entries(result.files)) {
+      if (name.startsWith(prefix)) {
+        filtered[name] = strToU8(content)
+      }
+    }
+
+    if (Object.keys(filtered).length === 0) {
+      return reply.status(404).send({ error: `Template "${slug}" (${matchedUuid}) not found in build output` })
+    }
+
+    const templateName = result.manifest.templates[matchedUuid]?.name ?? slug
+    const safeName = templateName.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const zipped = zipSync(filtered)
+    return reply
+      .header('content-type', 'application/zip')
+      .header('content-disposition', `attachment; filename="${safeName}.rm-methods.zip"`)
       .header('content-length', String(zipped.length))
       .send(Buffer.from(zipped))
   })

@@ -21,6 +21,12 @@ import type { RemarkableTemplate } from '../types/template'
 import { useRegistryContext } from '../hooks/useRegistry'
 import { useDrawingEditor } from '../hooks/useDrawingEditor'
 import { useUndoRedo } from '../hooks/useUndoRedo'
+import { useDevices } from '../hooks/useDevices'
+import { useBusy } from '../hooks/useBusy'
+import { DeviceSelector } from '../components/DeviceSelector'
+import { ProgressBar } from '../components/ProgressBar'
+import { ErrorDetails } from '../components/device/ErrorDetails'
+import { readNdjsonStream, type NdjsonProgress } from '../lib/ndjsonClient'
 
 function DeviceIcon({ width, height }: { width: number; height: number }) {
   const maxH = 18
@@ -46,6 +52,7 @@ interface TemplatesPageProps {
 
 export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   const { registry, setCustomRegistry, loadingRegistry, officialTemplatesAvailable, mergedRegistry, existingCustomNames, refreshRegistry } = useRegistryContext()
+  const devicesState = useDevices()
 
   const [selected, setSelected] = useState<TemplateRegistryEntry | null>(null)
   const [template, setTemplate] = useState<RemarkableTemplate | null>(null)
@@ -758,6 +765,83 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
   }
 
+  const [deployingTemplate, setDeployingTemplate] = useState(false)
+  const [deployProgress, setDeployProgress] = useState<NdjsonProgress | null>(null)
+  const [deployError, setDeployError] = useState<{ error: string; hint?: string; rawError?: string } | null>(null)
+  const [deploySuccess, setDeploySuccess] = useState<string | null>(null)
+  const { setBusy } = useBusy()
+
+  // Block navigation during template deploy
+  useEffect(() => {
+    setBusy(deployingTemplate)
+    return () => setBusy(false)
+  }, [deployingTemplate, setBusy])
+
+  async function handleDeployTemplate() {
+    if (!selected) return
+    const activeId = devicesState.activeDeviceId
+    if (!activeId) {
+      setError('No device configured. Go to Devices page to add one.')
+      return
+    }
+
+    setDeployingTemplate(true)
+    setDeployProgress({ phase: 'Preparing template...' })
+    setDeployError(null)
+    setDeploySuccess(null)
+    setError(null)
+    try {
+      // Ensure the template has an rmMethodsId by triggering the export-by-name endpoint
+      const uuid = selected.rmMethodsId
+      if (!uuid) {
+        const slug = selected.filename.replace(/^(custom|debug)\//, '')
+        const assignRes = await fetch(`/api/export-template-by-name/${encodeURIComponent(slug)}`)
+        if (!assignRes.ok) {
+          const err = await assignRes.json().catch(() => ({ error: 'Failed to prepare template' })) as { error?: string }
+          throw new Error(err.error || 'Failed to prepare template for deploy')
+        }
+        // Refresh registry to pick up assigned UUID
+        await refreshRegistry()
+      }
+
+      // Deploy using selective deploy-methods endpoint
+      // If uuid is known, deploy only that template; otherwise deploy all
+      setDeployProgress({ phase: 'Deploying to device...' })
+      const deployRes = await fetch(`/api/devices/${activeId}/deploy-methods`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(uuid ? { templateIds: [uuid] } : {}),
+      })
+
+      const contentType = deployRes.headers.get('content-type') ?? ''
+      if (contentType.includes('application/x-ndjson')) {
+        const data = await readNdjsonStream(deployRes, p => {
+          setDeployProgress({ phase: p.phase, current: p.current, total: p.total })
+        })
+        const steps = (data.steps as string[]) ?? []
+        setDeployProgress(null)
+        setDeploySuccess(`Deployed successfully (${steps.length} steps)`)
+      } else {
+        const data = await deployRes.json() as Record<string, unknown>
+        if (!deployRes.ok) {
+          throw { error: (data.error as string) || `Deploy failed (${deployRes.status})`, hint: data.hint as string | undefined, rawError: data.rawError as string | undefined }
+        }
+        setDeployProgress(null)
+        setDeploySuccess('Deployed successfully')
+      }
+    } catch (e) {
+      const err = e as { error?: string; hint?: string; rawError?: string; message?: string }
+      setDeployError({
+        error: err.error ?? err.message ?? String(e),
+        hint: err.hint,
+        rawError: err.rawError,
+      })
+      setDeployProgress(null)
+    } finally {
+      setDeployingTemplate(false)
+    }
+  }
+
   async function handleCreateNew() {
     setSidebarError(null)
     const nameErr = validateCustomName(newTemplateName.trim(), existingCustomNames)
@@ -1161,6 +1245,19 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                   >
                     {editorOpen ? 'Close Editor' : 'Edit JSON'}
                   </button>
+                  {(selected?.isCustom || selected?.origin === 'custom-methods') && (
+                    <>
+                      <DeviceSelector devicesState={devicesState} className="preview-device-selector" />
+                      <button
+                        className="edit-json-btn"
+                        onClick={handleDeployTemplate}
+                        disabled={deployingTemplate || !devicesState.activeDeviceId}
+                        title={devicesState.activeDeviceId ? `Deploy to ${devicesState.activeDevice?.nickname ?? 'device'}` : 'No device configured'}
+                      >
+                        {deployingTemplate ? 'Deploying...' : 'Deploy'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="preview-meta-tags">
@@ -1248,6 +1345,28 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             {error && (
               <div className="preview-stage">
                 <p className="stage-hint stage-error">{error}</p>
+              </div>
+            )}
+            {deployProgress && (
+              <div className="preview-stage">
+                <ProgressBar progress={deployProgress} showTip />
+              </div>
+            )}
+            {deploySuccess && !deployProgress && (
+              <div className="preview-stage">
+                <p className="stage-hint">{deploySuccess}</p>
+              </div>
+            )}
+            {deployError && (
+              <div className="preview-stage">
+                <ErrorDetails
+                  error={deployError.error}
+                  hint={deployError.hint}
+                  rawError={deployError.rawError}
+                  deviceModel={devicesState.activeDevice?.deviceModel}
+                  firmwareVersion={(devicesState.activeDevice as Record<string, unknown> | null)?.firmwareVersion as string | undefined}
+                  className="device-error"
+                />
               </div>
             )}
             {template && (

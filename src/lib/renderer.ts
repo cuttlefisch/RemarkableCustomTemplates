@@ -51,6 +51,49 @@ export const DEVICES: Record<string, DeviceSpec> = {
 export type DeviceId = keyof typeof DEVICES
 
 /**
+ * Map a device model string from /sys/devices/soc0/machine to a DeviceId.
+ *
+ * Known model strings:
+ *   "reMarkable 1.0"     → rm   (RM1)
+ *   "reMarkable 2.0"     → rm   (RM2, same template dimensions)
+ *   "reMarkable ferrari"  → rmPP (Paper Pro codename)
+ *   "reMarkable Chiappa"  → rmPPM (Paper Pro Move codename)
+ */
+export function deviceModelToDeviceId(model?: string): DeviceId | null {
+  if (!model) return null
+  const lower = model.toLowerCase()
+  // Codename-based detection (from /sys/devices/soc0/machine)
+  if (lower.includes('chiappa')) return 'rmPPM'
+  if (lower.includes('ferrari')) return 'rmPP'
+  // Friendly name detection (may appear in UI or future firmware)
+  if (lower.includes('paper pro move') || lower.includes('paperpro move')) return 'rmPPM'
+  if (lower.includes('paper pro') || lower.includes('paperpro')) return 'rmPP'
+  // RM1 ("reMarkable 1.0") and RM2 ("reMarkable 2.0") share dimensions
+  if (lower.includes('remarkable')) return 'rm'
+  return null
+}
+
+const PREFERRED_DEVICE_TYPE_KEY = 'preferred-device-type'
+
+/** Get the preferred device type from localStorage, defaulting to 'rm' */
+export function getPreferredDeviceType(): DeviceId {
+  try {
+    const stored = localStorage.getItem(PREFERRED_DEVICE_TYPE_KEY)
+    if (stored && stored in DEVICES) return stored as DeviceId
+  } catch { /* ignore */ }
+  return 'rm'
+}
+
+/** Save the preferred device type to localStorage and notify listeners */
+export function setPreferredDeviceType(deviceId: DeviceId) {
+  try {
+    localStorage.setItem(PREFERRED_DEVICE_TYPE_KEY, deviceId)
+    // Notify other components listening for preferred device changes
+    ;(globalThis as unknown as { dispatchEvent?: (e: Event) => void }).dispatchEvent?.(new Event('preferred-device-changed'))
+  } catch { /* ignore */ }
+}
+
+/**
  * Built-in constants provided by the reMarkable device at render time.
  *
  * paperOriginX is the x-offset that centres a square on the page:

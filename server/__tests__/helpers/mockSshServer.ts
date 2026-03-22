@@ -176,9 +176,12 @@ function handleExec(
       return
     }
 
-    if (command.includes('mkdir -p') && command.includes('.ssh')) {
-      const sshDir = mapPath(fsRoot, '/home/root/.ssh')
-      mkdirSync(sshDir, { recursive: true })
+    if (command.includes('mkdir -p')) {
+      // Extract the path from mkdir -p "path" or mkdir -p path
+      const mkdirMatch = command.match(/mkdir\s+-p\s+"?([^";\s]+)"?/)
+      if (mkdirMatch) {
+        mkdirSync(mapPath(fsRoot, mkdirMatch[1]), { recursive: true })
+      }
       channel.exit(0)
       channel.end()
       return

@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import type { UseDevices } from '../../hooks/useDevices'
 import { ErrorDetails } from './ErrorDetails'
+import { DEVICES, type DeviceId } from '../../lib/renderer'
 
 interface Props {
   devicesState: UseDevices
+  preferredDevice: DeviceId
+  onPreferredChange: (id: DeviceId) => void
 }
 
-export function DeviceConnectionCard({ devicesState }: Props) {
+export function DeviceConnectionCard({ devicesState, preferredDevice, onPreferredChange }: Props) {
   const { devices, activeDevice, addDevice, updateDevice, removeDevice, testConnection, setupKeys } = devicesState
 
   const [showForm, setShowForm] = useState(false)
@@ -25,6 +28,7 @@ export function DeviceConnectionCard({ devicesState }: Props) {
   const [connected, setConnected] = useState<boolean | null>(null)
   // Track the device ID we just created during the add flow, so we can test-connection with override
   const [pendingDeviceId, setPendingDeviceId] = useState<string | null>(null)
+  const [showPreferred, setShowPreferred] = useState(false)
 
   // Whether the device being edited uses key auth (no password required)
   const editingKeyAuth = !isAddingNew && activeDevice?.authMethod === 'key'
@@ -333,6 +337,32 @@ export function DeviceConnectionCard({ devicesState }: Props) {
               />
             </div>
           )}
+
+          <div style={{ marginTop: 12 }}>
+            <button className="sync-section-toggle" onClick={() => setShowPreferred(!showPreferred)}>
+              {showPreferred ? '▾' : '▸'} Preferred Device Type
+            </button>
+            {showPreferred && (
+              <div style={{ marginTop: 8 }}>
+                <p className="device-card-desc">
+                  Sets default device dimensions for template previews and new notebooks.
+                </p>
+                <div className="device-preferred-options">
+                  {Object.entries(DEVICES).map(([id, spec]) => (
+                    <button
+                      key={id}
+                      className={`device-preferred-option${preferredDevice === id ? ' active' : ''}`}
+                      onClick={() => onPreferredChange(id as DeviceId)}
+                    >
+                      <span className="device-preferred-name">{spec.name}</span>
+                      <span className="device-preferred-dims">{spec.portraitWidth}&times;{spec.portraitHeight}</span>
+                      {preferredDevice === id && <span className="device-preferred-badge">Preferred</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
     )
@@ -357,6 +387,32 @@ export function DeviceConnectionCard({ devicesState }: Props) {
             <button className="device-card-btn" onClick={openAddForm}>
               Add Device
             </button>
+
+            <div style={{ marginTop: 12 }}>
+              <button className="sync-section-toggle" onClick={() => setShowPreferred(!showPreferred)}>
+                {showPreferred ? '▾' : '▸'} Preferred Device Type
+              </button>
+              {showPreferred && (
+                <div style={{ marginTop: 8 }}>
+                  <p className="device-card-desc">
+                    Sets default device dimensions for template previews and new notebooks.
+                  </p>
+                  <div className="device-preferred-options">
+                    {Object.entries(DEVICES).map(([id, spec]) => (
+                      <button
+                        key={id}
+                        className={`device-preferred-option${preferredDevice === id ? ' active' : ''}`}
+                        onClick={() => onPreferredChange(id as DeviceId)}
+                      >
+                        <span className="device-preferred-name">{spec.name}</span>
+                        <span className="device-preferred-dims">{spec.portraitWidth}&times;{spec.portraitHeight}</span>
+                        {preferredDevice === id && <span className="device-preferred-badge">Preferred</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="device-form">
