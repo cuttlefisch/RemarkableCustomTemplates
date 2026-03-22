@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DrawingToolbar } from '../components/DrawingToolbar'
 import { initialDrawingEditorState } from '../hooks/useDrawingEditor'
 import type { DrawingEditorState } from '../hooks/useDrawingEditor'
+
+// Mock ResizeObserver for jsdom
+beforeAll(() => {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+})
 
 function renderToolbar(overrides: Partial<DrawingEditorState> = {}) {
   const dispatch = vi.fn()
@@ -64,7 +73,7 @@ describe('DrawingToolbar', () => {
         onForegroundColorChange={vi.fn()}
         onMove={vi.fn()}
         onRotate={vi.fn()}
-      onFlip={vi.fn()}
+        onFlip={vi.fn()}
         canUndo={false}
         canRedo={false}
         onUndo={vi.fn()}
@@ -85,7 +94,7 @@ describe('DrawingToolbar', () => {
         onForegroundColorChange={vi.fn()}
         onMove={vi.fn()}
         onRotate={vi.fn()}
-      onFlip={vi.fn()}
+        onFlip={vi.fn()}
         canUndo={false}
         canRedo={false}
         onUndo={vi.fn()}
@@ -123,7 +132,7 @@ describe('DrawingToolbar', () => {
 
   it('scaling dropdown shows current mode', () => {
     renderToolbar()
-    const select = screen.getByTitle('Scaling mode') as HTMLSelectElement
+    const select = screen.getByTitle('Coordinate mode') as HTMLSelectElement
     expect(select.value).toBe('proportional')
   })
 
@@ -216,5 +225,26 @@ describe('DrawingToolbar', () => {
     const { dispatch } = renderToolbar({ fillEnabled: true })
     fireEvent.click(screen.getByTitle('Pin fill to foreground color'))
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_FILL_USE_FOREGROUND', enabled: true })
+  })
+
+  // Overflow tests
+  it('overflow button not shown when all groups fit', () => {
+    renderToolbar()
+    // With no ResizeObserver callback fired, overflowIds is empty, so no overflow button
+    expect(screen.queryByTitle('More tools')).toBeNull()
+  })
+
+  it('renders FG and BG color pickers in the fill-stroke group', () => {
+    renderToolbar()
+    expect(screen.getByTitle('Foreground color')).toBeDefined()
+    expect(screen.getByTitle('Background color')).toBeDefined()
+  })
+
+  it('scaling dropdown shows Adaptive label', () => {
+    renderToolbar()
+    const select = screen.getByTitle('Coordinate mode') as HTMLSelectElement
+    const options = Array.from(select.options).map(o => o.text)
+    expect(options).toContain('Adaptive')
+    expect(options.some(o => o.startsWith('Fixed'))).toBe(true)
   })
 })

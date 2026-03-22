@@ -555,18 +555,13 @@ body {
 /* ── Editor panel ────────────────────────────────────────────────────────── */
 
 .editor-panel {
-  flex: 1;
-  min-width: 360px;
+  flex: none;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   background: var(--color-editor-bg);
   border-right: 1px solid var(--color-editor-border);
   overflow: hidden;
-}
-
-.app-content.editing .preview {
-  flex: 0 0 400px;
-  max-width: 400px;
 }
 
 .template-editor {
@@ -894,7 +889,8 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
   border-bottom: 1px solid var(--color-editor-border);
   border-radius: 4px 4px 0 0;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .drawing-toolbar-group {
@@ -1012,6 +1008,53 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
   color: var(--color-text-primary);
   font-size: 12px;
   cursor: pointer;
+}
+
+.drawing-toolbar-overflow-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-editor-toolbar-bg);
+  border: 1px solid var(--color-editor-border);
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.drawing-toolbar-overflow-menu .drawing-toolbar-group {
+  flex-wrap: wrap;
+}
+
+.drawing-toolbar-separator-h {
+  width: 100%;
+  height: 1px;
+  background: var(--color-editor-border);
+  flex-shrink: 0;
+}
+
+.drawing-toolbar .drawing-color-label span,
+.drawing-toolbar .drawing-fill-toggle {
+  white-space: nowrap;
+}
+
+/* ── Resize divider ──────────────────────────────────────────────────────── */
+
+.resize-divider {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  align-self: stretch;
+}
+
+.resize-divider:hover {
+  background: var(--color-editor-apply-bg, #0969da);
+  opacity: 0.4;
 }
 
 .selection-handle {

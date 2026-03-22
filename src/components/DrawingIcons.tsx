@@ -142,7 +142,7 @@ export function SendBackwardIcon() {
       <rect x={4} y={2} width={7} height={5} rx={0.5} opacity={0.4} />
       <rect x={7} y={5} width={7} height={5} rx={0.5} />
       <line x1={9} y1={11.5} x2={9} y2={15.5} />
-      <path d="M7.5 14} L9 15.5 L10.5 14" />
+      <path d="M7.5 14 L9 15.5 L10.5 14" />
     </Icon>
   )
 }
@@ -236,6 +236,17 @@ export function RotateCCWIcon() {
     <Icon>
       <path d="M4 5 A6 6 0 1 1 3 10" />
       <path d="M6 3 L4 5 L6 7" />
+    </Icon>
+  )
+}
+
+/** Horizontal ellipsis (three dots) for overflow menu */
+export function MoreIcon() {
+  return (
+    <Icon>
+      <circle cx={4} cy={9} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={9} cy={9} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={14} cy={9} r={1.5} fill="currentColor" stroke="none" />
     </Icon>
   )
 }

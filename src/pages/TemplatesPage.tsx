@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { TemplateEditor } from '../components/TemplateEditor'
+import { ResizeDivider } from '../components/ResizeDivider'
 import { CanvasErrorBoundary } from '../components/CanvasErrorBoundary'
 import { DrawingToolbar } from '../components/DrawingToolbar'
 import { TemplateThumbnail } from '../components/TemplateThumbnail'
@@ -96,6 +97,33 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed))
   }, [sidebarCollapsed])
+
+  // Resizable panel widths
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    parseInt(localStorage.getItem('sidebarWidth') ?? '240'))
+  const [editorWidth, setEditorWidth] = useState(() =>
+    parseInt(localStorage.getItem('editorWidth') ?? '500'))
+  const sidebarWidthTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const editorWidthTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const handleSidebarResize = useCallback((delta: number) => {
+    setSidebarWidth(w => {
+      const next = Math.max(160, Math.min(400, w + delta))
+      clearTimeout(sidebarWidthTimer.current)
+      sidebarWidthTimer.current = setTimeout(() => localStorage.setItem('sidebarWidth', String(next)), 300)
+      return next
+    })
+  }, [])
+
+  const handleEditorResize = useCallback((delta: number) => {
+    setEditorWidth(w => {
+      const maxW = Math.round(window.innerWidth * 0.6)
+      const next = Math.max(300, Math.min(maxW, w + delta))
+      clearTimeout(editorWidthTimer.current)
+      editorWidthTimer.current = setTimeout(() => localStorage.setItem('editorWidth', String(next)), 300)
+      return next
+    })
+  }, [])
 
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -825,7 +853,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     <div className={`app-content${editorOpen ? ' editing' : ''}`}>
 
       {/* ── Sidebar ────────────────────────────────────────────── */}
-      <aside className={`sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>
+      <aside className={`sidebar${sidebarCollapsed ? ' collapsed' : ''}`} style={sidebarCollapsed ? undefined : { width: sidebarWidth }}>
         <div className="sidebar-header">
           <span className="sidebar-title">Templates</span>
           <span className="sidebar-count">
@@ -1082,9 +1110,11 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         </div>
       </aside>
 
+      {!sidebarCollapsed && <ResizeDivider onResize={handleSidebarResize} />}
+
       {/* ── Editor panel (only when open) ───────────────────────── */}
       {editorOpen && selected && (
-        <div className="editor-panel">
+        <div className="editor-panel" style={{ width: editorWidth }}>
           <TemplateEditor
             key={selected.filename}
             json={editorJson}
@@ -1101,6 +1131,8 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
           )}
         </div>
       )}
+
+      {editorOpen && <ResizeDivider onResize={handleEditorResize} />}
 
       {/* ── Preview ────────────────────────────────────────────── */}
       <main className="preview">
@@ -1138,7 +1170,14 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                 >
                   {selected.landscape ? 'Landscape' : 'Portrait'}
                 </button>
-                {selected.isCustom && <span className="tag tag-custom">Custom</span>}
+                {selected.isCustom && (
+                  <button
+                    className={`tag tag-custom${filterCategory === 'Custom' ? ' tag-active' : ''}`}
+                    onClick={() => setFilterCategory(filterCategory === 'Custom' ? null : 'Custom')}
+                  >
+                    Custom
+                  </button>
+                )}
                 {selected.categories.includes('Samples') && <span className="tag tag-methods">Sample</span>}
                 {selected.origin === 'official-methods' && <span className="tag tag-methods">Methods</span>}
                 {selected.origin === 'custom-methods' && <span className="tag tag-methods">Methods (custom)</span>}
