@@ -118,6 +118,41 @@ describe('importCustomMethodsEntries', () => {
     expect(imported).toBe(0)
   })
 
+  it('preserves iconData in imported custom registry entry', () => {
+    const uuid = 'icon-uuid'
+    writeFileSync(resolve(config.methodsDir, `${uuid}.template`), '{"name":"Icon Grid"}')
+    writeFileSync(config.methodsRegistry, JSON.stringify({
+      templates: [{
+        name: 'Icon Grid', filename: `methods/${uuid}`, iconCode: '\ue9d8',
+        landscape: false, categories: ['Grid'], rmMethodsId: uuid, origin: 'custom-methods',
+        iconData: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==',
+      }],
+    }))
+
+    const imported = importCustomMethodsEntries(config)
+    expect(imported).toBe(1)
+
+    const reg = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+    expect(reg.templates[0].iconData).toBe('PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==')
+  })
+
+  it('omits iconData when not present in methods entry', () => {
+    const uuid = 'no-icon-uuid'
+    writeFileSync(resolve(config.methodsDir, `${uuid}.template`), '{"name":"No Icon"}')
+    writeFileSync(config.methodsRegistry, JSON.stringify({
+      templates: [{
+        name: 'No Icon', filename: `methods/${uuid}`, iconCode: '\ue9d8',
+        landscape: false, categories: ['Grid'], rmMethodsId: uuid, origin: 'custom-methods',
+      }],
+    }))
+
+    const imported = importCustomMethodsEntries(config)
+    expect(imported).toBe(1)
+
+    const reg = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+    expect(reg.templates[0].iconData).toBeUndefined()
+  })
+
   it('handles landscape templates correctly (LS prefix)', () => {
     const uuid = 'landscape-uuid'
     writeFileSync(resolve(config.methodsDir, `${uuid}.template`), '{}')

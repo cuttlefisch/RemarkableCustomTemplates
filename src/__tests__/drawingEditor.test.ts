@@ -225,6 +225,28 @@ describe('SET_SCALING_MODE', () => {
     const hasExpressions = data.some(t => typeof t === 'string' && t.includes('drawnScale'))
     expect(hasExpressions).toBe(false)
   })
+
+  it('proportional mode updates dimensions (orientation change pattern)', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'SET_SCALING_MODE',
+      mode: { type: 'proportional', baseWidth: 1404, baseHeight: 1872 },
+    })
+    // Simulate what the orientation-change effect does: update dimensions
+    state = dispatch(state, {
+      type: 'SET_SCALING_MODE',
+      mode: { type: 'proportional', baseWidth: 1872, baseHeight: 1404 },
+    })
+    expect(state.scalingMode).toEqual({ type: 'proportional', baseWidth: 1872, baseHeight: 1404 })
+  })
+
+  it('fixed mode is idempotent when re-dispatched', () => {
+    let state = dispatch(initialDrawingEditorState, {
+      type: 'SET_SCALING_MODE',
+      mode: { type: 'fixed' },
+    })
+    state = dispatch(state, { type: 'SET_SCALING_MODE', mode: { type: 'fixed' } })
+    expect(state.scalingMode).toEqual({ type: 'fixed' })
+  })
 })
 
 // ─── CLEAR_COMMITTED ─────────────────────────────────────────────────────────

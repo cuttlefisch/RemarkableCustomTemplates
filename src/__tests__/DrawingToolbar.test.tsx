@@ -237,6 +237,36 @@ describe('DrawingToolbar', () => {
     expect(screen.queryByTitle('More tools')).toBeNull()
   })
 
+  it('all toolbar groups are always rendered in the DOM', () => {
+    const { container } = render(
+      <DrawingToolbar
+        state={initialDrawingEditorState}
+        dispatch={vi.fn()}
+        deviceId="rm"
+        orientation="portrait"
+        backgroundColor="#ffffff"
+        onBackgroundColorChange={vi.fn()}
+        foregroundColor="#000000"
+        onForegroundColorChange={vi.fn()}
+        onMove={vi.fn()}
+        onRotate={vi.fn()}
+        onFlip={vi.fn()}
+        canUndo={false}
+        canRedo={false}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+      />,
+    )
+    const groups = container.querySelectorAll('[data-toolbar-group]')
+    const groupIds = Array.from(groups).map(el => el.getAttribute('data-toolbar-group'))
+    expect(groupIds).toContain('undo-redo')
+    expect(groupIds).toContain('tools')
+    expect(groupIds).toContain('shape-options')
+    expect(groupIds).toContain('fill-stroke')
+    expect(groupIds).toContain('layer-transform')
+    expect(groupIds).toContain('zoom-scale')
+  })
+
   it('renders FG and BG color pickers in the fill-stroke group', () => {
     renderToolbar()
     expect(screen.getByTitle('Foreground color')).toBeDefined()

@@ -233,12 +233,13 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   useEffect(() => {
     if (!drawingMode || !template) return
     const builtins = deviceBuiltins(template.orientation, deviceId)
-    drawingDispatch({
-      type: 'SET_SCALING_MODE',
-      mode: { type: 'proportional', baseWidth: builtins.templateWidth, baseHeight: builtins.templateHeight },
-    })
+    const currentType = drawingState.scalingMode.type
+    const newMode: ScalingMode = currentType === 'fixed'
+      ? { type: 'fixed' }
+      : { type: 'proportional', baseWidth: builtins.templateWidth, baseHeight: builtins.templateHeight }
+    drawingDispatch({ type: 'SET_SCALING_MODE', mode: newMode })
     drawingDispatch({ type: 'ZOOM_TO_FIT' })
-  }, [drawingMode, deviceId, template?.orientation, drawingDispatch]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drawingMode, deviceId, template?.orientation, drawingState.scalingMode.type, drawingDispatch]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDrawingMove = useCallback((fromIndex: number, direction: 'up' | 'down' | 'top' | 'bottom') => {
     try {

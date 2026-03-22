@@ -437,7 +437,6 @@ export function DrawingToolbar({
 
   const hasOverflow = overflowIds.size > 0
   const overflowGroups = groups.filter(g => overflowIds.has(g.id))
-  const visibleGroups = groups.filter(g => !overflowIds.has(g.id))
 
   // Close overflow menu on Escape or click outside
   useEffect(() => {
@@ -472,15 +471,22 @@ export function DrawingToolbar({
         {statusMessage}
       </div>
 
-      {/* ── Visible groups ── */}
-      {visibleGroups.map((group, i) => (
-        <React.Fragment key={group.id}>
-          {i > 0 && <div className="drawing-toolbar-separator" />}
-          <div className="drawing-toolbar-group" data-toolbar-group={group.id}>
-            {group.render()}
-          </div>
-        </React.Fragment>
-      ))}
+      {/* ── All groups (hidden overflow groups stay in DOM for measurement) ── */}
+      {groups.map((group, i) => {
+        const isOverflow = overflowIds.has(group.id)
+        return (
+          <React.Fragment key={group.id}>
+            {i > 0 && !isOverflow && <div className="drawing-toolbar-separator" />}
+            <div
+              className="drawing-toolbar-group"
+              data-toolbar-group={group.id}
+              style={isOverflow ? { display: 'none' } : undefined}
+            >
+              {group.render()}
+            </div>
+          </React.Fragment>
+        )
+      })}
 
       {/* ── Overflow button + menu ── */}
       {hasOverflow && (
@@ -503,7 +509,7 @@ export function DrawingToolbar({
               {overflowGroups.map((group, i) => (
                 <React.Fragment key={group.id}>
                   {i > 0 && <div className="drawing-toolbar-separator drawing-toolbar-separator-h" />}
-                  <div className="drawing-toolbar-group" data-toolbar-group={group.id}>
+                  <div className="drawing-toolbar-group">
                     {group.render()}
                   </div>
                 </React.Fragment>
