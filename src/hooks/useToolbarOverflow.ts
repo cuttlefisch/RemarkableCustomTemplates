@@ -88,11 +88,12 @@ export function useToolbarOverflow(groups: ToolbarGroup[]) {
       requestAnimationFrame(recalculate)
     })
     observer.observe(container)
+    const rafId = requestAnimationFrame(recalculate)
 
-    // ResizeObserver fires immediately upon observe() for the initial size,
-    // so no need to call recalculate() synchronously here.
-
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(rafId)
+    }
   }, [recalculate])
 
   return { containerRef, overflowIds, recalculate }

@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All commands run from project root:
+All commands run from project root via `make`:
 
 ```bash
-pnpm test              # run all tests once (Vitest)
-pnpm test:watch        # watch mode
-pnpm test:coverage     # with v8 coverage
-pnpm dev               # Fastify server + Vite dev server (concurrently)
-pnpm server:dev        # Fastify server only (port 3001)
-pnpm build             # tsc + vite build (frontend)
-pnpm lint              # ESLint
-make pull-rm-methods   # pull rm_methods templates from device
-docker compose up      # run via Docker (port 3000)
+make help              # show all available targets
+make setup             # install Node.js, pnpm, and project dependencies
+make dev               # Fastify server + Vite dev server
+make test              # run all tests once (Vitest)
+make lint              # ESLint
+make build             # tsc + vite build (frontend)
+make docker-up         # build and start via Docker Compose (port 3000)
+make docker-down       # stop Docker containers
+make docker-logs       # follow Docker container logs
+make docker-clean      # stop and remove volumes (resets all data)
 ```
 
 Run a single test file:

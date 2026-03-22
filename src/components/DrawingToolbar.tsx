@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import type { DrawingEditorState, DrawingAction, DrawingTool, PointShape, BezierAlgorithm } from '../hooks/useDrawingEditor'
-import { DEVICES, type DeviceId } from '../lib/renderer'
+import { DEVICES, deviceBuiltins, type DeviceId } from '../lib/renderer'
 import { useToolbarOverflow, type ToolbarGroup } from '../hooks/useToolbarOverflow'
 import {
   SelectIcon, PointIcon, LineIcon, PolygonIcon, RegularPolygonIcon,
@@ -22,6 +22,7 @@ interface DrawingToolbarProps {
   state: DrawingEditorState
   dispatch: React.Dispatch<DrawingAction>
   deviceId: DeviceId
+  orientation: 'portrait' | 'landscape'
   backgroundColor: string
   onBackgroundColorChange: (color: string) => void
   foregroundColor: string
@@ -51,6 +52,7 @@ export function DrawingToolbar({
   state,
   dispatch,
   deviceId,
+  orientation,
   backgroundColor,
   onBackgroundColorChange,
   foregroundColor,
@@ -72,14 +74,15 @@ export function DrawingToolbar({
   const handleScalingChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value
     if (value === 'proportional') {
+      const builtins = deviceBuiltins(orientation, deviceId)
       dispatch({
         type: 'SET_SCALING_MODE',
-        mode: { type: 'proportional', baseWidth: device.portraitWidth, baseHeight: device.portraitHeight },
+        mode: { type: 'proportional', baseWidth: builtins.templateWidth, baseHeight: builtins.templateHeight },
       })
     } else {
       dispatch({ type: 'SET_SCALING_MODE', mode: { type: 'fixed' } })
     }
-  }, [dispatch, device.portraitWidth, device.portraitHeight])
+  }, [dispatch, orientation, deviceId])
 
   function announceToolChange(toolTitle: string) {
     setStatusMessage(`${toolTitle} tool selected`)

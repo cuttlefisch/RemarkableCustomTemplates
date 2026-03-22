@@ -229,15 +229,16 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     onPathEdit: handlePathEdit,
   })
 
-  // Sync drawing scaling mode with active device
+  // Sync drawing scaling mode with active device and orientation
   useEffect(() => {
-    if (!drawingMode) return
-    const device = DEVICES[deviceId]
+    if (!drawingMode || !template) return
+    const builtins = deviceBuiltins(template.orientation, deviceId)
     drawingDispatch({
       type: 'SET_SCALING_MODE',
-      mode: { type: 'proportional', baseWidth: device.portraitWidth, baseHeight: device.portraitHeight },
+      mode: { type: 'proportional', baseWidth: builtins.templateWidth, baseHeight: builtins.templateHeight },
     })
-  }, [drawingMode, deviceId, drawingDispatch])
+    drawingDispatch({ type: 'ZOOM_TO_FIT' })
+  }, [drawingMode, deviceId, template?.orientation, drawingDispatch]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDrawingMove = useCallback((fromIndex: number, direction: 'up' | 'down' | 'top' | 'bottom') => {
     try {
@@ -1223,6 +1224,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                   state={drawingState}
                   dispatch={drawingDispatch}
                   deviceId={deviceId}
+                  orientation={template.orientation}
                   backgroundColor={bgColor}
                   onBackgroundColorChange={handleBackgroundColorChange}
                   foregroundColor={fgColor}
