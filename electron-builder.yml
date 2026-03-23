@@ -5,6 +5,9 @@ directories:
   output: dist-electron-release
   buildResources: electron/build-resources
 
+# Skip native rebuild for cpu-features (optional ssh2 dep — pure JS fallback works)
+npmRebuild: false
+
 files:
   - dist-electron/**/*
   - dist/**/*
