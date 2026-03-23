@@ -9,6 +9,9 @@
  */
 
 import { app, BrowserWindow, Menu, shell, ipcMain, dialog } from 'electron'
+
+// Enable native Wayland support when available (avoids blurry XWayland rendering)
+app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createApp } from '../server/app.ts'
@@ -249,17 +252,20 @@ async function buildMenu(port: number): Promise<Electron.Menu> {
         { role: 'zoomOut' as const },
         { type: 'separator' as const },
         { role: 'togglefullscreen' as const },
-        ...(!isMac ? [{ type: 'separator' as const }, {
-          label: 'Toggle Menu Bar',
-          accelerator: 'Alt',
-          click: () => {
-            if (mainWindow) {
-              const current = mainWindow.isMenuBarVisible()
-              mainWindow.setAutoHideMenuBar(!current)
-              mainWindow.setMenuBarVisibility(current)
-            }
+        ...(!isMac ? [
+          { type: 'separator' as const },
+          {
+            label: 'Show Menu Bar',
+            type: 'checkbox' as const,
+            checked: true,
+            click: (menuItem: Electron.MenuItem) => {
+              if (mainWindow) {
+                mainWindow.setAutoHideMenuBar(!menuItem.checked)
+                mainWindow.setMenuBarVisibility(menuItem.checked)
+              }
+            },
           },
-        }] : []),
+        ] : []),
       ],
     },
     {
@@ -281,9 +287,9 @@ function createWindow(port: number) {
     width: 1400,
     height: 900,
     title: 'RM Custom Templates',
-    autoHideMenuBar: !isMac,
+    autoHideMenuBar: false,
     webPreferences: {
-      preload: join(__dirname, 'preload.mjs'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },

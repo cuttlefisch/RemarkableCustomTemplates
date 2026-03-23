@@ -46,15 +46,8 @@ export function NotebookPage() {
   }, [createDraft])
 
   const handleSelectNotebook = useCallback((id: string) => {
-    const notebook = allNotebooks.find(n => n.id === id)
-    if (notebook?.source === 'sample' || notebook?.source === 'debug') {
-      // Fork-on-edit: create a user copy and open it
-      const forked = forkDraft(id)
-      if (forked) setActiveNotebookId(forked.id)
-    } else {
-      setActiveNotebookId(id)
-    }
-  }, [allNotebooks, forkDraft])
+    setActiveNotebookId(id)
+  }, [])
 
   const handleBack = useCallback(() => {
     setActiveNotebookId(null)
@@ -120,10 +113,12 @@ export function NotebookPage() {
 
   if (activeNotebookId) {
     const draft = getDraft(activeNotebookId)
+    const isSystem = draft?.source === 'sample' || draft?.source === 'debug'
     return (
       <NotebookEditor
         key={activeNotebookId}
         draft={draft}
+        readOnly={isSystem}
         onBack={handleBack}
         onSave={updateDraft}
         onSwitchNotebook={setActiveNotebookId}
@@ -342,18 +337,20 @@ function DeployConfirmDialog({
 
 interface NotebookEditorProps {
   draft?: NotebookDraft
+  readOnly?: boolean
   onBack: () => void
   onSave: (draft: NotebookDraft) => void
   onSwitchNotebook: (id: string) => void
   onForkDraft: (id: string, customName?: string) => NotebookDraft | null
 }
 
-function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }: NotebookEditorProps) {
+function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onForkDraft }: NotebookEditorProps) {
   const { mergedRegistry, customRegistry } = useRegistryContext()
   const devicesState = useDevices()
   const { setBusy } = useBusy()
 
   const handleAutoSave = useCallback((editorState: NotebookEditorState) => {
+    if (readOnly) return // Don't auto-save system notebooks
     onSave({
       id: editorState.id,
       name: editorState.name,
@@ -363,7 +360,7 @@ function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }
       deployedUuid: editorState.deployedUuid,
       lastModified: Date.now(),
     })
-  }, [onSave])
+  }, [onSave, readOnly])
 
   const { state, dispatch } = useNotebookEditor(handleAutoSave)
 
@@ -743,60 +740,83 @@ function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }
         <button className="notebook-toolbar-back" onClick={onBack} title="Back to notebooks" disabled={deploying}>
           <BackIcon />
         </button>
-        <input
-          className="notebook-toolbar-name"
-          type="text"
-          placeholder="Notebook name (required)..."
-          value={state.name}
-          onChange={e => dispatch({ type: 'SET_NAME', name: e.target.value })}
-        />
-        <select
-          className="notebook-toolbar-device"
-          title="Target device — determines template dimensions"
-          value={state.deviceId}
-          onChange={e => {
-            const id = e.target.value as DeviceId
-            dispatch({ type: 'SET_DEVICE_ID', deviceId: id })
-            setPreferredDeviceType(id)
-          }}
-        >
-          {Object.entries(DEVICES).map(([id, spec]) => (
-            <option key={id} value={id}>
-              {spec.name}{id === getPreferredDeviceType() ? ' \u2605' : ''}
-            </option>
-          ))}
-        </select>
-        <select
-          className="notebook-toolbar-orientation"
-          title="Page orientation for this notebook"
-          value={state.orientation}
-          onChange={e => dispatch({ type: 'SET_ORIENTATION', orientation: e.target.value as 'portrait' | 'landscape' })}
-        >
-          <option value="portrait">Portrait</option>
-          <option value="landscape">Landscape</option>
-        </select>
-        <button
-          className="notebook-toolbar-btn primary"
-          onClick={handleExport}
-          disabled={exporting || deploying || !canExport}
-          title="Export notebook as ZIP"
-        >
-          <ExportIcon />
-          {exporting ? 'Exporting...' : 'Export ZIP'}
-        </button>
-        <DeviceSelector devicesState={devicesState} />
-        <button
-          className="notebook-toolbar-btn"
-          onClick={handleDeploy}
-          disabled={deploying || exporting || !canExport || !devicesState.activeDeviceId}
-          title={devicesState.activeDeviceId ? `Deploy to ${devicesState.activeDevice?.nickname ?? 'device'}` : 'No device configured'}
-        >
-          <DeployIcon />
-          {deploying ? 'Deploying...' : 'Deploy'} <span className="beta-badge">Beta</span>
-        </button>
-        <span className="notebook-toolbar-page-count">
-          {totalPages} page{totalPages !== 1 ? 's' : ''}
-        </span>
+        {readOnly ? (
+          <>
+            <span className="notebook-toolbar-name-readonly">{state.name}</span>
+            <span className="notebook-system-badge">{draft?.source === 'sample' ? 'Sample' : 'Debug'}</span>
+            <button
+              className="notebook-toolbar-btn primary"
+              onClick={() => {
+                const forked = onForkDraft(state.id)
+                if (forked) onSwitchNotebook(forked.id)
+              }}
+              title="Create an editable copy of this notebook"
+            >
+              <ForkIcon />
+              Copy to Edit
+            </button>
+            <span className="notebook-toolbar-page-count">
+              {totalPages} page{totalPages !== 1 ? 's' : ''}
+            </span>
+          </>
+        ) : (
+          <>
+            <input
+              className="notebook-toolbar-name"
+              type="text"
+              placeholder="Notebook name (required)..."
+              value={state.name}
+              onChange={e => dispatch({ type: 'SET_NAME', name: e.target.value })}
+            />
+            <select
+              className="notebook-toolbar-device"
+              title="Target device — determines template dimensions"
+              value={state.deviceId}
+              onChange={e => {
+                const id = e.target.value as DeviceId
+                dispatch({ type: 'SET_DEVICE_ID', deviceId: id })
+                setPreferredDeviceType(id)
+              }}
+            >
+              {Object.entries(DEVICES).map(([id, spec]) => (
+                <option key={id} value={id}>
+                  {spec.name}{id === getPreferredDeviceType() ? ' \u2605' : ''}
+                </option>
+              ))}
+            </select>
+            <select
+              className="notebook-toolbar-orientation"
+              title="Page orientation for this notebook"
+              value={state.orientation}
+              onChange={e => dispatch({ type: 'SET_ORIENTATION', orientation: e.target.value as 'portrait' | 'landscape' })}
+            >
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+            <button
+              className="notebook-toolbar-btn primary"
+              onClick={handleExport}
+              disabled={exporting || deploying || !canExport}
+              title="Export notebook as ZIP"
+            >
+              <ExportIcon />
+              {exporting ? 'Exporting...' : 'Export ZIP'}
+            </button>
+            <DeviceSelector devicesState={devicesState} />
+            <button
+              className="notebook-toolbar-btn"
+              onClick={handleDeploy}
+              disabled={deploying || exporting || !canExport || !devicesState.activeDeviceId}
+              title={devicesState.activeDeviceId ? `Deploy to ${devicesState.activeDevice?.nickname ?? 'device'}` : 'No device configured'}
+            >
+              <DeployIcon />
+              {deploying ? 'Deploying...' : 'Deploy'} <span className="beta-badge">Beta</span>
+            </button>
+            <span className="notebook-toolbar-page-count">
+              {totalPages} page{totalPages !== 1 ? 's' : ''}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Progress bar for deploy operations */}
@@ -821,56 +841,60 @@ function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }
 
       {/* Three-panel layout */}
       <div className="notebook-panels">
-        {/* Left: Template picker */}
-        <div className="notebook-picker" style={{ width: pickerWidth }}>
-          <div className="notebook-picker-header">Templates</div>
-          <div className="notebook-picker-search-wrap">
-            <SearchIcon />
-            <input
-              className="notebook-picker-search"
-              type="text"
-              placeholder="Search templates..."
-              value={searchFilter}
-              onChange={e => setSearchFilter(e.target.value)}
-            />
-          </div>
-          {allCategories.length > 0 && (
-            <div className="notebook-picker-categories">
-              {allCategories.map(cat => (
-                <button
-                  key={cat}
-                  className={`notebook-picker-cat-chip${categoryFilter === cat ? ' active' : ''}`}
-                  onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-                >
-                  {cat}
-                </button>
-              ))}
-              {categoryFilter && (
-                <button
-                  className="notebook-picker-cat-chip clear"
-                  onClick={() => setCategoryFilter(null)}
-                >
-                  Clear
-                </button>
+        {/* Left: Template picker (hidden in read-only mode) */}
+        {!readOnly && (
+          <>
+            <div className="notebook-picker" style={{ width: pickerWidth }}>
+              <div className="notebook-picker-header">Templates</div>
+              <div className="notebook-picker-search-wrap">
+                <SearchIcon />
+                <input
+                  className="notebook-picker-search"
+                  type="text"
+                  placeholder="Search templates..."
+                  value={searchFilter}
+                  onChange={e => setSearchFilter(e.target.value)}
+                />
+              </div>
+              {allCategories.length > 0 && (
+                <div className="notebook-picker-categories">
+                  {allCategories.map(cat => (
+                    <button
+                      key={cat}
+                      className={`notebook-picker-cat-chip${categoryFilter === cat ? ' active' : ''}`}
+                      onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                  {categoryFilter && (
+                    <button
+                      className="notebook-picker-cat-chip clear"
+                      onClick={() => setCategoryFilter(null)}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               )}
+              <div className="notebook-picker-list">
+                {filteredTemplates.map(entry => (
+                  <button
+                    key={entry.filename}
+                    className="notebook-picker-item"
+                    onClick={() => handleAddTemplate(entry)}
+                    title={`Add "${entry.name}" to notebook`}
+                  >
+                    <TemplateThumbnail iconData={entry.iconData} landscape={entry.landscape} />
+                    <span className="notebook-picker-item-name">{entry.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-          <div className="notebook-picker-list">
-            {filteredTemplates.map(entry => (
-              <button
-                key={entry.filename}
-                className="notebook-picker-item"
-                onClick={() => handleAddTemplate(entry)}
-                title={`Add "${entry.name}" to notebook`}
-              >
-                <TemplateThumbnail iconData={entry.iconData} landscape={entry.landscape} />
-                <span className="notebook-picker-item-name">{entry.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
-        <ResizeDivider onResize={delta => setPickerWidth(w => Math.max(180, Math.min(400, w + delta)))} />
+            <ResizeDivider onResize={delta => setPickerWidth(w => Math.max(180, Math.min(400, w + delta)))} />
+          </>
+        )}
 
         {/* Center: Page groups */}
         <div className="notebook-groups">
@@ -887,45 +911,51 @@ function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }
               state.pageGroups.map((group, index) => (
                 <div
                   key={group.id}
-                  className={`notebook-group-card${state.selectedGroupIndex === index ? ' selected' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
+                  className={`notebook-group-card${state.selectedGroupIndex === index ? ' selected' : ''}${!readOnly && dragOverIndex === index ? ' drag-over' : ''}`}
                   onClick={() => dispatch({ type: 'SELECT_GROUP', index })}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={e => handleDragOver(e, index)}
-                  onDrop={() => handleDrop(index)}
-                  onDragEnd={handleDragEnd}
+                  draggable={!readOnly}
+                  onDragStart={readOnly ? undefined : () => handleDragStart(index)}
+                  onDragOver={readOnly ? undefined : e => handleDragOver(e, index)}
+                  onDrop={readOnly ? undefined : () => handleDrop(index)}
+                  onDragEnd={readOnly ? undefined : handleDragEnd}
                 >
-                  <span className="notebook-group-drag-handle" title="Drag to reorder"><GripIcon /></span>
+                  {!readOnly && <span className="notebook-group-drag-handle" title="Drag to reorder"><GripIcon /></span>}
                   <TemplateThumbnail iconData={group.iconData} />
                   <div className="notebook-group-info">
                     <div className="notebook-group-name">{group.templateName}</div>
                     <div className="notebook-group-ref">{group.templateRef}</div>
                   </div>
                   <div className="notebook-group-count">
-                    <input
-                      type="number"
-                      min={1}
-                      max={500}
-                      value={group.count}
-                      onClick={e => e.stopPropagation()}
-                      onChange={e => dispatch({
-                        type: 'SET_GROUP_COUNT',
-                        index,
-                        count: parseInt(e.target.value, 10) || 1,
-                      })}
-                    />
+                    {readOnly ? (
+                      <span>{group.count}</span>
+                    ) : (
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={group.count}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => dispatch({
+                          type: 'SET_GROUP_COUNT',
+                          index,
+                          count: parseInt(e.target.value, 10) || 1,
+                        })}
+                      />
+                    )}
                     <span className="notebook-group-count-label">pages</span>
                   </div>
-                  <button
-                    className="notebook-group-delete"
-                    title="Remove group"
-                    onClick={e => {
-                      e.stopPropagation()
-                      dispatch({ type: 'REMOVE_GROUP', index })
-                    }}
-                  >
-                    <TrashIcon />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      className="notebook-group-delete"
+                      title="Remove group"
+                      onClick={e => {
+                        e.stopPropagation()
+                        dispatch({ type: 'REMOVE_GROUP', index })
+                      }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  )}
                 </div>
               ))
             )}

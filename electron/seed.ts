@@ -1,7 +1,8 @@
 /**
- * First-run data directory seeding for Electron.
- * Creates the expected directory structure and copies bundled templates
- * from extraResources if they don't already exist. Idempotent.
+ * Data directory seeding for Electron.
+ * Creates the expected directory structure and syncs bundled system templates
+ * (debug + samples) from extraResources on every launch so they stay current.
+ * User data (custom/, methods/, notebooks, device config) is never touched.
  */
 
 import { existsSync, mkdirSync, cpSync } from 'node:fs'
@@ -19,26 +20,24 @@ const DATA_DIRS = [
   'data/backups',
 ]
 
+/** Directories containing system templates that should always match the bundled version. */
+const SYSTEM_TEMPLATE_DIRS = [
+  { src: 'templates/debug', dest: 'public/templates/debug' },
+  { src: 'templates/samples', dest: 'public/templates/samples' },
+]
+
 export function seedDataDir(dataDir: string, resourcesPath: string): void {
+  // Ensure all data directories exist
   for (const dir of DATA_DIRS) {
     mkdirSync(join(dataDir, dir), { recursive: true })
   }
 
-  // Seed debug templates if not present
-  const debugRegistry = join(dataDir, 'public/templates/debug/debug-registry.json')
-  if (!existsSync(debugRegistry)) {
-    const src = join(resourcesPath, 'templates/debug')
-    if (existsSync(src)) {
-      cpSync(src, join(dataDir, 'public/templates/debug'), { recursive: true })
-    }
-  }
-
-  // Seed sample templates if not present
-  const samplesRegistry = join(dataDir, 'public/templates/samples/samples-registry.json')
-  if (!existsSync(samplesRegistry)) {
-    const src = join(resourcesPath, 'templates/samples')
-    if (existsSync(src)) {
-      cpSync(src, join(dataDir, 'public/templates/samples'), { recursive: true })
+  // Always sync system template directories from bundled resources.
+  // These are read-only system templates that should match the current app version.
+  for (const { src, dest } of SYSTEM_TEMPLATE_DIRS) {
+    const srcPath = join(resourcesPath, src)
+    if (existsSync(srcPath)) {
+      cpSync(srcPath, join(dataDir, dest), { recursive: true, force: true })
     }
   }
 }

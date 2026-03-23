@@ -919,6 +919,19 @@
   flex-shrink: 0;
 }
 
+/* ── Read-only toolbar name ── */
+
+.notebook-toolbar-name-readonly {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 6px 0;
+}
+
+.notebook-toolbar .notebook-system-badge {
+  position: static;
+}
+
 /* ── Bulk Selection ── */
 
 .notebook-card-bulk-checkbox {
