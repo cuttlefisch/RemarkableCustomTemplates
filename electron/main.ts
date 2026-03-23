@@ -281,8 +281,6 @@ async function buildMenu(port: number): Promise<Electron.Menu> {
 }
 
 function createWindow(port: number) {
-  const isMac = process.platform === 'darwin'
-
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
