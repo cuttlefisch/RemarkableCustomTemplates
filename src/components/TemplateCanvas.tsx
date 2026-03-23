@@ -43,17 +43,20 @@ interface TemplateCanvasProps {
   children?: ReactNode
   /** Optional wheel handler (for zoom). */
   onWheel?: (e: React.WheelEvent<SVGSVGElement>) => void
+  /** Clip rendered content to device bounds. Default true. Set false in drawing mode. */
+  clipToDevice?: boolean
 }
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export const TemplateCanvas = memo(forwardRef<SVGSVGElement, TemplateCanvasProps>(
-  function TemplateCanvas({ template, className, deviceId = 'rm', viewBox: viewBoxOverride, children, onWheel }, ref): ReactElement {
+  function TemplateCanvas({ template, className, deviceId = 'rm', viewBox: viewBoxOverride, children, onWheel, clipToDevice = true }, ref): ReactElement {
     const builtins = deviceBuiltins(template.orientation, deviceId)
     const constants = resolveConstants(template.constants, builtins)
     const { templateWidth, templateHeight } = builtins
     const isDark = template.categories.includes('Dark')
     const colorConstants = extractColorConstants(template.constants)
+    const clipId = clipToDevice ? 'device-clip' : undefined
 
     return (
       <svg
@@ -65,10 +68,19 @@ export const TemplateCanvas = memo(forwardRef<SVGSVGElement, TemplateCanvasProps
         style={viewBoxOverride ? undefined : { aspectRatio: `${templateWidth} / ${templateHeight}` }}
         onWheel={onWheel}
       >
+        {clipId && (
+          <defs>
+            <clipPath id={clipId}>
+              <rect width={templateWidth} height={templateHeight} />
+            </clipPath>
+          </defs>
+        )}
         <rect width={templateWidth} height={templateHeight} fill={colorConstants['background'] ?? (isDark ? '#000000' : '#ffffff')} />
-        {template.items.map((item, i) => (
-          <ItemView key={item.id ?? i} item={item} constants={constants} colorConstants={colorConstants} />
-        ))}
+        <g clipPath={clipId ? `url(#${clipId})` : undefined}>
+          {template.items.map((item, i) => (
+            <ItemView key={item.id ?? i} item={item} constants={constants} colorConstants={colorConstants} />
+          ))}
+        </g>
         {children}
       </svg>
     )

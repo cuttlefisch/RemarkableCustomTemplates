@@ -87,7 +87,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
               try {
                 await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(devicePaths.originalBackup, `${uuid}${ext}`))
               } catch (err) {
-                console.warn(`[deploy] Skipping original ${uuid}${ext}: ${err instanceof Error ? err.message : String(err)}`)
+                request.log.warn(`[deploy] Skipping original ${uuid}${ext}: ${err instanceof Error ? err.message : String(err)}`)
               }
               origCount++
               stream.progress('Capturing original device state', origCount, totalOrigFiles)
@@ -124,7 +124,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
             try {
               await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}${ext}`, resolve(backupDir, `${uuid}${ext}`))
             } catch (err) {
-              console.warn(`[deploy] Skipping backup ${uuid}${ext}: ${err instanceof Error ? err.message : String(err)}`)
+              request.log.warn(`[deploy] Skipping backup ${uuid}${ext}: ${err instanceof Error ? err.message : String(err)}`)
             }
             backupCount++
             stream.progress('Backing up current deployment', backupCount, totalBackupFiles)
@@ -198,7 +198,7 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
                 steps.push(`Cleaned up ${removed} stale methods entries`)
               }
             } catch (err) {
-              console.warn(`[deploy] Failed to clean methods-registry.json: ${err instanceof Error ? err.message : String(err)}`)
+              request.log.warn(`[deploy] Failed to clean methods-registry.json: ${err instanceof Error ? err.message : String(err)}`)
             }
           }
           for (const uuid of orphans) {

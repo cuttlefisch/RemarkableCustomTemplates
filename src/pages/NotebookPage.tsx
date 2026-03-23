@@ -39,9 +39,12 @@ export function NotebookPage() {
 
   const handleDeleteDraft = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation()
+    const draft = getDraft(id)
+    const name = draft?.name || 'Untitled'
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
     removeDraft(id)
     if (activeNotebookId === id) setActiveNotebookId(null)
-  }, [removeDraft, activeNotebookId])
+  }, [removeDraft, activeNotebookId, getDraft])
 
   const handleForkDraft = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -82,25 +85,26 @@ export function NotebookPage() {
               className="notebook-list-card"
               onClick={() => handleSelectNotebook(draft.id)}
             >
-              {draft.pageGroups.length > 0 ? (
-                <NotebookPageStrip
-                  pageGroups={draft.pageGroups}
-                  orientation="vertical"
-                  maxPages={4}
-                />
-              ) : (
-                <div className="notebook-list-card-icon"><NotebookIcon /></div>
-              )}
-              <div className="notebook-list-card-name">
-                {draft.name || 'Untitled'}
+              <div className="notebook-list-card-preview">
+                {draft.pageGroups.length > 0 ? (
+                  <NotebookPageStrip
+                    pageGroups={draft.pageGroups}
+                    maxPages={4}
+                    variant="stack"
+                  />
+                ) : (
+                  <div className="notebook-list-card-icon"><NotebookIcon /></div>
+                )}
               </div>
-              <div className="notebook-list-card-meta">
-                {draft.pageGroups.length} group{draft.pageGroups.length !== 1 ? 's' : ''}
-                {' \u00b7 '}
-                {totalPages} page{totalPages !== 1 ? 's' : ''}
-              </div>
-              <div className="notebook-list-card-date">
-                {new Date(draft.lastModified).toLocaleDateString()}
+              <div className="notebook-list-card-footer">
+                <div className="notebook-list-card-name">
+                  {draft.name || 'Untitled'}
+                </div>
+                <div className="notebook-list-card-chips">
+                  <span className="notebook-list-chip">{totalPages} pg</span>
+                  <span className="notebook-list-chip">{draft.pageGroups.length} grp</span>
+                  <span className="notebook-list-chip">{new Date(draft.lastModified).toLocaleDateString()}</span>
+                </div>
               </div>
               <div className="notebook-list-card-actions">
                 <span
@@ -605,12 +609,13 @@ function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }
         <input
           className="notebook-toolbar-name"
           type="text"
-          placeholder="Notebook name..."
+          placeholder="Notebook name (required)..."
           value={state.name}
           onChange={e => dispatch({ type: 'SET_NAME', name: e.target.value })}
         />
         <select
           className="notebook-toolbar-device"
+          title="Target device — determines template dimensions"
           value={state.deviceId}
           onChange={e => {
             const id = e.target.value as DeviceId
@@ -626,6 +631,7 @@ function NotebookEditor({ draft, onBack, onSave, onSwitchNotebook, onForkDraft }
         </select>
         <select
           className="notebook-toolbar-orientation"
+          title="Page orientation for this notebook"
           value={state.orientation}
           onChange={e => dispatch({ type: 'SET_ORIENTATION', orientation: e.target.value as 'portrait' | 'landscape' })}
         >

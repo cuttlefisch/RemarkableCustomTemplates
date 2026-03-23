@@ -29,8 +29,8 @@ export function DeviceSelector({ devicesState, className }: Props) {
   if (devices.length === 1) {
     return (
       <span className={`device-selector-inline ${className ?? ''}`}>
-        <span className="device-selector-single" title={activeDevice?.deviceIp}>
-          {activeDevice?.nickname ?? 'Device'}
+        <span className="device-selector-single" title={`Deploy target: ${activeDevice?.nickname ?? 'Device'} (${activeDevice?.deviceIp ?? ''})`}>
+          <span className="device-selector-label">Deploy to: </span>{activeDevice?.nickname ?? 'Device'}
         </span>
       </span>
     )

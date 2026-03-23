@@ -50,8 +50,14 @@ interface TemplatesPageProps {
   setDeviceId: (id: DeviceId) => void
 }
 
+/** Check if a template entry is custom (flag OR filename prefix). */
+function isCustomEntry(entry: TemplateRegistryEntry | null | undefined): boolean {
+  if (!entry) return false
+  return entry.isCustom === true || entry.filename.startsWith('custom/')
+}
+
 export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
-  const { registry, setCustomRegistry, loadingRegistry, officialTemplatesAvailable, mergedRegistry, existingCustomNames, refreshRegistry } = useRegistryContext()
+  const { registry, customRegistry, setCustomRegistry, loadingRegistry, officialTemplatesAvailable, mergedRegistry, existingCustomNames, refreshRegistry } = useRegistryContext()
   const devicesState = useDevices()
 
   const [selected, setSelected] = useState<TemplateRegistryEntry | null>(null)
@@ -133,6 +139,78 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   }, [])
 
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  // Bulk selection — checkboxes always visible, bar appears when items checked
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set())
+
+  const toggleBulkItem = useCallback((filename: string) => {
+    setBulkSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(filename)) next.delete(filename)
+      else next.add(filename)
+      return next
+    })
+  }, [])
+
+  async function handleBulkDelete() {
+    if (bulkSelected.size === 0) return
+    const allEntries = mergedRegistry?.templates ?? []
+    const customFilenames: string[] = []
+    const sampleFilenames: string[] = []
+    for (const fn of bulkSelected) {
+      const entry = allEntries.find(e => e.filename === fn)
+      if (entry?.isCustom || fn.startsWith('custom/')) {
+        customFilenames.push(fn)
+      } else if (entry?.categories.includes('Samples')) {
+        sampleFilenames.push(fn)
+      }
+    }
+    if (customFilenames.length === 0 && sampleFilenames.length === 0) {
+      setError('No deletable templates selected — only custom and sample templates can be removed')
+      return
+    }
+    const parts: string[] = []
+    if (customFilenames.length > 0) parts.push(`delete ${customFilenames.length} custom template${customFilenames.length > 1 ? 's' : ''}`)
+    if (sampleFilenames.length > 0) parts.push(`hide ${sampleFilenames.length} sample template${sampleFilenames.length > 1 ? 's' : ''}`)
+    if (!confirm(`${parts.join(' and ')}? This cannot be undone.`)) return
+    // Delete custom templates
+    for (const filename of customFilenames) {
+      const slug = filename.replace(/^custom\//, '')
+      try {
+        const res = await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({})) as { error?: string }
+          throw new Error(data.error || `Server error: ${res.status}`)
+        }
+        setCustomRegistry(prev => ({ templates: prev.templates.filter(t => t.filename !== filename) }))
+      } catch (e) {
+        setError(`Failed to delete "${slug}": ${e instanceof Error ? e.message : String(e)}`)
+        break
+      }
+    }
+    // Hide sample templates
+    for (const filename of sampleFilenames) {
+      try {
+        const res = await fetch('/api/sample-templates/hide', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        })
+        if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      } catch (e) {
+        setError(`Failed to hide sample: ${e instanceof Error ? e.message : String(e)}`)
+        break
+      }
+    }
+    const allAffected = [...customFilenames, ...sampleFilenames]
+    setBulkSelected(new Set())
+    refreshRegistry()
+    if (selected && allAffected.includes(selected.filename)) {
+      setSelected(null)
+      setTemplate(null)
+      setEditorOpen(false)
+    }
+  }
 
   // Drawing editor state
   const [drawingMode, setDrawingMode] = useState(false)
@@ -636,7 +714,9 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   // Derived: all unique categories from merged registry
   const allCategories = useMemo(() =>
     mergedRegistry
-      ? [...new Set(mergedRegistry.templates.flatMap(t => t.categories))].sort()
+      ? [...new Set(mergedRegistry.templates.flatMap(t => t.categories))]
+          .filter(cat => cat !== 'Samples' && cat !== 'Debug')
+          .sort()
       : [],
     [mergedRegistry],
   )
@@ -750,18 +830,93 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   }
 
   async function handleDelete() {
-    if (!selected?.isCustom) return
-    const slug = selected.filename.replace(/^custom\//, '')
+    if (!selected || !isCustomEntry(selected)) return
+    await deleteEntry(selected)
+  }
+
+  async function deleteEntry(entry: TemplateRegistryEntry) {
+    if (!isCustomEntry(entry)) {
+      setError(`Cannot delete "${entry.name}" — only custom templates can be deleted`)
+      return
+    }
+    const slug = entry.filename.replace(/^custom\//, '')
     try {
       const res = await fetch(`/api/custom-templates/${encodeURIComponent(slug)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(`Server error: ${res.status}`)
-      setCustomRegistry(prev => removeEntry(prev, selected.filename))
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(data.error || `Server error: ${res.status}`)
+      }
+      setCustomRegistry(prev => removeEntry(prev, entry.filename))
       refreshRegistry()
-      setSelected(null)
-      setTemplate(null)
-      setEditorOpen(false)
+      if (selected?.filename === entry.filename) {
+        setSelected(null)
+        setTemplate(null)
+        setEditorOpen(false)
+      }
     } catch (e) {
       setError(`Failed to delete: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const [copying, setCopying] = useState(false)
+  const copyingRef = useRef(false)
+
+  async function handleCopy(entry: TemplateRegistryEntry) {
+    // Synchronous ref guard — React batches setState so disabled may lag
+    if (copyingRef.current) return
+    copyingRef.current = true
+    setCopying(true)
+    try {
+      const encodedPath = entry.filename
+        .split('/')
+        .map(seg => encodeURIComponent(seg))
+        .join('/')
+      const fetchUrl = `/templates/${encodedPath}.template`
+      const res = await fetch(fetchUrl)
+      if (!res.ok) throw new Error(`Template file not found (${fetchUrl} returned ${res.status})`)
+      const parsed = await res.json() as Record<string, unknown>
+      const baseSlug = entry.filename.replace(/^(custom|debug|samples)\//, '')
+      // Generate unique name + filename to avoid duplicates when mashing Copy
+      const allFilenames = new Set((mergedRegistry?.templates ?? []).map(t => t.filename))
+      // Also check custom registry directly (may not be merged yet after rapid copies)
+      for (const t of customRegistry.templates) allFilenames.add(t.filename)
+      let suffix = ''
+      let n = 0
+      while (allFilenames.has(`custom/${baseSlug}-copy${suffix}`)) {
+        n++
+        suffix = `-${n}`
+      }
+      const newFilename = `${baseSlug}-copy${suffix}`
+      const newName = n === 0 ? `${entry.name} (Copy)` : `${entry.name} (Copy ${n + 1})`
+      parsed.name = newName
+
+      const saveRes = await fetch('/api/custom-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: newFilename, content: JSON.stringify(parsed, null, 2), entry: { name: newName, filename: `custom/${newFilename}`, iconCode: entry.iconCode, landscape: entry.landscape, categories: entry.categories.filter(c => c !== 'Samples' && c !== 'Debug'), isCustom: true } }),
+      })
+      if (!saveRes.ok) throw new Error(`Server error: ${saveRes.status}`)
+      const data = await saveRes.json() as { iconData?: string }
+      const newEntry: TemplateRegistryEntry = {
+        name: newName,
+        filename: `custom/${newFilename}`,
+        iconCode: entry.iconCode,
+        landscape: entry.landscape,
+        categories: entry.categories.filter(c => c !== 'Samples' && c !== 'Debug'),
+        isCustom: true,
+        ...(data.iconData ? { iconData: data.iconData } : {}),
+      }
+      setCustomRegistry(prev => ({ templates: [newEntry, ...prev.templates] }))
+      refreshRegistry()
+      setSelected(newEntry)
+    } catch (e) {
+      setError(`Failed to copy: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      // Brief cooldown prevents rapid sequential copies when mashing the button
+      setTimeout(() => {
+        copyingRef.current = false
+        setCopying(false)
+      }, 400)
     }
   }
 
@@ -794,7 +949,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       // Ensure the template has an rmMethodsId by triggering the export-by-name endpoint
       const uuid = selected.rmMethodsId
       if (!uuid) {
-        const slug = selected.filename.replace(/^(custom|debug)\//, '')
+        const slug = selected.filename.replace(/^(custom|debug|samples)\//, '')
         const assignRes = await fetch(`/api/export-template-by-name/${encodeURIComponent(slug)}`)
         if (!assignRes.ok) {
           const err = await assignRes.json().catch(() => ({ error: 'Failed to prepare template' })) as { error?: string }
@@ -915,23 +1070,6 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
     }
   }
 
-  async function handleHideSample(filename: string) {
-    try {
-      const res = await fetch('/api/sample-templates/hide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename }),
-      })
-      if (!res.ok) throw new Error(`Server error: ${res.status}`)
-      refreshRegistry()
-      if (selected?.filename === filename) {
-        setSelected(null)
-        setTemplate(null)
-      }
-    } catch (e) {
-      setSidebarError(`Failed to hide: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
 
   const anyFilterActive = !!(searchQuery || filterCategory || filterOrientation !== 'all' || filterSource)
 
@@ -955,6 +1093,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
           </button>
         </div>
 
+        <div className="sidebar-body">
         <div className="device-selector">
           {deviceGroups.map(group => (
             <div key={group.label} className="device-group">
@@ -1125,23 +1264,36 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             filteredTemplates.map(entry => (
               <div
                 key={`${entry.filename}::${entry.landscape ?? false}`}
-                className={`template-btn${selected?.filename === entry.filename && selected?.landscape === entry.landscape ? ' selected' : ''}`}
+                className={`template-btn${selected?.filename === entry.filename && selected?.landscape === entry.landscape ? ' selected' : ''}${bulkSelected.has(entry.filename) ? ' bulk-checked' : ''}`}
                 onClick={() => setSelected(entry)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(entry) }}
               >
+                <input
+                  type="checkbox"
+                  className="bulk-checkbox"
+                  checked={bulkSelected.has(entry.filename)}
+                  onChange={() => toggleBulkItem(entry.filename)}
+                  onClick={e => e.stopPropagation()}
+                />
                 <TemplateThumbnail iconData={entry.iconData} landscape={entry.landscape} />
                 <span className="template-btn-name">{entry.name}</span>
                 <span className="template-btn-right">
-                  {entry.categories.includes('Samples') && !entry.isCustom && (
-                    <button
-                      className="sample-hide-btn"
-                      title="Hide this sample"
-                      onClick={e => { e.stopPropagation(); handleHideSample(entry.filename) }}
-                    >
-                      ×
-                    </button>
+                  {entry.isCustom && (
+                    <>
+                      <button
+                        className="template-action-btn"
+                        title="Duplicate template"
+                        disabled={copying}
+                        onClick={e => { e.stopPropagation(); handleCopy(entry) }}
+                      >{copying ? '…' : '⧉'}</button>
+                      <button
+                        className="template-action-btn template-action-delete"
+                        title="Delete template"
+                        onClick={e => { e.stopPropagation(); if (confirm(`Delete "${entry.name}"?`)) deleteEntry(entry) }}
+                      >×</button>
+                    </>
                   )}
                   <span
                     className={`orient-badge ${entry.isCustom ? 'custom' : (entry.landscape ? 'ls' : 'p')}`}
@@ -1165,7 +1317,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                 return (
                   <div
                     key={`${entry.filename}::${entry.landscape ?? false}`}
-                    className={`template-card${isSelected ? ' selected' : ''}`}
+                    className={`template-card${isSelected ? ' selected' : ''}${bulkSelected.has(entry.filename) ? ' bulk-checked' : ''}`}
                     onClick={() => setSelected(entry)}
                     role="button"
                     tabIndex={0}
@@ -1173,6 +1325,13 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                     title={cardColumns >= 2 ? tooltipText : undefined}
                   >
                     <div className="card-thumb-wrapper">
+                      <input
+                        type="checkbox"
+                        className="bulk-checkbox card-bulk-checkbox"
+                        checked={bulkSelected.has(entry.filename)}
+                        onChange={() => toggleBulkItem(entry.filename)}
+                        onClick={e => e.stopPropagation()}
+                      />
                       <TemplateThumbnail iconData={entry.iconData} landscape={entry.landscape} className="card-thumb" />
                       {cardColumns <= 2 && (
                         <div className="card-badges">
@@ -1194,6 +1353,24 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
             </div>
           )}
         </div>
+        </div>{/* .sidebar-body */}
+        {bulkSelected.size > 0 && (
+          <div className="sidebar-bulk-bar">
+            <span className="sidebar-bulk-count">{bulkSelected.size} selected</span>
+            <button
+              className="sidebar-bulk-delete-btn"
+              onClick={handleBulkDelete}
+            >
+              Delete
+            </button>
+            <button
+              className="sidebar-bulk-clear-btn"
+              onClick={() => setBulkSelected(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </aside>
 
       {!sidebarCollapsed && <ResizeDivider onResize={handleSidebarResize} />}
@@ -1245,7 +1422,13 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                   >
                     {editorOpen ? 'Close Editor' : 'Edit JSON'}
                   </button>
-                  {(selected?.isCustom || selected?.origin === 'custom-methods') && (
+                  <button
+                    className="edit-json-btn"
+                    disabled={copying}
+                    onClick={() => handleCopy(selected)}
+                    title="Duplicate as custom template"
+                  >{copying ? 'Copying…' : 'Copy'}</button>
+                  {(selected?.isCustom || selected?.origin === 'custom-methods' || selected?.categories.includes('Samples')) && (
                     <>
                       <DeviceSelector devicesState={devicesState} className="preview-device-selector" />
                       <button
@@ -1257,6 +1440,13 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                         {deployingTemplate ? 'Deploying...' : 'Deploy'}
                       </button>
                     </>
+                  )}
+                  {selected?.isCustom && (
+                    <button
+                      className="edit-json-btn edit-json-btn-danger"
+                      onClick={() => { if (confirm(`Delete "${selected.name}"?`)) handleDelete() }}
+                      title="Delete this template"
+                    >Delete</button>
                   )}
                 </div>
               </div>
@@ -1383,6 +1573,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
                       template={template}
                       deviceId={deviceId}
                       className={drawingMode ? 'drawing-mode' : ''}
+                      clipToDevice={!drawingMode}
                       zoom={drawingMode ? drawingState.zoom : undefined}
                       pan={drawingMode ? drawingState.panOffset : undefined}
                       onViewportChange={drawingMode

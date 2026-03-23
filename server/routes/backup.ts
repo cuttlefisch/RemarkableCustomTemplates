@@ -14,7 +14,7 @@ import { parseRegistry } from '../../src/lib/registry.ts'
 
 export default function backupRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/backup
-  app.get('/api/backup', async (_request, reply) => {
+  app.get('/api/backup', async (request, reply) => {
     let customReg: { templates: unknown[] } = { templates: [] }
     let debugReg: { templates: unknown[] } = { templates: [] }
     try { customReg = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as typeof customReg } catch { /* empty */ }
@@ -39,7 +39,7 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
             const parsed = JSON.parse(raw)
             fileMap[`custom/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
           } catch (err) {
-            console.warn(`[backup] Skipping broken custom template "${file}": ${err instanceof Error ? err.message : String(err)}`)
+            request.log.warn(`[backup] Skipping broken custom template "${file}": ${err instanceof Error ? err.message : String(err)}`)
           }
         }
       }
@@ -53,7 +53,7 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
             const parsed = JSON.parse(raw)
             fileMap[`debug/${file}`] = strToU8(JSON.stringify(parsed, null, 2))
           } catch (err) {
-            console.warn(`[backup] Skipping broken debug template "${file}": ${err instanceof Error ? err.message : String(err)}`)
+            request.log.warn(`[backup] Skipping broken debug template "${file}": ${err instanceof Error ? err.message : String(err)}`)
           }
         }
       }
@@ -64,7 +64,7 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
       try {
         fileMap['manifests/.deployed-manifest'] = strToU8(readFileSync(config.rmMethodsDeployedManifest, 'utf8'))
       } catch (err) {
-        console.warn(`[backup] Skipping deployed manifest: ${err instanceof Error ? err.message : String(err)}`)
+        request.log.warn(`[backup] Skipping deployed manifest: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 
@@ -74,7 +74,7 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
         try {
           fileMap[`rm-methods-dist/${file}`] = new Uint8Array(readFileSync(resolve(config.rmMethodsDistDir, file)))
         } catch (err) {
-          console.warn(`[backup] Skipping rm-methods-dist file "${file}": ${err instanceof Error ? err.message : String(err)}`)
+          request.log.warn(`[backup] Skipping rm-methods-dist file "${file}": ${err instanceof Error ? err.message : String(err)}`)
         }
       }
     }

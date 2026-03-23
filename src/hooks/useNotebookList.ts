@@ -32,15 +32,25 @@ export function useNotebookList() {
   const [drafts, setDrafts] = useState<NotebookDraft[]>(loadDrafts)
 
   const createDraft = useCallback((): NotebookDraft => {
+    const existing = loadDrafts()
+    const usedNumbers = new Set(
+      existing
+        .map(d => d.name.match(/^Notebook (\d+)$/))
+        .filter(Boolean)
+        .map(m => parseInt(m![1], 10)),
+    )
+    let n = 1
+    while (usedNumbers.has(n)) n++
+
     const draft: NotebookDraft = {
       id: crypto.randomUUID(),
-      name: '',
+      name: `Notebook ${n}`,
       pageGroups: [],
       deviceId: getPreferredDeviceType(),
       orientation: 'portrait',
       lastModified: Date.now(),
     }
-    const updated = [draft, ...loadDrafts()]
+    const updated = [draft, ...existing]
     saveDrafts(updated)
     setDrafts(updated)
     return draft

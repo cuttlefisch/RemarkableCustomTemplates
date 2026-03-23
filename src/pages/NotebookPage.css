@@ -36,8 +36,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  padding: 0;
   border: 1px solid var(--border-primary);
   border-radius: 8px;
   background: var(--bg-primary);
@@ -47,7 +46,6 @@
   font-family: inherit;
   color: var(--text-primary);
   font-size: 14px;
-  max-height: 320px;
   overflow: hidden;
 }
 
@@ -61,6 +59,8 @@
   justify-content: center;
   border-style: dashed;
   color: var(--text-secondary);
+  padding: 24px 16px;
+  gap: 8px;
 }
 
 .notebook-list-new:hover {
@@ -73,31 +73,55 @@
   height: 32px;
 }
 
+.notebook-list-card-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px 16px;
+  min-height: 200px;
+  background: var(--bg-secondary);
+}
+
 .notebook-list-card-icon {
   color: var(--text-secondary);
+  opacity: 0.4;
 }
 
 .notebook-list-card-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 64px;
+  height: 64px;
+}
+
+.notebook-list-card-footer {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border-primary);
 }
 
 .notebook-list-card-name {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-bottom: 6px;
 }
 
-.notebook-list-card-meta {
-  font-size: 12px;
-  color: var(--text-secondary);
+.notebook-list-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.notebook-list-card-date {
-  font-size: 11px;
+.notebook-list-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  border-radius: 8px;
+  background: var(--bg-tertiary, var(--bg-secondary));
   color: var(--text-secondary);
+  border: 1px solid var(--border-secondary, var(--border-primary));
+  white-space: nowrap;
 }
 
 .notebook-list-card-actions {
@@ -139,21 +163,40 @@
   background: var(--bg-error);
 }
 
-/* Page strip inside list cards — vertical, compact, fixed height */
-.notebook-list-card .notebook-page-strip--vertical {
-  max-height: 160px;
-  overflow: hidden;
-  gap: 4px;
-  padding: 0;
+/* Stacked paper effect inside list cards */
+.notebook-page-stack {
+  position: relative;
+  width: 140px;
+  height: 180px;
 }
 
-.notebook-list-card .notebook-page-strip--vertical .notebook-page-strip-thumb {
-  max-width: 80px;
+.notebook-page-stack-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid var(--border-secondary, var(--border-primary));
   border-radius: 2px;
+  background: var(--bg-primary, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-.notebook-list-card .notebook-page-strip--vertical .notebook-page-strip-label {
+.notebook-page-stack-thumb.notebook-page-stack-thumb {
+  width: 125px;
+  height: 166px;
+  display: block;
+}
+
+.notebook-page-stack-count {
+  position: absolute;
+  bottom: -2px;
+  right: -6px;
+  background: var(--bg-tertiary, var(--bg-secondary));
+  color: var(--text-secondary);
   font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
 }
 
 /* ── Page Strip (thumbnails) ── */
@@ -272,6 +315,11 @@
 .notebook-toolbar-name:focus {
   outline: none;
   border-color: var(--accent-primary);
+}
+
+.notebook-toolbar-name:placeholder-shown {
+  border-color: var(--warning, #f0ad4e);
+  background: color-mix(in srgb, var(--warning, #f0ad4e) 8%, var(--bg-primary));
 }
 
 .notebook-toolbar-device {

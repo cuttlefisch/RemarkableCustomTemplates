@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { refreshDeviceMenu } from './useElectronIPC'
 
 export interface DeviceData {
   id: string
@@ -75,6 +76,13 @@ export function useDevices(): UseDevices {
     refresh()
   }, [refresh])
 
+  // Re-fetch when Electron menu changes the active device
+  useEffect(() => {
+    const handler = () => { refresh() }
+    window.addEventListener('devices-changed', handler)
+    return () => window.removeEventListener('devices-changed', handler)
+  }, [refresh])
+
   const activeDevice = devices.find(d => d.id === activeDeviceId) ?? devices[0] ?? null
 
   const addDevice = useCallback(async (cfg: {
@@ -98,6 +106,7 @@ export function useDevices(): UseDevices {
       }
       const data = (await res.json()) as { device: DeviceData }
       await refresh()
+      refreshDeviceMenu()
       return data.device
     } catch (e) {
       setError(`Add failed: ${e instanceof Error ? e.message : String(e)}`)
@@ -125,6 +134,7 @@ export function useDevices(): UseDevices {
         return false
       }
       await refresh()
+      refreshDeviceMenu()
       return true
     } catch (e) {
       setError(`Update failed: ${e instanceof Error ? e.message : String(e)}`)
@@ -142,6 +152,7 @@ export function useDevices(): UseDevices {
         return false
       }
       await refresh()
+      refreshDeviceMenu()
       return true
     } catch (e) {
       setError(`Remove failed: ${e instanceof Error ? e.message : String(e)}`)
@@ -159,6 +170,7 @@ export function useDevices(): UseDevices {
       })
       if (!res.ok) return false
       setActiveDeviceId(id)
+      refreshDeviceMenu()
       return true
     } catch (err) {
       console.error('[set-active-device]', err instanceof Error ? err.message : String(err))

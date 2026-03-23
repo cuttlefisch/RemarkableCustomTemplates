@@ -40,7 +40,7 @@ export default function deviceSyncStatusRoutes(app: FastifyInstance, config: Ser
           const localClassicRegistry = JSON.parse(classicBuild.files['templates.json'] as string) as { templates: { filename: string; name?: string }[] }
           classic = computeClassicSyncStatus(localClassicRegistry, deviceClassicRegistry)
         } catch (err) {
-          console.warn(`[sync-status] Classic sync check failed: ${err instanceof Error ? err.message : String(err)}`)
+          request.log.warn(`[sync-status] Classic sync check failed: ${err instanceof Error ? err.message : String(err)}`)
           classic = null
         }
       } finally {

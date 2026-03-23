@@ -208,6 +208,161 @@ describe('server routes', () => {
       expect(registry.templates).toHaveLength(0)
       await app.close()
     })
+
+    it('handles copy-chain: create, copy repeatedly, then delete all', async () => {
+      // Simulates the exact frontend "copy a copy of a copy" flow
+      const sampleContent = JSON.stringify({
+        name: 'Sample Grid', author: 'Test', orientation: 'portrait',
+        categories: ['Samples'], constants: [], items: [],
+      })
+      // Seed a sample template to copy from
+      mkdirSync(resolve(config.dataDir, 'public/templates/samples'), { recursive: true })
+      writeFileSync(resolve(config.dataDir, 'public/templates/samples', 'P Sample Grid.template'), sampleContent)
+
+      const app = await createApp(config)
+
+      // Copy 1: create from sample
+      const copy1 = await app.inject({
+        method: 'POST', url: '/api/custom-templates',
+        payload: {
+          filename: 'P Sample Grid-copy',
+          content: JSON.stringify({ ...JSON.parse(sampleContent), name: 'Sample Grid (Copy)' }, null, 2),
+          entry: { name: 'Sample Grid (Copy)', filename: 'custom/P Sample Grid-copy', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], isCustom: true },
+        },
+      })
+      expect(copy1.statusCode).toBe(201)
+
+      // Verify the copy is fetchable (this is what handleCopy does before creating copy 2)
+      const fetch1 = await app.inject({ method: 'GET', url: '/templates/custom/P%20Sample%20Grid-copy.template' })
+      expect(fetch1.statusCode).toBe(200)
+
+      // Copy 2: copy of copy
+      const copy2 = await app.inject({
+        method: 'POST', url: '/api/custom-templates',
+        payload: {
+          filename: 'P Sample Grid-copy-copy',
+          content: JSON.stringify({ ...JSON.parse(sampleContent), name: 'Sample Grid (Copy) (Copy)' }, null, 2),
+          entry: { name: 'Sample Grid (Copy) (Copy)', filename: 'custom/P Sample Grid-copy-copy', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], isCustom: true },
+        },
+      })
+      expect(copy2.statusCode).toBe(201)
+
+      // Copy 3: copy of copy of copy
+      const copy3 = await app.inject({
+        method: 'POST', url: '/api/custom-templates',
+        payload: {
+          filename: 'P Sample Grid-copy-copy-copy',
+          content: JSON.stringify({ ...JSON.parse(sampleContent), name: 'Sample Grid (Copy) (Copy) (Copy)' }, null, 2),
+          entry: { name: 'Sample Grid (Copy) (Copy) (Copy)', filename: 'custom/P Sample Grid-copy-copy-copy', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], isCustom: true },
+        },
+      })
+      expect(copy3.statusCode).toBe(201)
+
+      // Copy 4: copy of copy of copy of copy
+      const copy4 = await app.inject({
+        method: 'POST', url: '/api/custom-templates',
+        payload: {
+          filename: 'P Sample Grid-copy-copy-copy-copy',
+          content: JSON.stringify({ ...JSON.parse(sampleContent), name: 'Sample Grid (Copy) (Copy) (Copy) (Copy)' }, null, 2),
+          entry: { name: 'Sample Grid (Copy) (Copy) (Copy) (Copy)', filename: 'custom/P Sample Grid-copy-copy-copy-copy', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], isCustom: true },
+        },
+      })
+      expect(copy4.statusCode).toBe(201)
+
+      // Verify registry has all 4
+      const regBefore = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(regBefore.templates).toHaveLength(4)
+      expect(regBefore.templates.every((t: { isCustom?: boolean }) => t.isCustom === true)).toBe(true)
+
+      // Verify all template files are fetchable
+      for (const suffix of ['-copy', '-copy-copy', '-copy-copy-copy', '-copy-copy-copy-copy']) {
+        const r = await app.inject({ method: 'GET', url: `/templates/custom/P%20Sample%20Grid${suffix}.template` })
+        expect(r.statusCode).toBe(200)
+      }
+
+      // Delete all in reverse order
+      for (const suffix of ['-copy-copy-copy-copy', '-copy-copy-copy', '-copy-copy', '-copy']) {
+        const slug = `P Sample Grid${suffix}`
+        const r = await app.inject({ method: 'DELETE', url: `/api/custom-templates/${encodeURIComponent(slug)}` })
+        expect(r.statusCode).toBe(200)
+      }
+
+      // Verify registry is empty
+      const regAfter = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(regAfter.templates).toHaveLength(0)
+
+      // Verify all template files are gone
+      for (const suffix of ['-copy', '-copy-copy', '-copy-copy-copy', '-copy-copy-copy-copy']) {
+        expect(existsSync(resolve(config.customDir, `P Sample Grid${suffix}.template`))).toBe(false)
+      }
+
+      await app.close()
+    })
+
+    it('deduplicates registry when creating with same filename twice', async () => {
+      const content = '{"name":"T","orientation":"portrait","categories":["Custom"],"constants":[],"items":[]}'
+      const app = await createApp(config)
+
+      // Create same template twice (simulates mashing Copy button)
+      for (let i = 0; i < 3; i++) {
+        const r = await app.inject({
+          method: 'POST', url: '/api/custom-templates',
+          payload: {
+            filename: 'P Dupe Test',
+            content,
+            entry: { name: 'Dupe Test', filename: 'custom/P Dupe Test', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], isCustom: true },
+          },
+        })
+        expect(r.statusCode).toBe(201)
+      }
+
+      // Should have exactly 1 entry, not 3
+      const reg = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(reg.templates).toHaveLength(1)
+      expect(reg.templates[0].filename).toBe('custom/P Dupe Test')
+
+      // Delete should clean up fully
+      const del = await app.inject({ method: 'DELETE', url: '/api/custom-templates/P Dupe Test' })
+      expect(del.statusCode).toBe(200)
+      const regAfter = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(regAfter.templates).toHaveLength(0)
+
+      await app.close()
+    })
+
+    it('bulk delete: deletes multiple custom templates in sequence', async () => {
+      const content = '{"name":"T","orientation":"portrait","categories":["Custom"],"constants":[],"items":[]}'
+      const app = await createApp(config)
+
+      // Create 5 custom templates
+      for (let i = 1; i <= 5; i++) {
+        const r = await app.inject({
+          method: 'POST', url: '/api/custom-templates',
+          payload: {
+            filename: `P Bulk Test ${i}`,
+            content,
+            entry: { name: `Bulk Test ${i}`, filename: `custom/P Bulk Test ${i}`, iconCode: '\ue9d8', landscape: false, categories: ['Custom'], isCustom: true },
+          },
+        })
+        expect(r.statusCode).toBe(201)
+      }
+
+      const regBefore = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(regBefore.templates).toHaveLength(5)
+
+      // Delete 3 of them (simulating bulk delete)
+      for (const i of [2, 4, 5]) {
+        const r = await app.inject({ method: 'DELETE', url: `/api/custom-templates/${encodeURIComponent(`P Bulk Test ${i}`)}` })
+        expect(r.statusCode).toBe(200)
+      }
+
+      // Verify only 2 remain
+      const regAfter = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(regAfter.templates).toHaveLength(2)
+      expect(regAfter.templates.map((t: { name: string }) => t.name)).toEqual(['Bulk Test 1', 'Bulk Test 3'])
+
+      await app.close()
+    })
   })
 
   describe('GET /api/devices', () => {

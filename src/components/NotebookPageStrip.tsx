@@ -12,6 +12,8 @@ interface NotebookPageStripProps {
   orientation?: 'vertical' | 'horizontal'
   /** Max pages to render (for compact list view) */
   maxPages?: number
+  /** Display variant: 'strip' for scrollable list, 'stack' for fanned paper effect */
+  variant?: 'strip' | 'stack'
   className?: string
 }
 
@@ -27,6 +29,7 @@ export const NotebookPageStrip = memo(function NotebookPageStrip({
   pageGroups,
   orientation = 'vertical',
   maxPages,
+  variant = 'strip',
   className,
 }: NotebookPageStripProps) {
   const pages = useMemo(() => {
@@ -53,6 +56,29 @@ export const NotebookPageStrip = memo(function NotebookPageStrip({
   const truncated = maxPages !== undefined && totalPages > maxPages
 
   if (pages.length === 0) return null
+
+  if (variant === 'stack') {
+    const maxStack = Math.min(pages.length, 4)
+    return (
+      <div className={`notebook-page-stack ${className ?? ''}`}>
+        {pages.slice(0, maxStack).map((page, idx) => (
+          <div
+            key={page.key}
+            className="notebook-page-stack-item"
+            style={{
+              transform: `translate(${idx * 5}px, ${idx * 5}px)`,
+              zIndex: maxStack - idx,
+            }}
+          >
+            <TemplateThumbnail iconData={page.iconData} className="notebook-page-stack-thumb" />
+          </div>
+        ))}
+        {truncated && (
+          <div className="notebook-page-stack-count">+{totalPages - pages.length}</div>
+        )}
+      </div>
+    )
+  }
 
   const classes = [
     'notebook-page-strip',

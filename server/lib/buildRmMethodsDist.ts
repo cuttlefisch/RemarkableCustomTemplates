@@ -30,20 +30,27 @@ export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
 
   let customReg: { templates: RegEntry[] } = { templates: [] }
   let debugReg: { templates: RegEntry[] } = { templates: [] }
+  let samplesReg: { templates: RegEntry[] } = { templates: [] }
   try { customReg = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as typeof customReg } catch { /* empty */ }
   try { debugReg = JSON.parse(readFileSync(config.debugRegistry, 'utf8')) as typeof debugReg } catch { /* empty */ }
+  try { samplesReg = JSON.parse(readFileSync(config.samplesRegistry, 'utf8')) as typeof samplesReg } catch { /* empty */ }
 
   // Assign UUIDs to entries that don't have one
   let customDirty = false
   let debugDirty = false
+  let samplesDirty = false
   for (const entry of customReg.templates) {
     if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); customDirty = true }
   }
   for (const entry of debugReg.templates) {
     if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); debugDirty = true }
   }
+  for (const entry of samplesReg.templates) {
+    if (!entry.rmMethodsId) { entry.rmMethodsId = randomUUID(); samplesDirty = true }
+  }
   if (customDirty) writeFileSync(config.customRegistry, JSON.stringify(customReg, null, 2), 'utf8')
   if (debugDirty) writeFileSync(config.debugRegistry, JSON.stringify(debugReg, null, 2), 'utf8')
+  if (samplesDirty) writeFileSync(config.samplesRegistry, JSON.stringify(samplesReg, null, 2), 'utf8')
 
   // Load previous manifest for version tracking
   const manifestPath = resolve(config.rmMethodsDistDir, '.manifest')
@@ -123,6 +130,7 @@ export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
 
   for (const entry of customReg.templates) addEntry(entry, config.customDir, 'custom')
   for (const entry of debugReg.templates) addEntry(entry, config.debugDir, 'debug')
+  for (const entry of samplesReg.templates) addEntry(entry, config.samplesDir, 'samples')
 
   const manifest: RmMethodsManifest = { exportedAt: nowMs, templates: manifestTemplates }
   files['.manifest'] = JSON.stringify(manifest, null, 2)

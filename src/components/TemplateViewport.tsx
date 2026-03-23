@@ -28,6 +28,8 @@ export interface TemplateViewportProps {
   snapToDefault?: boolean
   /** Set false for static thumbnails. Default true. */
   interactive?: boolean
+  /** Clip rendered content to device bounds. Default true. Set false in drawing mode. */
+  clipToDevice?: boolean
   /** Pass-through children (e.g. DrawingOverlay). */
   children?: ReactNode
 }
@@ -42,6 +44,7 @@ export function TemplateViewport({
   panButton = 'left',
   snapToDefault = true,
   interactive = true,
+  clipToDevice = true,
   children,
 }: TemplateViewportProps) {
   const builtins = deviceBuiltins(template.orientation, deviceId)
@@ -76,6 +79,7 @@ export function TemplateViewport({
         deviceId={deviceId}
         className="viewport-svg"
         viewBox={viewBox}
+        clipToDevice={clipToDevice}
       >
         {children}
       </TemplateCanvas>

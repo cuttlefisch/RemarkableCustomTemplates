@@ -19,7 +19,7 @@ function escapeUnicode(str: string): string {
 
 export default function exportRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/export-templates
-  app.get('/api/export-templates', async (_request, reply) => {
+  app.get('/api/export-templates', async (request, reply) => {
     const officialRegistryPath = resolve(config.officialDir, 'templates.json')
     if (!existsSync(officialRegistryPath)) {
       return reply.status(404).send({ error: 'Official templates not loaded. Copy files to remarkable_official_templates/ first.' })
@@ -57,7 +57,7 @@ export default function exportRoutes(app: FastifyInstance, config: ServerConfig)
             return { ...entry, categories: ['Custom', ...tpl.categories.filter((c: unknown) => c !== 'Custom')] }
           }
         } catch (err) {
-          console.warn(`[export] Failed to sync categories from "${entry.filename}":`, err instanceof Error ? err.message : String(err))
+          request.log.warn(`[export] Failed to sync categories from "${entry.filename}": ${err instanceof Error ? err.message : String(err)}`)
         }
       }
       return entry
@@ -172,11 +172,11 @@ export default function exportRoutes(app: FastifyInstance, config: ServerConfig)
     // Look up the UUID for this template slug in the registries
     type RegEntry = { filename: string; rmMethodsId?: string }
     let matchedUuid: string | undefined
-    for (const regPath of [config.customRegistry, config.debugRegistry]) {
+    for (const regPath of [config.customRegistry, config.debugRegistry, config.samplesRegistry]) {
       try {
         const reg = JSON.parse(readFileSync(regPath, 'utf8')) as { templates: RegEntry[] }
         const entry = reg.templates.find(e => {
-          const shortName = e.filename.replace(/^(custom|debug)\//, '')
+          const shortName = e.filename.replace(/^(custom|debug|samples)\//, '')
           return shortName === slug
         })
         if (entry?.rmMethodsId) {

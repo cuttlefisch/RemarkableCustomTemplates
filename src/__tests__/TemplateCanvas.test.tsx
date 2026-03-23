@@ -41,7 +41,7 @@ describe('TemplateCanvas SVG root', () => {
 
   it('renders a white background rect for non-dark template', () => {
     const { container } = render(<TemplateCanvas template={makeTemplate()} />)
-    const rect = container.querySelector('rect')
+    const rect = container.querySelector('svg > rect')
     expect(rect).not.toBeNull()
     expect(rect?.getAttribute('fill')).toBe('#ffffff')
   })
@@ -50,7 +50,7 @@ describe('TemplateCanvas SVG root', () => {
     const { container } = render(
       <TemplateCanvas template={makeTemplate({ categories: ['Dark'] })} />,
     )
-    const rect = container.querySelector('rect')
+    const rect = container.querySelector('svg > rect')
     expect(rect).not.toBeNull()
     expect(rect?.getAttribute('fill')).toBe('#000000')
   })
@@ -72,7 +72,7 @@ describe('TemplateCanvas background color constants', () => {
         constants: [{ foreground: '#ffffff' }, { background: '#000000' }],
       })} />,
     )
-    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#000000')
+    expect(container.querySelector('svg > rect')?.getAttribute('fill')).toBe('#000000')
   })
 
   it('uses background constant even when it is light', () => {
@@ -81,19 +81,19 @@ describe('TemplateCanvas background color constants', () => {
         constants: [{ foreground: '#000000' }, { background: '#ffffff' }],
       })} />,
     )
-    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#ffffff')
+    expect(container.querySelector('svg > rect')?.getAttribute('fill')).toBe('#ffffff')
   })
 
   it('falls back to Dark category when no background constant is present', () => {
     const { container } = render(
       <TemplateCanvas template={makeTemplate({ categories: ['Dark'] })} />,
     )
-    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#000000')
+    expect(container.querySelector('svg > rect')?.getAttribute('fill')).toBe('#000000')
   })
 
   it('falls back to white for non-dark template without background constant', () => {
     const { container } = render(<TemplateCanvas template={makeTemplate()} />)
-    expect(container.querySelector('rect')?.getAttribute('fill')).toBe('#ffffff')
+    expect(container.querySelector('svg > rect')?.getAttribute('fill')).toBe('#ffffff')
   })
 })
 
@@ -252,7 +252,7 @@ describe('TemplateCanvas group items', () => {
       ],
     })
     const { container } = render(<TemplateCanvas template={template} />)
-    const g = container.querySelector('g')
+    const g = container.querySelector('g[transform]')
     expect(g?.getAttribute('transform')).toContain('translate(0, 177.8)')
   })
 

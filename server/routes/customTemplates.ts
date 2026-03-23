@@ -41,7 +41,16 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
 
       const registry = readRegistry(config)
       const iconData = tryGenerateIcon(body.content)
-      registry.templates.push({ ...(body.entry as object), ...(iconData ? { iconData } : {}) })
+      const entryObj = { ...(body.entry as object), ...(iconData ? { iconData } : {}) } as { filename: string }
+      // Deduplicate: replace existing entry with same filename, or push new
+      const existingIdx = (registry.templates as Array<{ filename: string }>).findIndex(
+        e => e.filename === entryObj.filename,
+      )
+      if (existingIdx >= 0) {
+        registry.templates[existingIdx] = entryObj
+      } else {
+        registry.templates.push(entryObj)
+      }
       writeFileSync(config.customRegistry, JSON.stringify(registry, null, 2), 'utf8')
 
       return reply.status(201).send({ ok: true, iconData })

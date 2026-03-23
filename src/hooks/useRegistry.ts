@@ -79,7 +79,7 @@ export function useRegistry(): RegistryState {
         })
       })
       .catch(e => {
-        console.error(`Failed to load registry: ${String(e)}`)
+        console.error(`[registry] Failed to load: ${String(e)}`)
         setLoadingRegistry(false)
       })
   }, [fetchKey])

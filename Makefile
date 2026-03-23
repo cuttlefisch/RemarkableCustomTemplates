@@ -60,6 +60,14 @@ dev: ## Start the Fastify API server + Vite dev server
 test: ## Run all tests once
 	pnpm test
 
+e2e: ## Run Playwright E2E tests (requires Docker running on :3000)
+	pnpm e2e
+ifndef CI
+	@echo "Cleaning up test data..."
+	$(MAKE) docker-clean
+	$(MAKE) docker-up
+endif
+
 lint: ## Run ESLint
 	pnpm lint
 

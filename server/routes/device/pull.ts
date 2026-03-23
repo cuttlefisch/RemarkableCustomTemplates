@@ -114,7 +114,7 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
         try {
           await pullFile(sftp, `${RM_METHODS_PATH}/${uuid}.template`, resolve(tmpDir, `${uuid}.template`))
         } catch (err) {
-          console.warn(`[pull] Template file missing for ${uuid}: ${err instanceof Error ? err.message : String(err)}`)
+          request.log.warn(`[pull] Template file missing for ${uuid}: ${err instanceof Error ? err.message : String(err)}`)
         }
         pulledCount++
         stream.progress('Pulling template files', pulledCount, totalFiles)

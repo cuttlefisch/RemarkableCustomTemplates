@@ -3,7 +3,7 @@ import type { Theme } from '../themes/themes'
 import { themes, applyTheme, findTheme } from '../themes/themes'
 
 const STORAGE_KEY = 'remarkable-templates-theme'
-const DEFAULT_THEME_ID = 'github-light'
+const DEFAULT_THEME_ID = 'gruvbox-light'
 
 /** Map old theme IDs to new equivalents */
 const MIGRATION: Record<string, string> = {

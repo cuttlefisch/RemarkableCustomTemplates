@@ -56,6 +56,11 @@ notebook-dist/
 dist-electron/
 dist-electron-release/
 
+# Playwright
+test-results/
+playwright-report/
+e2e/screenshots/
+
 # Claude Code local settings (contains device IPs, SSH key paths)
 .claude/settings.local.json
 
