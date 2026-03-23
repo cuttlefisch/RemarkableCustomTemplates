@@ -21,6 +21,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+      - name: Bundle Electron
+        run: node scripts/build-electron.mjs
 
   docker:
     runs-on: ubuntu-latest

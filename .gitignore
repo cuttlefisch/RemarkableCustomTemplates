@@ -52,6 +52,10 @@ lerna-debug.log*
 # Notebook deploy staging
 notebook-dist/
 
+# Electron build output
+dist-electron/
+dist-electron-release/
+
 # Claude Code local settings (contains device IPs, SSH key paths)
 .claude/settings.local.json
 

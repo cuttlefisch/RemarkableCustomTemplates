@@ -1,0 +1,143 @@
+name: Release Candidate
+
+on:
+  push:
+    tags: ['rc-*']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+      - name: Bundle Electron
+        run: node scripts/build-electron.mjs
+
+  build-mac:
+    needs: [test]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build macOS installers
+        run: pnpm electron-builder --mac --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc-mac-installers
+          path: |
+            dist-electron-release/*.dmg
+            dist-electron-release/*.zip
+
+  build-windows:
+    needs: [test]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build Windows installer
+        run: pnpm electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc-win-installers
+          path: dist-electron-release/*.exe
+
+  build-linux-appimage:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build AppImage
+        run: pnpm electron-builder --linux AppImage --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc-linux-appimage
+          path: dist-electron-release/*.AppImage
+
+  build-linux-deb:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build deb
+        run: pnpm electron-builder --linux deb --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc-linux-deb
+          path: dist-electron-release/*.deb
+
+  build-linux-rpm:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build rpm
+        run: pnpm electron-builder --linux rpm --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc-linux-rpm
+          path: dist-electron-release/*.rpm

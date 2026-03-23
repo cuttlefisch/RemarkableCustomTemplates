@@ -1,0 +1,67 @@
+appId: com.cuttlefisch.remarkable-templates
+productName: RMCustomTemplates
+
+directories:
+  output: dist-electron-release
+  buildResources: electron/build-resources
+
+files:
+  - dist-electron/**/*
+  - dist/**/*
+  - node_modules/**/*
+  - "!node_modules/**/*.ts"
+  - "!node_modules/**/*.map"
+  - "!node_modules/**/*.md"
+  - "!server/**"
+  - "!src/**"
+  - "!public/**"
+  - "!electron/**"
+
+extraResources:
+  - from: public/templates/debug/
+    to: templates/debug/
+  - from: public/templates/samples/
+    to: templates/samples/
+  - from: dist/
+    to: dist/
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+    - target: zip
+      arch:
+        - universal
+  category: public.app-category.productivity
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  executableName: remarkable-templates
+  target:
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - arm64
+    - target: rpm
+      arch:
+        - x64
+        - arm64
+  category: Utility
+  maintainer: cuttlefisch
+
+rpm:
+  compression: xz

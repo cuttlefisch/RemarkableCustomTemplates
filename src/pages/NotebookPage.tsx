@@ -85,8 +85,8 @@ export function NotebookPage() {
               {draft.pageGroups.length > 0 ? (
                 <NotebookPageStrip
                   pageGroups={draft.pageGroups}
-                  orientation="horizontal"
-                  maxPages={6}
+                  orientation="vertical"
+                  maxPages={4}
                 />
               ) : (
                 <div className="notebook-list-card-icon"><NotebookIcon /></div>

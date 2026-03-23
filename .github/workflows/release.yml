@@ -1,0 +1,147 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build macOS installers
+        run: pnpm electron-builder --mac --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-installers
+          path: |
+            dist-electron-release/*.dmg
+            dist-electron-release/*.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build Windows installer
+        run: pnpm electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-installers
+          path: dist-electron-release/*.exe
+
+  build-linux-appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build AppImage
+        run: pnpm electron-builder --linux AppImage --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: dist-electron-release/*.AppImage
+
+  build-linux-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build deb
+        run: pnpm electron-builder --linux deb --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: dist-electron-release/*.deb
+
+  build-linux-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/build-electron.mjs
+      - name: Build rpm
+        run: pnpm electron-builder --linux rpm --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm
+          path: dist-electron-release/*.rpm
+
+  publish-release:
+    needs: [build-mac, build-windows, build-linux-appimage, build-linux-deb, build-linux-rpm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        run: |
+          cd release-assets
+          sha256sum * > CHECKSUMS-SHA256.txt
+          echo "--- Checksums ---"
+          cat CHECKSUMS-SHA256.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            release-assets/*

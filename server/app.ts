@@ -61,10 +61,10 @@ export async function createApp(config: ServerConfig) {
   // Backfill iconData for any registry entries missing it
   backfillAllIcons(config)
 
-  // In production, serve the built frontend (dist/ is at the app root, not in dataDir)
+  // In production, serve the built frontend
   if (config.production) {
-    const __dirname = dirname(fileURLToPath(import.meta.url))
-    const distPath = resolve(__dirname, '..', 'dist')
+    const distPath = config.frontendDistDir
+      ?? resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
     if (existsSync(distPath)) {
       await app.register(fastifyStatic, {
         root: distPath,

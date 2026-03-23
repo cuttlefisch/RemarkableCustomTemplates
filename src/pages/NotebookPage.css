@@ -24,11 +24,12 @@
 
 .notebook-list-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 240px));
   gap: 16px;
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  align-content: start;
 }
 
 .notebook-list-card {
@@ -36,7 +37,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 20px 16px;
+  padding: 16px;
   border: 1px solid var(--border-primary);
   border-radius: 8px;
   background: var(--bg-primary);
@@ -46,6 +47,8 @@
   font-family: inherit;
   color: var(--text-primary);
   font-size: 14px;
+  max-height: 320px;
+  overflow: hidden;
 }
 
 .notebook-list-card:hover {
@@ -134,6 +137,23 @@
 .notebook-list-card-action.notebook-list-card-delete:hover {
   color: var(--text-error);
   background: var(--bg-error);
+}
+
+/* Page strip inside list cards — vertical, compact, fixed height */
+.notebook-list-card .notebook-page-strip--vertical {
+  max-height: 160px;
+  overflow: hidden;
+  gap: 4px;
+  padding: 0;
+}
+
+.notebook-list-card .notebook-page-strip--vertical .notebook-page-strip-thumb {
+  max-width: 80px;
+  border-radius: 2px;
+}
+
+.notebook-list-card .notebook-page-strip--vertical .notebook-page-strip-label {
+  font-size: 10px;
 }
 
 /* ── Page Strip (thumbnails) ── */

@@ -16,7 +16,7 @@ METHODS_DIR := public/templates/methods
 MANIFEST_UUIDS := npx tsx server/lib/manifestUuids.ts
 BUILD_METHODS_REGISTRY := npx tsx server/lib/buildMethodsRegistry.ts
 
-.PHONY: help setup configure install dev test lint build clean docker-up docker-down docker-logs docker-clean pull pull-rm-methods backup build-deploy deploy rollback list-backups build-rm-methods-dist deploy-rm-methods backup-rm-methods rollback-rm-methods rollback-rm-methods-original list-backups-rm-methods
+.PHONY: help setup configure install dev test lint build clean docker-up docker-down docker-logs docker-clean pull pull-rm-methods backup build-deploy deploy rollback list-backups build-rm-methods-dist deploy-rm-methods backup-rm-methods rollback-rm-methods rollback-rm-methods-original list-backups-rm-methods electron-dev electron-build electron-build-mac electron-build-win electron-build-linux
 
 help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -67,13 +67,36 @@ build: ## Type-check and build for production
 	pnpm build
 
 clean: ## Remove build artifacts and caches
-	rm -rf dist dist-server dist-deploy rm-methods-dist node_modules/.vite
+	rm -rf dist dist-server dist-deploy rm-methods-dist dist-electron dist-electron-release node_modules/.vite
+
+# ── Electron ──────────────────────────────────────────────────────────────────
+
+electron-dev: ## Start the app in Electron (dev build)
+	pnpm electron:dev
+
+electron-build: ## Package the Electron app for the current platform
+	pnpm electron:build
+
+electron-build-mac: ## Package the Electron app as .dmg (macOS)
+	pnpm electron:build:mac
+
+electron-build-win: ## Package the Electron app as .exe (Windows)
+	pnpm electron:build:win
+
+electron-build-linux: build ## Package Linux installers (soft-fails per format)
+	@node scripts/build-electron.mjs
+	@pnpm electron-builder --linux AppImage && echo "  ✓ AppImage" || echo "  ✗ AppImage failed (continuing)"
+	@pnpm electron-builder --linux deb && echo "  ✓ deb" || echo "  ✗ deb failed (continuing)"
+	@pnpm electron-builder --linux rpm && echo "  ✓ rpm" || echo "  ✗ rpm failed (fpm/rpmbuild compat — builds in CI)"
+	@echo ""
+	@echo "Built artifacts:"
+	@ls -lh dist-electron-release/*.AppImage dist-electron-release/*.deb dist-electron-release/*.rpm 2>/dev/null || echo "  (none)"
 
 # ── Docker ───────────────────────────────────────────────────────────────────
 
 docker-up: ## Build and start the app via Docker Compose
 	@docker compose up --build -d
-	@printf '\n  reMarkable Template Browser\n  ➜ http://localhost:%s\n\n' "$${PORT:-3000}"
+	@printf '\n  RM Custom Templates\n  ➜ http://localhost:%s\n\n' "$${PORT:-3000}"
 
 docker-down: ## Stop the Docker containers
 	docker compose down

@@ -3,6 +3,7 @@
  *
  * - Native dev: DATA_DIR defaults to process.cwd() (project root)
  * - Docker: DATA_DIR=/data (persistent volume)
+ * - Electron: DATA_DIR = app.getPath('userData')
  */
 
 import { resolve } from 'node:path'
@@ -54,9 +55,11 @@ export interface ServerConfig {
   appBackupsDir: string
   deviceConfigPath: string
   sshDir: string
+  /** Override for frontend dist directory (Electron passes this explicitly) */
+  frontendDistDir?: string
 }
 
-export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' | 'port' | 'production'>>): ServerConfig {
+export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' | 'port' | 'production' | 'samplesPristineDir' | 'frontendDistDir'>>): ServerConfig {
   const dataDir = overrides?.dataDir ?? process.env.DATA_DIR ?? process.cwd()
   const port = overrides?.port ?? (Number(process.env.PORT) || (process.env.NODE_ENV === 'production' ? 3000 : 3001))
   const production = overrides?.production ?? process.env.NODE_ENV === 'production'
@@ -75,9 +78,9 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     methodsDir: resolve(templatesDir, 'methods'),
     methodsRegistry: resolve(templatesDir, 'methods/methods-registry.json'),
     samplesDir: resolve(templatesDir, 'samples'),
-    samplesPristineDir: production
+    samplesPristineDir: overrides?.samplesPristineDir ?? (production
       ? resolve(dataDir, '../app/samples-pristine')
-      : resolve(templatesDir, 'samples'),
+      : resolve(templatesDir, 'samples')),
     samplesRegistry: resolve(templatesDir, 'samples/samples-registry.json'),
     hiddenSamplesPath: resolve(templatesDir, 'custom/hidden-samples.json'),
     classicDistDir: resolve(dataDir, 'dist-deploy'),
@@ -89,5 +92,6 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     appBackupsDir: resolve(dataDir, 'data/backups'),
     deviceConfigPath: resolve(dataDir, 'data/device-config.json'),
     sshDir: resolve(dataDir, 'data/ssh'),
+    frontendDistDir: overrides?.frontendDistDir,
   }
 }
