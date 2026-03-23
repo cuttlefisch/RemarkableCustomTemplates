@@ -11,6 +11,8 @@ import type { ServerConfig } from '../config.ts'
 import { assertWithin } from '../lib/pathSecurity.ts'
 import { buildBackupManifest, validateBackupContents, computeMergeActions } from '../../src/lib/backup.ts'
 import { parseRegistry } from '../../src/lib/registry.ts'
+import { readNotebookStore, writeNotebookStore } from '../lib/notebookDraftStore.ts'
+import type { NotebookDraft } from '../../src/types/notebook.ts'
 
 export default function backupRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/backup
@@ -20,7 +22,11 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
     try { customReg = JSON.parse(readFileSync(config.customRegistry, 'utf8')) as typeof customReg } catch { /* empty */ }
     try { debugReg = JSON.parse(readFileSync(config.debugRegistry, 'utf8')) as typeof debugReg } catch { /* empty */ }
 
-    const manifest = buildBackupManifest(customReg.templates.length, debugReg.templates.length)
+    // Include notebook drafts
+    const nbStore = readNotebookStore(config.notebookDraftsPath)
+    const nbCount = nbStore.drafts.length
+
+    const manifest = buildBackupManifest(customReg.templates.length, debugReg.templates.length, nbCount)
     const fileMap: Record<string, Uint8Array> = {}
     fileMap['backup-manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
 
@@ -77,6 +83,11 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
           request.log.warn(`[backup] Skipping rm-methods-dist file "${file}": ${err instanceof Error ? err.message : String(err)}`)
         }
       }
+    }
+
+    // Include notebook drafts if any exist
+    if (nbCount > 0) {
+      fileMap['notebooks/notebooks.json'] = strToU8(JSON.stringify(nbStore, null, 2))
     }
 
     const zipped = zipSync(fileMap)
@@ -297,7 +308,40 @@ export default function backupRoutes(app: FastifyInstance, config: ServerConfig)
       }
     }
 
-    return reply.send({ ok: true, added, skipped, removed, warnings: validation.warnings })
+    // Restore notebook drafts if present in backup
+    let notebooksAdded = 0
+    let notebooksSkipped = 0
+    const nbData = files['notebooks/notebooks.json']
+    if (nbData) {
+      try {
+        const incoming = JSON.parse(new TextDecoder().decode(nbData)) as { version: number; drafts: Array<{ id: string }> }
+        if (incoming.version === 1 && Array.isArray(incoming.drafts)) {
+          if (mode === 'replace') {
+            writeNotebookStore(config.notebookDraftsPath, incoming as Parameters<typeof writeNotebookStore>[1])
+            notebooksAdded = incoming.drafts.length
+          } else {
+            // Merge: add drafts whose id doesn't exist locally
+            const existing = readNotebookStore(config.notebookDraftsPath)
+            const existingIds = new Set(existing.drafts.map(d => d.id))
+            for (const draft of incoming.drafts) {
+              if (existingIds.has(draft.id)) {
+                notebooksSkipped++
+              } else {
+                existing.drafts.push(draft as NotebookDraft)
+                notebooksAdded++
+              }
+            }
+            if (notebooksAdded > 0) {
+              writeNotebookStore(config.notebookDraftsPath, existing)
+            }
+          }
+        }
+      } catch (err) {
+        request.log.warn(`[restore] Failed to restore notebooks: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    return reply.send({ ok: true, added, skipped, removed, notebooksAdded, notebooksSkipped, warnings: validation.warnings })
   })
 
   // POST /api/restore/preview — dry-run: show what merge would add/skip and what replace would remove

@@ -15,6 +15,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { browserName: 'chromium' },
+      testIgnore: [/notebook.*\.spec/],
+    },
+    {
+      name: 'notebooks',
+      use: { browserName: 'chromium' },
+      testMatch: [/notebook.*\.spec/],
+      fullyParallel: false,
+      dependencies: ['chromium'],
     },
   ],
   webServer: {

@@ -77,9 +77,12 @@ export function useNotebookList() {
     }
   }, [])
 
-  // Merged list: builtins first, then user drafts
+  // Merged list: user drafts sorted by most-recently-edited first, then builtins
   const allNotebooks = useMemo(
-    () => [...builtins, ...drafts],
+    () => [
+      ...drafts.slice().sort((a, b) => (b.lastModified ?? 0) - (a.lastModified ?? 0)),
+      ...builtins,
+    ],
     [builtins, drafts],
   )
 

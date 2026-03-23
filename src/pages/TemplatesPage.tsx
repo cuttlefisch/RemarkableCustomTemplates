@@ -875,35 +875,31 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       const res = await fetch(fetchUrl)
       if (!res.ok) throw new Error(`Template file not found (${fetchUrl} returned ${res.status})`)
       const parsed = await res.json() as Record<string, unknown>
-      const baseSlug = entry.filename.replace(/^(custom|debug|samples)\//, '')
-      // Generate unique name + filename to avoid duplicates when mashing Copy
-      const allFilenames = new Set((mergedRegistry?.templates ?? []).map(t => t.filename))
-      // Also check custom registry directly (may not be merged yet after rapid copies)
-      for (const t of customRegistry.templates) allFilenames.add(t.filename)
-      let suffix = ''
-      let n = 0
-      while (allFilenames.has(`custom/${baseSlug}-copy${suffix}`)) {
+      // Generate unique name, checking both merged and custom registries
+      const allNames = new Set((mergedRegistry?.templates ?? []).map(t => t.name))
+      for (const t of customRegistry.templates) allNames.add(t.name)
+      let newName = `${entry.name} (Copy)`
+      let n = 1
+      while (allNames.has(newName)) {
         n++
-        suffix = `-${n}`
+        newName = `${entry.name} (Copy ${n})`
       }
-      const newFilename = `${baseSlug}-copy${suffix}`
-      const newName = n === 0 ? `${entry.name} (Copy)` : `${entry.name} (Copy ${n + 1})`
       parsed.name = newName
+      const isLandscape = entry.landscape ?? false
+      const categories = entry.categories.filter(c => c !== 'Samples' && c !== 'Debug')
+      // Use buildCustomEntry so filename convention matches apply/rename flow
+      const builtEntry = buildCustomEntry(newName, isLandscape, categories, entry.iconCode)
+      const newSlug = builtEntry.filename.replace('custom/', '')
 
       const saveRes = await fetch('/api/custom-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: newFilename, content: JSON.stringify(parsed, null, 2), entry: { name: newName, filename: `custom/${newFilename}`, iconCode: entry.iconCode, landscape: entry.landscape, categories: entry.categories.filter(c => c !== 'Samples' && c !== 'Debug'), isCustom: true } }),
+        body: JSON.stringify({ filename: newSlug, content: JSON.stringify(parsed, null, 2), entry: builtEntry }),
       })
       if (!saveRes.ok) throw new Error(`Server error: ${saveRes.status}`)
       const data = await saveRes.json() as { iconData?: string }
       const newEntry: TemplateRegistryEntry = {
-        name: newName,
-        filename: `custom/${newFilename}`,
-        iconCode: entry.iconCode,
-        landscape: entry.landscape,
-        categories: entry.categories.filter(c => c !== 'Samples' && c !== 'Debug'),
-        isCustom: true,
+        ...builtEntry,
         ...(data.iconData ? { iconData: data.iconData } : {}),
       }
       setCustomRegistry(prev => ({ templates: [newEntry, ...prev.templates] }))
@@ -1357,6 +1353,19 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         {bulkSelected.size > 0 && (
           <div className="sidebar-bulk-bar">
             <span className="sidebar-bulk-count">{bulkSelected.size} selected</span>
+            <button
+              className="sidebar-bulk-select-all-btn"
+              onClick={() => {
+                if (bulkSelected.size === filteredTemplates.length) {
+                  setBulkSelected(new Set())
+                } else {
+                  setBulkSelected(new Set(filteredTemplates.map(t => t.filename)))
+                }
+              }}
+              title="Select all visible templates"
+            >
+              {bulkSelected.size === filteredTemplates.length ? 'Deselect All' : 'Select All'}
+            </button>
             <button
               className="sidebar-bulk-delete-btn"
               onClick={handleBulkDelete}

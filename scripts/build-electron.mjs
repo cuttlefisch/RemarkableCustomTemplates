@@ -1,6 +1,9 @@
 /**
  * Bundle Electron main + preload via esbuild.
- * Produces dist-electron/main.mjs and dist-electron/preload.mjs.
+ * Produces dist-electron/main.mjs and dist-electron/preload.cjs.
+ *
+ * The preload script MUST be CJS — Electron's sandboxed preload
+ * environment does not support ESM imports.
  *
  * All package.json dependencies are marked external — electron-builder
  * ships them via node_modules. Only project code (server/, src/lib/,
@@ -33,13 +36,13 @@ await build({
   },
 })
 
-// Preload script
+// Preload script — must be CJS (Electron sandbox doesn't support ESM)
 await build({
   entryPoints: ['electron/preload.ts'],
-  outfile: 'dist-electron/preload.mjs',
+  outfile: 'dist-electron/preload.cjs',
   bundle: true,
   platform: 'node',
-  format: 'esm',
+  format: 'cjs',
   target: 'node20',
   external: ['electron'],
   sourcemap: true,

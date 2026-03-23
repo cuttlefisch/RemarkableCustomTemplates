@@ -21,11 +21,18 @@ export async function copySelectedTemplate(page: Page) {
   await expect(copyBtn).toHaveText('Copy', { timeout: 10_000 })
 }
 
+/** Clear all notebook drafts (for E2E test isolation) */
+export async function clearNotebookDrafts(page: Page) {
+  await page.request.delete('http://localhost:3000/api/notebook-drafts')
+}
+
 /** Create a new notebook and return to list view */
 export async function createNotebook(page: Page) {
   await page.goto('/notebook')
   await page.waitForLoadState('networkidle')
-  await page.locator('.notebook-list-new').click()
+  const newBtn = page.locator('.notebook-list-new')
+  await expect(newBtn).toBeVisible({ timeout: 5_000 })
+  await newBtn.click()
   await page.waitForTimeout(300)
 }
 

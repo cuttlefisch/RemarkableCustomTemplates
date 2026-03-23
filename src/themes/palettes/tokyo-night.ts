@@ -36,10 +36,10 @@ export const tokyoNight: Theme = {
     '--color-text-sidebar-hint': '#565f89',
     '--color-text-sidebar-group-label': '#565f89',
     '--color-text-editor': '#a9b1d6',
-    '--color-text-navbar': '#565f89',
+    '--color-text-navbar': '#a9b1d6',
     '--color-text-navbar-hover': '#a9b1d6',
     '--color-text-navbar-active': '#7aa2f7',
-    '--color-text-template-btn': '#565f89',
+    '--color-text-template-btn': '#a9b1d6',
     '--color-text-template-btn-hover': '#a9b1d6',
     '--color-text-template-btn-selected': '#7aa2f7',
 
@@ -62,7 +62,7 @@ export const tokyoNight: Theme = {
     /* Sidebar buttons */
     '--color-sidebar-btn-bg': '#414868',
     '--color-sidebar-btn-border': '#565f89',
-    '--color-sidebar-btn-text': '#565f89',
+    '--color-sidebar-btn-text': '#a9b1d6',
     '--color-sidebar-btn-hover-bg': '#565f89',
     '--color-sidebar-btn-hover-text': '#a9b1d6',
     '--color-sidebar-btn-active-bg': 'rgba(122, 162, 247, 0.15)',

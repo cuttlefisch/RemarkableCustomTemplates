@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
-import { createNotebook, addPageGroup } from './helpers'
+import { createNotebook, addPageGroup, clearNotebookDrafts } from './helpers'
 
 test.describe('Notebook Card Display', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  test.beforeEach(async ({ page }) => {
+    await clearNotebookDrafts(page)
+  })
+
   test('empty notebook shows fallback icon', async ({ page }) => {
     await createNotebook(page)
 

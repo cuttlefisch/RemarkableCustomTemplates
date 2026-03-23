@@ -36,10 +36,10 @@ export const solarizedDark: Theme = {
     '--color-text-sidebar-hint': '#586e75',
     '--color-text-sidebar-group-label': '#586e75',
     '--color-text-editor': '#839496',
-    '--color-text-navbar': '#657b83',
+    '--color-text-navbar': '#839496',
     '--color-text-navbar-hover': '#93a1a1',
     '--color-text-navbar-active': '#268bd2',
-    '--color-text-template-btn': '#657b83',
+    '--color-text-template-btn': '#839496',
     '--color-text-template-btn-hover': '#93a1a1',
     '--color-text-template-btn-selected': '#268bd2',
 
@@ -62,7 +62,7 @@ export const solarizedDark: Theme = {
     /* Sidebar buttons */
     '--color-sidebar-btn-bg': '#094858',
     '--color-sidebar-btn-border': '#586e75',
-    '--color-sidebar-btn-text': '#657b83',
+    '--color-sidebar-btn-text': '#839496',
     '--color-sidebar-btn-hover-bg': '#0b5a6e',
     '--color-sidebar-btn-hover-text': '#93a1a1',
     '--color-sidebar-btn-active-bg': 'rgba(38, 139, 210, 0.15)',

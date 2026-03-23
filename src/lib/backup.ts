@@ -14,6 +14,7 @@ export interface BackupManifest {
   version: 1
   createdAt: string // ISO 8601
   templateCount: { custom: number; debug: number }
+  notebookCount?: number
 }
 
 export interface BackupValidationResult {
@@ -37,11 +38,12 @@ export interface MergeAction {
 // buildBackupManifest
 // ---------------------------------------------------------------------------
 
-export function buildBackupManifest(customCount: number, debugCount: number): BackupManifest {
+export function buildBackupManifest(customCount: number, debugCount: number, notebookCount?: number): BackupManifest {
   return {
     version: 1,
     createdAt: new Date().toISOString(),
     templateCount: { custom: customCount, debug: debugCount },
+    ...(notebookCount !== undefined && notebookCount > 0 ? { notebookCount } : {}),
   }
 }
 
@@ -170,10 +172,11 @@ export function validateBackupContents(files: Record<string, Uint8Array>): Backu
     return { valid: false, errors, warnings, manifest, customRegistry, debugRegistry, customTemplateFiles, debugTemplateFiles }
   }
 
-  // 7. Check for completely empty backup
+  // 7. Check for completely empty backup (templates or notebooks)
   const totalEntries = (customRegistry?.templates.length ?? 0) + (debugRegistry?.templates.length ?? 0)
   const totalFiles = customTemplateFiles.length + debugTemplateFiles.length
-  if (totalEntries === 0 && totalFiles === 0) {
+  const hasNotebooks = !!files['notebooks/notebooks.json']
+  if (totalEntries === 0 && totalFiles === 0 && !hasNotebooks) {
     errors.push('Backup is empty — no custom or debug templates found')
     return { valid: false, errors, warnings, manifest, customRegistry, debugRegistry, customTemplateFiles, debugTemplateFiles }
   }

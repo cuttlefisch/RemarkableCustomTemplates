@@ -446,21 +446,48 @@ body {
 /* ── Bulk selection ──────────────────────────────────────────────────────── */
 
 .bulk-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  cursor: pointer;
-  accent-color: var(--accent-primary, #4a9eff);
   margin: 0;
+  border: 2px solid var(--color-text-muted, #8b949e);
+  border-radius: 3px;
+  background: var(--color-sidebar-bg, #fff);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+}
+
+.bulk-checkbox:hover {
+  border-color: var(--color-accent, #0969da);
+}
+
+.bulk-checkbox:checked {
+  background: var(--color-accent, #0969da);
+  border-color: var(--color-accent, #0969da);
+}
+
+.bulk-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 3.5px;
+  top: 0.5px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .template-btn.bulk-checked {
-  background: color-mix(in srgb, var(--accent-primary, #4a9eff) 10%, transparent);
-  border-left-color: var(--accent-primary, #4a9eff);
+  background: color-mix(in srgb, var(--color-accent, #0969da) 10%, transparent);
+  border-left-color: var(--color-accent, #0969da);
 }
 
 .template-card.bulk-checked {
-  outline: 2px solid var(--accent-primary, #4a9eff);
+  outline: 2px solid var(--color-accent, #0969da);
   outline-offset: -2px;
 }
 
@@ -483,10 +510,10 @@ body {
 
 .sidebar-bulk-delete-btn {
   padding: 6px 12px;
-  border: 1px solid var(--color-danger-text, #c00);
+  border: 1px solid var(--color-danger-title, #c00);
   border-radius: 4px;
-  background: var(--color-danger-bg, #fee);
-  color: var(--color-danger-text, #c00);
+  background: transparent;
+  color: var(--color-danger-title, #c00);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -494,11 +521,12 @@ body {
 }
 
 .sidebar-bulk-delete-btn:hover {
-  background: var(--color-danger-text, #c00);
-  color: white;
+  background: var(--color-danger-title, #c00);
+  color: var(--color-sidebar-bg, #fff);
 }
 
-.sidebar-bulk-clear-btn {
+.sidebar-bulk-clear-btn,
+.sidebar-bulk-select-all-btn {
   padding: 6px 12px;
   border: 1px solid var(--color-sidebar-header-border);
   border-radius: 4px;
@@ -509,7 +537,8 @@ body {
   transition: background 0.15s;
 }
 
-.sidebar-bulk-clear-btn:hover {
+.sidebar-bulk-clear-btn:hover,
+.sidebar-bulk-select-all-btn:hover {
   background: var(--color-sidebar-header-border);
 }
 
@@ -1259,16 +1288,23 @@ button.tag-ls:hover { background: var(--color-tag-ls-hover-bg); }
   top: 6px;
   left: 6px;
   z-index: 2;
-  width: 20px;
-  height: 20px;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+
+.card-bulk-checkbox:checked::after {
+  left: 4px;
+  top: 1px;
+  width: 6px;
+  height: 10px;
 }
 
 .template-card.bulk-checked .card-thumb-wrapper::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--accent-primary, #4a9eff) 15%, transparent);
+  background: color-mix(in srgb, var(--color-accent, #0969da) 15%, transparent);
   border-radius: inherit;
   pointer-events: none;
 }

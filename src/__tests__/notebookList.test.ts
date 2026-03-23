@@ -1,30 +1,14 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach } from 'vitest'
-import type { NotebookDraft } from '../hooks/useNotebookList'
-
-const STORAGE_KEY = 'notebook-drafts'
-
-// Simple in-memory localStorage mock for testing
-const store = new Map<string, string>()
-const mockLocalStorage = {
-  getItem: (key: string) => store.get(key) ?? null,
-  setItem: (key: string, value: string) => store.set(key, value),
-  removeItem: (key: string) => store.delete(key),
-  clear: () => store.clear(),
-}
-
-function loadDrafts(): NotebookDraft[] {
-  try {
-    const raw = mockLocalStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) as NotebookDraft[] : []
-  } catch {
-    return []
-  }
-}
-
-function saveDrafts(drafts: NotebookDraft[]) {
-  mockLocalStorage.setItem(STORAGE_KEY, JSON.stringify(drafts))
-}
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { NotebookDraft } from '../types/notebook'
+import {
+  fetchDrafts,
+  createDraftApi,
+  batchCreateDrafts,
+  updateDraftApi,
+  deleteDraftApi,
+  forkDraftApi,
+} from '../lib/notebookDraftApi'
 
 function makeDraft(overrides: Partial<NotebookDraft> = {}): NotebookDraft {
   return {
@@ -38,110 +22,136 @@ function makeDraft(overrides: Partial<NotebookDraft> = {}): NotebookDraft {
   }
 }
 
+// Mock global fetch
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
+
 beforeEach(() => {
-  mockLocalStorage.clear()
+  mockFetch.mockReset()
 })
 
-describe('notebook draft persistence', () => {
-  it('returns empty array when no drafts exist', () => {
-    expect(loadDrafts()).toEqual([])
-  })
+describe('notebook draft API client', () => {
+  describe('fetchDrafts', () => {
+    it('fetches drafts from server', async () => {
+      const drafts = [makeDraft({ name: 'A' }), makeDraft({ name: 'B' })]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ drafts }),
+      })
 
-  it('saves and loads a draft', () => {
-    const draft = makeDraft({ name: 'My Notebook' })
-    saveDrafts([draft])
-    const loaded = loadDrafts()
-    expect(loaded).toHaveLength(1)
-    expect(loaded[0].name).toBe('My Notebook')
-  })
-
-  it('saves multiple drafts', () => {
-    const d1 = makeDraft({ name: 'First' })
-    const d2 = makeDraft({ name: 'Second' })
-    saveDrafts([d1, d2])
-    const loaded = loadDrafts()
-    expect(loaded).toHaveLength(2)
-    expect(loaded[0].name).toBe('First')
-    expect(loaded[1].name).toBe('Second')
-  })
-
-  it('updates a draft by id', () => {
-    const d1 = makeDraft({ name: 'Original' })
-    saveDrafts([d1])
-
-    const updated = loadDrafts().map(d =>
-      d.id === d1.id ? { ...d, name: 'Updated' } : d,
-    )
-    saveDrafts(updated)
-
-    const loaded = loadDrafts()
-    expect(loaded).toHaveLength(1)
-    expect(loaded[0].name).toBe('Updated')
-  })
-
-  it('removes a draft by id', () => {
-    const d1 = makeDraft({ name: 'Keep' })
-    const d2 = makeDraft({ name: 'Remove' })
-    saveDrafts([d1, d2])
-
-    const filtered = loadDrafts().filter(d => d.id !== d2.id)
-    saveDrafts(filtered)
-
-    const loaded = loadDrafts()
-    expect(loaded).toHaveLength(1)
-    expect(loaded[0].name).toBe('Keep')
-  })
-
-  it('preserves page groups', () => {
-    const draft = makeDraft({
-      pageGroups: [
-        { id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 3 },
-        { id: 'g2', templateRef: 'Dots', templateName: 'Dots', count: 1 },
-      ],
+      const result = await fetchDrafts()
+      expect(result).toHaveLength(2)
+      expect(result[0].name).toBe('A')
+      expect(mockFetch).toHaveBeenCalledWith('/api/notebook-drafts')
     })
-    saveDrafts([draft])
-    const loaded = loadDrafts()
-    expect(loaded[0].pageGroups).toHaveLength(2)
-    expect(loaded[0].pageGroups[0].count).toBe(3)
+
+    it('throws on server error', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+      await expect(fetchDrafts()).rejects.toThrow('Failed to fetch drafts: 500')
+    })
   })
 
-  it('preserves device and orientation', () => {
-    const draft = makeDraft({ deviceId: 'rmPP', orientation: 'landscape' })
-    saveDrafts([draft])
-    const loaded = loadDrafts()
-    expect(loaded[0].deviceId).toBe('rmPP')
-    expect(loaded[0].orientation).toBe('landscape')
+  describe('createDraftApi', () => {
+    it('sends POST with draft data', async () => {
+      const draft = makeDraft({ name: 'New' })
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ draft }),
+      })
+
+      const result = await createDraftApi(draft)
+      expect(result.name).toBe('New')
+      expect(mockFetch).toHaveBeenCalledWith('/api/notebook-drafts', expect.objectContaining({
+        method: 'POST',
+      }))
+    })
   })
 
-  it('handles corrupt data gracefully', () => {
-    mockLocalStorage.setItem(STORAGE_KEY, 'not valid json')
-    expect(loadDrafts()).toEqual([])
+  describe('batchCreateDrafts', () => {
+    it('sends batch POST for migration', async () => {
+      const drafts = [makeDraft(), makeDraft()]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ imported: 2 }),
+      })
+
+      const count = await batchCreateDrafts(drafts)
+      expect(count).toBe(2)
+      const call = mockFetch.mock.calls[0]
+      const body = JSON.parse(call[1].body)
+      expect(body.drafts).toHaveLength(2)
+    })
   })
 
-  it('forks a draft with new id and "(Copy)" suffix', () => {
-    const original = makeDraft({ name: 'My Notebook', pageGroups: [
-      { id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 3 },
-    ]})
-    saveDrafts([original])
+  describe('updateDraftApi', () => {
+    it('sends PUT with updated draft', async () => {
+      const draft = makeDraft({ id: 'upd-1', name: 'Updated' })
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ draft }),
+      })
 
-    // Simulate fork logic from useNotebookList
-    const source = loadDrafts().find(d => d.id === original.id)!
-    const fork: NotebookDraft = {
-      id: crypto.randomUUID(),
-      name: `${source.name} (Copy)`,
-      pageGroups: source.pageGroups.map(g => ({ ...g, id: crypto.randomUUID() })),
-      deviceId: source.deviceId,
-      orientation: source.orientation,
-      lastModified: Date.now(),
-    }
-    saveDrafts([fork, ...loadDrafts()])
+      const result = await updateDraftApi(draft)
+      expect(result.name).toBe('Updated')
+      expect(mockFetch).toHaveBeenCalledWith('/api/notebook-drafts/upd-1', expect.objectContaining({
+        method: 'PUT',
+      }))
+    })
 
-    const loaded = loadDrafts()
-    expect(loaded).toHaveLength(2)
-    expect(loaded[0].name).toBe('My Notebook (Copy)')
-    expect(loaded[0].id).not.toBe(original.id)
-    expect(loaded[0].pageGroups[0].id).not.toBe('g1')
-    expect(loaded[0].pageGroups[0].templateRef).toBe('Blank')
-    expect(loaded[0].pageGroups[0].count).toBe(3)
+    it('throws on 404', async () => {
+      const draft = makeDraft({ id: 'nope' })
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+      await expect(updateDraftApi(draft)).rejects.toThrow('Failed to update draft: 404')
+    })
+  })
+
+  describe('deleteDraftApi', () => {
+    it('sends DELETE for the draft', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true })
+
+      await deleteDraftApi('del-1')
+      expect(mockFetch).toHaveBeenCalledWith('/api/notebook-drafts/del-1', expect.objectContaining({
+        method: 'DELETE',
+      }))
+    })
+
+    it('throws on 404', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+      await expect(deleteDraftApi('nope')).rejects.toThrow('Failed to delete draft: 404')
+    })
+  })
+
+  describe('forkDraftApi', () => {
+    it('sends POST to fork endpoint', async () => {
+      const forked = makeDraft({ id: 'forked-1', name: 'Copy' })
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ draft: forked }),
+      })
+
+      const result = await forkDraftApi('src-1')
+      expect(result.name).toBe('Copy')
+      expect(mockFetch).toHaveBeenCalledWith('/api/notebook-drafts/src-1/fork', expect.objectContaining({
+        method: 'POST',
+      }))
+    })
+
+    it('passes custom name in body', async () => {
+      const forked = makeDraft({ name: 'Custom Name' })
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ draft: forked }),
+      })
+
+      await forkDraftApi('src-1', 'Custom Name')
+      const call = mockFetch.mock.calls[0]
+      const body = JSON.parse(call[1].body)
+      expect(body.name).toBe('Custom Name')
+    })
+
+    it('throws on 404', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+      await expect(forkDraftApi('nope')).rejects.toThrow('Failed to fork draft: 404')
+    })
   })
 })
