@@ -1,5 +1,19 @@
 /** Types for the multipage notebook builder */
 
+/** A saved notebook draft (persisted server-side) */
+export interface NotebookDraft {
+  id: string
+  name: string
+  pageGroups: PageGroup[]
+  deviceId: string
+  orientation: 'portrait' | 'landscape'
+  lastModified: number
+  /** UUID of the last successful deploy to device (for update-in-place detection) */
+  deployedUuid?: string
+  /** Origin — system notebooks ('sample'/'debug') cannot be deleted, only hidden */
+  source?: 'user' | 'sample' | 'debug'
+}
+
 /** A single page in an expanded notebook */
 export interface NotebookPage {
   /** UUID for this page */

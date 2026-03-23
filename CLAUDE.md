@@ -47,7 +47,9 @@ server/
     customTemplates.ts — CRUD /api/custom-templates
     officialTemplates.ts — POST /api/save-official-templates
     export.ts        — GET /api/export-templates, /api/export-rm-methods
-    backup.ts        — GET /api/backup, POST /api/restore
+    backup.ts        — GET /api/backup, POST /api/restore (includes notebook drafts)
+    notebookDrafts.ts — CRUD /api/notebook-drafts, fork, batch migration
+    builtinNotebooks.ts — GET /api/builtin-notebooks, hide/restore (virtual notebooks from registries)
     device/
       config.ts      — CRUD /api/devices, /api/devices/:id, /api/devices/active, test-connection, setup-keys
       pull.ts        — POST /api/devices/:id/pull-official, pull-methods
@@ -66,6 +68,8 @@ server/
     deviceManifest.ts — read/write device manifest via SFTP
     ndjsonStream.ts  — NDJSON streaming for long-running operations
     sshErrors.ts     — SSH error formatting with user-friendly hints
+    notebookDraftStore.ts — versioned JSON store for notebook drafts
+    builtinNotebooks.ts — generate virtual notebooks from template registries
   __tests__/
     helpers/
       mockSshServer.ts — in-process ssh2 mock server for integration tests
@@ -121,6 +125,12 @@ Device codenames from `/sys/devices/soc0/machine`: RM1 = `"reMarkable 1.0"`, RM2
 
 The dev server merges `debug-registry.json` + `methods-registry.json` + official `templates.json` into the served `GET /templates/templates.json`. The frontend loads `custom-registry.json` separately.
 
+### Notebook drafts (`server/lib/notebookDraftStore.ts`, `server/routes/notebookDrafts.ts`)
+
+Notebook drafts are persisted server-side in `data/notebooks.json` (versioned JSON, same pattern as `deviceStore.ts`). CRUD API at `/api/notebook-drafts`. The client hook (`useNotebookList`) uses optimistic updates with server-of-record reconciliation. Auto-save fires via 500ms debounce to `PUT /api/notebook-drafts/:id`. On first load, if server is empty but localStorage has legacy data, batch-migrates to server and clears localStorage. Included in backup/restore ZIPs under `notebooks/notebooks.json`.
+
+`NotebookDraft.source` field: `'user'` (default/undefined), `'sample'`, or `'debug'`. System notebooks (`sample`/`debug`) are virtual — generated on demand from `samples-registry.json` and `debug-registry.json` via `/api/builtin-notebooks`. They have deterministic IDs (`__sample-notebook__`, `__debug-notebook__`), cannot be deleted (only hidden via `custom/hidden-notebooks.json`), and fork-on-edit into user drafts. Bulk select supports smart actions: user notebooks → delete, system notebooks → hide.
+
 ### Notebook files (`lib/notebookGenerator.ts`, `server/routes/notebook.ts`)
 
 Notebooks use cPages v2 format with CRDT timestamps and fractional indexing. All devices share the **1404×1872** coordinate system for `.content` files (`customZoomPageWidth`/`customZoomPageHeight`), regardless of device model. Device-specific dimensions are only for template rendering.
@@ -171,4 +181,4 @@ rm_methods is the recommended deployment format — it syncs templates across pa
 
 ### Backup/restore (`lib/backup.ts`)
 
-`GET /api/backup` exports a ZIP of custom + debug templates with registries and a `backup-manifest.json`. Backup filename includes a timestamp with HHMMSS (e.g. `remarkable-backup-2026-03-17_143022.zip`). `POST /api/restore?mode=merge` imports a backup ZIP, merging new entries (matched by `rmMethodsId` then `filename`). Validation uses `parseRegistry()` and `parseTemplate()` on every file. Methods templates are excluded from backups. Backup and restore controls are on the **Device & Sync** page (`/device`).
+`GET /api/backup` exports a ZIP of custom + debug templates with registries, notebook drafts (`notebooks/notebooks.json`), and a `backup-manifest.json`. Backup filename includes a timestamp with HHMMSS (e.g. `remarkable-backup-2026-03-17_143022.zip`). `POST /api/restore?mode=merge` imports a backup ZIP, merging new entries (matched by `rmMethodsId` then `filename` for templates, by `id` for notebook drafts). Validation uses `parseRegistry()` and `parseTemplate()` on every file. Methods templates are excluded from backups. Backup and restore controls are on the **Device & Sync** page (`/device`).

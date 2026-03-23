@@ -22,7 +22,23 @@ import './NotebookPage.css'
 
 export function NotebookPage() {
   const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null)
-  const { drafts, createDraft, updateDraft, removeDraft, getDraft, forkDraft } = useNotebookList()
+  const {
+    allNotebooks, hiddenCount, loading,
+    createDraft, updateDraft, removeDraft, getDraft, forkDraft,
+    hideNotebook, restoreAll,
+  } = useNotebookList()
+
+  // Bulk selection state
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set())
+
+  const toggleBulkItem = useCallback((id: string) => {
+    setBulkSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   const handleNewNotebook = useCallback(() => {
     const draft = createDraft()
@@ -30,8 +46,15 @@ export function NotebookPage() {
   }, [createDraft])
 
   const handleSelectNotebook = useCallback((id: string) => {
-    setActiveNotebookId(id)
-  }, [])
+    const notebook = allNotebooks.find(n => n.id === id)
+    if (notebook?.source === 'sample' || notebook?.source === 'debug') {
+      // Fork-on-edit: create a user copy and open it
+      const forked = forkDraft(id)
+      if (forked) setActiveNotebookId(forked.id)
+    } else {
+      setActiveNotebookId(id)
+    }
+  }, [allNotebooks, forkDraft])
 
   const handleBack = useCallback(() => {
     setActiveNotebookId(null)
@@ -46,11 +69,54 @@ export function NotebookPage() {
     if (activeNotebookId === id) setActiveNotebookId(null)
   }, [removeDraft, activeNotebookId, getDraft])
 
+  const handleHideNotebook = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    hideNotebook(id)
+    setBulkSelected(prev => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }, [hideNotebook])
+
   const handleForkDraft = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    const forked = forkDraft(id)
-    if (forked) setActiveNotebookId(forked.id)
+    forkDraft(id)
   }, [forkDraft])
+
+  // Bulk actions
+  const handleBulkAction = useCallback(() => {
+    if (bulkSelected.size === 0) return
+
+    const userIds: string[] = []
+    const systemIds: string[] = []
+    for (const id of bulkSelected) {
+      const nb = allNotebooks.find(n => n.id === id)
+      if (nb?.source === 'sample' || nb?.source === 'debug') {
+        systemIds.push(id)
+      } else {
+        userIds.push(id)
+      }
+    }
+
+    const parts: string[] = []
+    if (userIds.length > 0) parts.push(`delete ${userIds.length} notebook${userIds.length > 1 ? 's' : ''}`)
+    if (systemIds.length > 0) parts.push(`hide ${systemIds.length} built-in notebook${systemIds.length > 1 ? 's' : ''}`)
+    if (!confirm(`${parts.join(' and ')}?`)) return
+
+    for (const id of userIds) removeDraft(id)
+    for (const id of systemIds) hideNotebook(id)
+    if (activeNotebookId && bulkSelected.has(activeNotebookId)) setActiveNotebookId(null)
+    setBulkSelected(new Set())
+  }, [bulkSelected, allNotebooks, removeDraft, hideNotebook, activeNotebookId])
+
+  const handleSelectAll = useCallback(() => {
+    setBulkSelected(new Set(allNotebooks.map(n => n.id)))
+  }, [allNotebooks])
+
+  const handleDeselectAll = useCallback(() => {
+    setBulkSelected(new Set())
+  }, [])
 
   if (activeNotebookId) {
     const draft = getDraft(activeNotebookId)
@@ -71,20 +137,42 @@ export function NotebookPage() {
     <div className="notebook-page">
       <div className="notebook-list-header">
         <h2>Notebooks</h2>
+        {hiddenCount > 0 && (
+          <button className="notebook-restore-btn" onClick={restoreAll}>
+            Restore {hiddenCount} hidden notebook{hiddenCount > 1 ? 's' : ''}
+          </button>
+        )}
       </div>
+      {loading ? (
+        <div className="notebook-list-loading">Loading notebooks...</div>
+      ) : (
       <div className="notebook-list-grid">
         <button className="notebook-list-card notebook-list-new" onClick={handleNewNotebook}>
           <PlusIcon />
           <span>New Notebook</span>
         </button>
-        {drafts.map(draft => {
+        {allNotebooks.map(draft => {
           const totalPages = draft.pageGroups.reduce((s, g) => s + g.count, 0)
+          const isSystem = draft.source === 'sample' || draft.source === 'debug'
+          const isChecked = bulkSelected.has(draft.id)
           return (
             <button
               key={draft.id}
-              className="notebook-list-card"
+              className={`notebook-list-card${isChecked ? ' bulk-checked' : ''}`}
               onClick={() => handleSelectNotebook(draft.id)}
             >
+              <input
+                type="checkbox"
+                className="bulk-checkbox notebook-card-bulk-checkbox"
+                checked={isChecked}
+                onClick={e => e.stopPropagation()}
+                onChange={() => toggleBulkItem(draft.id)}
+              />
+              {isSystem && (
+                <span className="notebook-system-badge">
+                  {draft.source === 'sample' ? 'Sample' : 'Debug'}
+                </span>
+              )}
               <div className="notebook-list-card-preview">
                 {draft.pageGroups.length > 0 ? (
                   <NotebookPageStrip
@@ -103,30 +191,79 @@ export function NotebookPage() {
                 <div className="notebook-list-card-chips">
                   <span className="notebook-list-chip">{totalPages} pg</span>
                   <span className="notebook-list-chip">{draft.pageGroups.length} grp</span>
-                  <span className="notebook-list-chip">{new Date(draft.lastModified).toLocaleDateString()}</span>
+                  {draft.lastModified > 0 && (
+                    <span className="notebook-list-chip">{new Date(draft.lastModified).toLocaleDateString()}</span>
+                  )}
                 </div>
               </div>
               <div className="notebook-list-card-actions">
                 <span
                   className="notebook-list-card-action"
-                  title="Duplicate notebook"
+                  title={isSystem ? 'Fork to editable copy' : 'Duplicate notebook'}
                   onClick={e => handleForkDraft(e, draft.id)}
                 >
                   <ForkIcon />
                 </span>
-                <span
-                  className="notebook-list-card-action notebook-list-card-delete"
-                  title="Delete draft"
-                  onClick={e => handleDeleteDraft(e, draft.id)}
-                >
-                  <TrashIcon />
-                </span>
+                {isSystem ? (
+                  <span
+                    className="notebook-list-card-action notebook-list-card-hide"
+                    title="Hide this built-in notebook"
+                    onClick={e => handleHideNotebook(e, draft.id)}
+                  >
+                    <HideIcon />
+                  </span>
+                ) : (
+                  <span
+                    className="notebook-list-card-action notebook-list-card-delete"
+                    title="Delete draft"
+                    onClick={e => handleDeleteDraft(e, draft.id)}
+                  >
+                    <TrashIcon />
+                  </span>
+                )}
               </div>
             </button>
           )
         })}
       </div>
+      )}
+      {bulkSelected.size > 0 && (
+        <div className="notebook-bulk-bar">
+          <span className="sidebar-bulk-count">{bulkSelected.size} selected</span>
+          {bulkSelected.size === allNotebooks.length ? (
+            <button className="sidebar-bulk-select-all-btn" onClick={handleDeselectAll}>Deselect All</button>
+          ) : (
+            <button className="sidebar-bulk-select-all-btn" onClick={handleSelectAll}>Select All</button>
+          )}
+          <button className="sidebar-bulk-delete-btn" onClick={handleBulkAction}>
+            {(() => {
+              let userCount = 0, systemCount = 0
+              for (const id of bulkSelected) {
+                const nb = allNotebooks.find(n => n.id === id)
+                if (nb?.source === 'sample' || nb?.source === 'debug') systemCount++
+                else userCount++
+              }
+              const parts: string[] = []
+              if (userCount > 0) parts.push(`Delete ${userCount}`)
+              if (systemCount > 0) parts.push(`Hide ${systemCount}`)
+              return parts.join(' & ')
+            })()}
+          </button>
+          <button className="sidebar-bulk-clear-btn" onClick={handleDeselectAll}>Clear</button>
+        </div>
+      )}
     </div>
+  )
+}
+
+// ── Hide Icon (eye-off) ──
+
+function HideIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
   )
 }
 

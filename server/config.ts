@@ -55,6 +55,8 @@ export interface ServerConfig {
   appBackupsDir: string
   deviceConfigPath: string
   sshDir: string
+  notebookDraftsPath: string
+  hiddenNotebooksPath: string
   /** Override for frontend dist directory (Electron passes this explicitly) */
   frontendDistDir?: string
 }
@@ -92,6 +94,8 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     appBackupsDir: resolve(dataDir, 'data/backups'),
     deviceConfigPath: resolve(dataDir, 'data/device-config.json'),
     sshDir: resolve(dataDir, 'data/ssh'),
+    notebookDraftsPath: resolve(dataDir, 'data/notebooks.json'),
+    hiddenNotebooksPath: resolve(templatesDir, 'custom/hidden-notebooks.json'),
     frontendDistDir: overrides?.frontendDistDir,
   }
 }
