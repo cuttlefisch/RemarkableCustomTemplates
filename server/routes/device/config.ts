@@ -1,14 +1,21 @@
 /**
  * Device CRUD and SSH key management routes.
  *
- * GET    /api/devices                    — list all devices (passwords redacted)
- * POST   /api/devices                    — add a new device
- * PUT    /api/devices/:id                — update a device
- * DELETE /api/devices/:id                — remove a device + cleanup
- * POST   /api/devices/:id/test-connection — test SSH connectivity
- * POST   /api/devices/:id/setup-keys     — generate keys, copy to device
- * GET    /api/devices/active             — get active device ID
- * POST   /api/devices/active             — set active device ID
+ * Manages the multi-device configuration store, including adding/updating/removing
+ * devices, testing SSH connectivity, and setting up passwordless key-based authentication.
+ * Device passwords are redacted in all API responses.
+ *
+ * Routes:
+ * - `GET    /api/devices`                     -- list all devices (passwords redacted)
+ * - `POST   /api/devices`                     -- add a new device (auto-activates if first)
+ * - `PUT    /api/devices/:id`                 -- update device config
+ * - `DELETE /api/devices/:id`                 -- remove device + cleanup per-device dirs
+ * - `GET    /api/devices/active`              -- get active device ID
+ * - `POST   /api/devices/active`              -- set active device ID
+ * - `POST   /api/devices/:id/test-connection` -- test SSH connectivity, cache model/firmware info
+ * - `POST   /api/devices/:id/setup-keys`      -- generate RSA keypair, install on device, switch to key auth
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -19,6 +26,7 @@ import ssh2 from 'ssh2'
 import type { ServerConfig } from '../../config.ts'
 import { resolveDevicePaths } from '../../config.ts'
 import { connect, exec, type DeviceConfig } from '../../lib/ssh.ts'
+import { getSftp, readRemoteFile, writeRemoteFile } from '../../lib/sftp.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import {
   readDeviceStore,
@@ -34,6 +42,12 @@ function redact(device: DeviceConfig): Record<string, unknown> {
   return { ...device, sshPassword: device.sshPassword ? '***' : undefined }
 }
 
+/**
+ * Registers device CRUD and SSH key management routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with device store and SSH paths
+ */
 export default function deviceConfigRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/devices — list all devices
   app.get('/api/devices', async (_request, reply) => {
@@ -220,15 +234,26 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
       const opensshPubStr = `ssh-rsa ${pubBlob.toString('base64')} remarkable-templates`
       writeFileSync(resolve(paths.sshDir, 'id_remarkable.pub'), opensshPubStr + '\n')
 
-      // Connect with current auth (password) and install the public key
+      // Connect with current auth (password) and install the public key via SFTP
+      // (avoids interpolating key material into shell commands)
       let client: Awaited<ReturnType<typeof connect>> | null = null
       try {
         client = await connect(deviceConfig)
-        const escapedPubKey = opensshPubStr.replace(/'/g, "'\\''")
+        await exec(client, 'mkdir -p /home/root/.ssh && chmod 700 /home/root/.ssh')
 
-        await exec(client, `mkdir -p /home/root/.ssh && chmod 700 /home/root/.ssh`)
-        await exec(client, `grep -qF '${escapedPubKey}' /home/root/.ssh/authorized_keys 2>/dev/null || echo '${escapedPubKey}' >> /home/root/.ssh/authorized_keys`)
-        await exec(client, `chmod 600 /home/root/.ssh/authorized_keys`)
+        const sftp = await getSftp(client)
+        const authKeysPath = '/home/root/.ssh/authorized_keys'
+        let existing = ''
+        try { existing = await readRemoteFile(sftp, authKeysPath) } catch { /* file may not exist */ }
+
+        if (!existing.includes(opensshPubStr)) {
+          const updated = existing.endsWith('\n') || existing === ''
+            ? existing + opensshPubStr + '\n'
+            : existing + '\n' + opensshPubStr + '\n'
+          await writeRemoteFile(sftp, authKeysPath, updated)
+        }
+
+        await exec(client, 'chmod 600 /home/root/.ssh/authorized_keys')
       } finally {
         client?.end()
       }

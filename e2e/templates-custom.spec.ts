@@ -1,22 +1,7 @@
 import { test, expect } from '@playwright/test'
-import { waitForSidebarLoaded } from './helpers'
+import { waitForSidebarLoaded, createCustomTemplate, cleanupCustomTemplates, assertNoCustomTemplates } from './helpers'
 
-/** Create a custom template via the "+ New" flow and return its name */
-async function createCustomTemplate(page: import('@playwright/test').Page, name: string) {
-  const newBtn = page.locator('.sidebar-action-btn', { hasText: '+ New' })
-  await expect(newBtn).toBeVisible()
-  await newBtn.click()
-
-  const nameInput = page.locator('.new-template-name')
-  await expect(nameInput).toBeVisible()
-  await nameInput.fill(name)
-
-  const createBtn = page.locator('.new-template-create-btn')
-  await createBtn.click()
-
-  // Wait for the new template to appear in the sidebar list
-  await expect(page.locator('.template-btn', { hasText: name })).toBeVisible({ timeout: 10_000 })
-}
+const PREFIX = 'E2E Custom'
 
 test.describe('Custom Template CRUD', () => {
   test.beforeEach(async ({ page }) => {
@@ -26,8 +11,18 @@ test.describe('Custom Template CRUD', () => {
     await waitForSidebarLoaded(page)
   })
 
+  test.afterEach(async ({ request }) => {
+    const deleted = await cleanupCustomTemplates(request, PREFIX)
+    // Also clean up any "(Copy)" artifacts from the copy test
+    const copiesDeleted = await cleanupCustomTemplates(request, '(Copy)')
+    if (deleted + copiesDeleted > 0) {
+      // Verify cleanup succeeded
+      await assertNoCustomTemplates(request, PREFIX)
+    }
+  })
+
   test('create custom template', async ({ page }) => {
-    const templateName = `Test Template ${Date.now()}`
+    const templateName = `${PREFIX} Create ${Date.now()}`
     await createCustomTemplate(page, templateName)
 
     // Verify the template appears in the sidebar list
@@ -57,7 +52,7 @@ test.describe('Custom Template CRUD', () => {
 
   test('delete a custom template', async ({ page }) => {
     // Create a custom template first so we have something to delete
-    const templateName = `Delete Me ${Date.now()}`
+    const templateName = `${PREFIX} Delete ${Date.now()}`
     await createCustomTemplate(page, templateName)
 
     // Find the template entry and its delete button
@@ -76,8 +71,8 @@ test.describe('Custom Template CRUD', () => {
 
   test('checking templates shows bulk action bar with count', async ({ page }) => {
     // Ensure we have at least 2 custom templates
-    await createCustomTemplate(page, `Bulk A ${Date.now()}`)
-    await createCustomTemplate(page, `Bulk B ${Date.now()}`)
+    await createCustomTemplate(page, `${PREFIX} BulkA ${Date.now()}`)
+    await createCustomTemplate(page, `${PREFIX} BulkB ${Date.now()}`)
 
     // Checkboxes always visible — check 2 items
     const checkboxes = page.locator('.bulk-checkbox')

@@ -22,17 +22,24 @@ const HIT_RADIUS = 20          // invisible hit target — easy to click
 const VISUAL_KNOT_RADIUS = 7   // visible knot dot
 const VISUAL_CP_RADIUS = 5     // visible control point dot
 
+/** A PathItem paired with its index in the template's item array. */
 export interface IndexedPathItem {
   item: PathItem
+  /** Index in the parent template's items array (used for dispatch actions). */
   originalIndex: number
 }
 
 interface DrawingOverlayProps {
+  /** Current drawing editor state (tool, selection, drag state, etc.). */
   state: DrawingEditorState
   dispatch: React.Dispatch<DrawingAction>
+  /** Template canvas width in template coordinates. */
   templateWidth: number
+  /** Template canvas height in template coordinates. */
   templateHeight: number
+  /** Path items eligible for interaction (select, drag, scale, rotate). */
   items: IndexedPathItem[]
+  /** Pre-resolved constants for evaluating expression-based path data. */
   resolvedConstants?: ResolvedConstants
 }
 

@@ -25,15 +25,20 @@ import { distanceBetween } from '../lib/drawingCoords'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** Available drawing tools in the visual template editor. */
 export type DrawingTool = 'select' | 'point' | 'line' | 'polygon' | 'regularPolygon' | 'circle' | 'bezier'
+/** Shape variant for the point tool. */
 export type PointShape = 'dot' | 'cross' | 'diamond'
+/** Spline algorithm for the bezier tool. */
 export type BezierAlgorithm = 'catmull-rom' | 'hobby'
 
+/** Tracks a shape being drawn but not yet committed (vertices collected so far). */
 export interface InProgressShape {
   tool: DrawingTool
   vertices: Point[]
 }
 
+/** Complete state of the drawing editor — managed by `drawingEditorReducer`. */
 export interface DrawingEditorState {
   activeTool: DrawingTool
   regularPolygonSides: number
@@ -103,6 +108,7 @@ export interface DrawingEditorState {
   fillUseForeground: boolean
 }
 
+/** Discriminated union of all actions dispatched to `drawingEditorReducer`. Discriminant field: `type`. */
 export type DrawingAction =
   | { type: 'SET_TOOL'; tool: DrawingTool }
   | { type: 'SET_REGULAR_SIDES'; sides: number }
@@ -164,6 +170,7 @@ const POINT_SIZE = 10
 
 // ─── Initial state ───────────────────────────────────────────────────────────
 
+/** Default initial state for the drawing editor (select tool, no selection, zoom 1x). */
 export const initialDrawingEditorState: DrawingEditorState = {
   activeTool: 'select',
   regularPolygonSides: 6,
@@ -257,6 +264,10 @@ function getShapeProps(state: DrawingEditorState): ShapeProps {
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
+/**
+ * Pure reducer for the drawing editor state machine (~45 action types).
+ * Fully testable without DOM — side effects are handled via intent fields.
+ */
 export function drawingEditorReducer(
   state: DrawingEditorState,
   action: DrawingAction,
@@ -609,12 +620,20 @@ function handleFinishBezier(state: DrawingEditorState): DrawingEditorState {
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
+/** Callbacks for side effects triggered by the drawing editor reducer. */
 interface UseDrawingEditorOptions {
   onCommit: (item: PathItem, scalingMode: ScalingMode) => void
   onDelete: (index: number) => void
   onPathEdit: (itemIndex: number, newData: PathData) => void
 }
 
+/**
+ * Wraps `drawingEditorReducer` with side-effect handling for commits, deletes, and path edits.
+ * Intent fields in the reducer state trigger the corresponding callback and are cleared automatically.
+ *
+ * @param options - Callbacks invoked when the reducer produces a commit, delete, or path edit intent.
+ * @returns `{ state, dispatch, setScalingModeForDevice }`.
+ */
 export function useDrawingEditor({ onCommit, onDelete, onPathEdit }: UseDrawingEditorOptions) {
   const [state, dispatch] = useReducer(drawingEditorReducer, initialDrawingEditorState)
 

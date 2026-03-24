@@ -14,7 +14,13 @@ import type {
 import type { TemplateRegistryEntry } from '../types/registry'
 import type { DeviceId } from './renderer'
 
-/** Format a CRDT timestamp as "replicaId:sequenceNumber" */
+/**
+ * Format a CRDT timestamp as `"replicaId:sequenceNumber"`.
+ *
+ * @param replicaId - The replica identifier (typically 1 for generated notebooks)
+ * @param seq - The monotonically increasing sequence number
+ * @returns A CRDT timestamp string (e.g. `"1:3"`)
+ */
 export function generateCrdtTimestamp(replicaId: number, seq: number): string {
   return `${replicaId}:${seq}`
 }
@@ -56,7 +62,12 @@ export function generateFractionalIndex(position: number): string {
   return 'd' + chars[e2] + chars[e1] + chars[e0]
 }
 
-/** Expand page groups into individual pages */
+/**
+ * Expand page groups into individual pages, assigning random UUIDs to each.
+ *
+ * @param groups - Page groups with a template reference and repeat count
+ * @returns Flat array of individual pages
+ */
 export function expandPageGroups(groups: PageGroup[]): NotebookPage[] {
   const pages: NotebookPage[] = []
   for (const group of groups) {
@@ -83,7 +94,12 @@ export function resolveTemplateRef(entry: TemplateRegistryEntry): string {
   return entry.name
 }
 
-/** Generate the .metadata file content */
+/**
+ * Generate the `.metadata` file content for a new notebook.
+ *
+ * @param name - The visible name of the notebook
+ * @returns Metadata with current timestamps and default field values
+ */
 export function generateNotebookMetadata(name: string): NotebookMetadata {
   const now = String(Date.now())
   return {
@@ -105,7 +121,11 @@ export function generateNotebookMetadata(name: string): NotebookMetadata {
   }
 }
 
-/** Generate the .local file content */
+/**
+ * Generate the `.local` file content (format version marker).
+ *
+ * @returns A NotebookLocal object with `contentFormatVersion: 2`
+ */
 export function generateNotebookLocal(): NotebookLocal {
   return { contentFormatVersion: 2 }
 }
@@ -132,7 +152,7 @@ const PPM_EMPTY_RM_BASE64 =
   'HwAMLAgAAAAGAUNhcGEgMTwFAAAAHwAAIQEaAAAAAAEBBB8AAS8ADT8AAE8AAFQAAAAA' +
   'bAQAAAACLwAL'
 
-/** Size of the PPM empty .rm stub (used for pristine detection). */
+/** Size in bytes of the PPM empty `.rm` stub (used to detect pristine/unedited pages). */
 export const EMPTY_RM_FILE_SIZE = 423
 
 let _ppmEmptyRmBuffer: Uint8Array | null = null
@@ -152,7 +172,17 @@ export function generateEmptyRmFile(deviceId: DeviceId): Uint8Array | null {
   return null
 }
 
-/** Generate the .content file with cPages v2 format */
+/**
+ * Generate the `.content` file with cPages v2 format.
+ *
+ * All devices share the 1404x1872 coordinate system for notebooks regardless
+ * of physical display size. Device-specific dimensions are only for template rendering.
+ *
+ * @param pages - The expanded pages with UUIDs and template references
+ * @param orientation - Page orientation (defaults to portrait)
+ * @param _deviceId - Reserved for future per-device customisation
+ * @returns A complete NotebookContent object ready for JSON serialisation
+ */
 export function generateNotebookContent(
   pages: NotebookPage[],
   orientation: 'portrait' | 'landscape' = 'portrait',

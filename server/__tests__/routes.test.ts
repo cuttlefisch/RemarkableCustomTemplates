@@ -721,6 +721,267 @@ describe('server routes', () => {
     })
   })
 
+  // ─── Export routes ───────────────────────────────────────────────────────
+
+  describe('GET /api/export-templates', () => {
+    it('returns 404 when no official templates loaded', async () => {
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-templates' })
+      expect(res.statusCode).toBe(404)
+      const body = JSON.parse(res.body)
+      expect(body.error).toMatch(/Official templates not loaded/)
+      await app.close()
+    })
+
+    it('returns a ZIP with merged registry + template files', async () => {
+      // Seed official templates
+      writeFileSync(resolve(config.officialDir, 'templates.json'), JSON.stringify({
+        templates: [{ name: 'Official Grid', filename: 'P Official Grid', iconCode: '\ue9d8', landscape: false, categories: ['Lines'] }],
+      }))
+      writeFileSync(resolve(config.officialDir, 'P Official Grid.template'), JSON.stringify({
+        name: 'Official Grid', orientation: 'portrait', constants: [], items: [],
+      }))
+
+      // Seed custom template
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [{ name: 'My Custom', filename: 'custom/P MyCustom', iconCode: '\ue9d8', landscape: false, categories: ['Custom'] }],
+      }))
+      writeFileSync(resolve(config.customDir, 'P MyCustom.template'), JSON.stringify({
+        name: 'My Custom', orientation: 'portrait', constants: [], items: [],
+      }))
+
+      // Seed debug template
+      writeFileSync(config.debugRegistry, JSON.stringify({
+        templates: [{ name: 'Debug Lines', filename: 'debug/P DebugLines', iconCode: '\ue9d8', landscape: false, categories: ['Debug'] }],
+      }))
+      writeFileSync(resolve(config.debugDir, 'P DebugLines.template'), JSON.stringify({
+        name: 'Debug Lines', orientation: 'portrait', constants: [], items: [],
+      }))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-templates' })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toBe('application/zip')
+      expect(res.headers['content-disposition']).toBe('attachment; filename="remarkable-templates.zip"')
+
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      // Should contain merged registry
+      expect(unzipped['templates.json']).toBeDefined()
+      const registry = JSON.parse(Buffer.from(unzipped['templates.json']).toString('utf8'))
+      const names = registry.templates.map((t: { name: string }) => t.name)
+      expect(names).toContain('Official Grid')
+      expect(names).toContain('My Custom')
+      expect(names).toContain('Debug Lines')
+
+      // Should contain .template files
+      expect(unzipped['P Official Grid.template']).toBeDefined()
+      expect(unzipped['P MyCustom.template']).toBeDefined()
+      expect(unzipped['P DebugLines.template']).toBeDefined()
+
+      await app.close()
+    })
+
+    it('sets x-skipped-files header when custom templates overlap official ones', async () => {
+      // Official has a template with filename "P Grid"
+      writeFileSync(resolve(config.officialDir, 'templates.json'), JSON.stringify({
+        templates: [{ name: 'Grid', filename: 'P Grid', iconCode: '\ue9d8', landscape: false, categories: ['Lines'] }],
+      }))
+      writeFileSync(resolve(config.officialDir, 'P Grid.template'), '{"name":"Grid","orientation":"portrait","constants":[],"items":[]}')
+
+      // Custom also has "P Grid" (same filename after stripping custom/ prefix)
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [{ name: 'Grid Custom', filename: 'custom/P Grid', iconCode: '\ue9d8', landscape: false, categories: ['Custom'] }],
+      }))
+      writeFileSync(resolve(config.customDir, 'P Grid.template'), '{"name":"Grid Custom","orientation":"portrait","constants":[],"items":[]}')
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-templates' })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['x-skipped-files']).toBe('P Grid')
+
+      // The merged registry should NOT contain the custom "Grid Custom"
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      const registry = JSON.parse(Buffer.from(unzipped['templates.json']).toString('utf8'))
+      const names = registry.templates.map((t: { name: string }) => t.name)
+      expect(names).toContain('Grid')
+      expect(names).not.toContain('Grid Custom')
+
+      await app.close()
+    })
+
+    it('resolves custom template string constants before export', async () => {
+      writeFileSync(resolve(config.officialDir, 'templates.json'), JSON.stringify({
+        templates: [{ name: 'Official', filename: 'P Official', iconCode: '\ue9d8', landscape: false, categories: ['Lines'] }],
+      }))
+      writeFileSync(resolve(config.officialDir, 'P Official.template'), '{"name":"Official","orientation":"portrait","constants":[],"items":[]}')
+
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [{ name: 'Expr Template', filename: 'custom/P ExprTpl', iconCode: '\ue9d8', landscape: false, categories: ['Custom'] }],
+      }))
+      // Template with a color constant (non-scalar string starting with #) and a
+      // path item that references it. resolveStringConstants inlines color constants
+      // into items and removes them from the constants array.
+      writeFileSync(resolve(config.customDir, 'P ExprTpl.template'), JSON.stringify({
+        name: 'Expr Template',
+        orientation: 'portrait',
+        constants: [{ lineColor: '#ff0000' }, { spacing: 10 }],
+        items: [{ type: 'path', strokeColor: 'lineColor', strokeWidth: 1, data: ['M', 0, 0, 'L', 100, 100] }],
+      }))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-templates' })
+      expect(res.statusCode).toBe(200)
+
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      const tplContent = JSON.parse(Buffer.from(unzipped['P ExprTpl.template']).toString('utf8'))
+      // The color constant "lineColor" should be removed from constants (inlined into items)
+      const colorConst = tplContent.constants.find((c: Record<string, unknown>) => 'lineColor' in c)
+      expect(colorConst).toBeUndefined()
+      // The numeric constant "spacing" should still be present
+      const spacingConst = tplContent.constants.find((c: Record<string, unknown>) => 'spacing' in c)
+      expect(spacingConst).toBeDefined()
+      // The path item should have the color inlined
+      expect(tplContent.items[0].strokeColor).toBe('#ff0000')
+
+      await app.close()
+    })
+  })
+
+  describe('GET /api/export-rm-methods', () => {
+    it('returns a ZIP with UUID-named files and a .manifest', async () => {
+      const uuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [{ name: 'Methods Test', filename: 'custom/P MethodsTest', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], rmMethodsId: uuid }],
+      }))
+      writeFileSync(resolve(config.customDir, 'P MethodsTest.template'), JSON.stringify({
+        name: 'Methods Test', author: 'test', orientation: 'portrait',
+        constants: [], items: [],
+      }))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-rm-methods' })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toBe('application/zip')
+      expect(res.headers['content-disposition']).toBe('attachment; filename="remarkable-rm-methods.zip"')
+
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      // Should have UUID-named triplet files
+      expect(unzipped[`${uuid}.template`]).toBeDefined()
+      expect(unzipped[`${uuid}.metadata`]).toBeDefined()
+      expect(unzipped[`${uuid}.content`]).toBeDefined()
+      // Should have a .manifest
+      expect(unzipped['.manifest']).toBeDefined()
+      const manifest = JSON.parse(Buffer.from(unzipped['.manifest']).toString('utf8'))
+      expect(manifest.templates[uuid]).toBeDefined()
+      expect(manifest.templates[uuid].name).toBe('Methods Test')
+
+      await app.close()
+    })
+
+    it('works with only debug templates (no official needed)', async () => {
+      writeFileSync(config.debugRegistry, JSON.stringify({
+        templates: [{ name: 'Debug Only', filename: 'debug/P DebugOnly', iconCode: '\ue9d8', landscape: false, categories: ['Debug'] }],
+      }))
+      writeFileSync(resolve(config.debugDir, 'P DebugOnly.template'), JSON.stringify({
+        name: 'Debug Only', author: 'test', orientation: 'portrait',
+        constants: [], items: [],
+      }))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-rm-methods' })
+      expect(res.statusCode).toBe(200)
+
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      expect(unzipped['.manifest']).toBeDefined()
+      const manifest = JSON.parse(Buffer.from(unzipped['.manifest']).toString('utf8'))
+      const uuids = Object.keys(manifest.templates)
+      expect(uuids).toHaveLength(1)
+      expect(manifest.templates[uuids[0]].name).toBe('Debug Only')
+
+      await app.close()
+    })
+  })
+
+  describe('GET /api/export-template/:uuid', () => {
+    it('returns 404 for unknown UUID', async () => {
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/export-template/nonexistent-uuid' })
+      expect(res.statusCode).toBe(404)
+      const body = JSON.parse(res.body)
+      expect(body.error).toMatch(/not found/)
+      await app.close()
+    })
+
+    it('returns a ZIP with just that template files', async () => {
+      const uuid = '11111111-2222-3333-4444-555555555555'
+      const otherUuid = '66666666-7777-8888-9999-aaaaaaaaaaaa'
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [
+          { name: 'Target', filename: 'custom/P Target', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], rmMethodsId: uuid },
+          { name: 'Other', filename: 'custom/P Other', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], rmMethodsId: otherUuid },
+        ],
+      }))
+      writeFileSync(resolve(config.customDir, 'P Target.template'), JSON.stringify({
+        name: 'Target', author: 'test', orientation: 'portrait', constants: [], items: [],
+      }))
+      writeFileSync(resolve(config.customDir, 'P Other.template'), JSON.stringify({
+        name: 'Other', author: 'test', orientation: 'portrait', constants: [], items: [],
+      }))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: `/api/export-template/${uuid}` })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toBe('application/zip')
+      expect(res.headers['content-disposition']).toMatch(/Target/)
+
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      const fileNames = Object.keys(unzipped)
+      // Should contain only the target template's files
+      expect(fileNames).toContain(`${uuid}.template`)
+      expect(fileNames).toContain(`${uuid}.metadata`)
+      expect(fileNames).toContain(`${uuid}.content`)
+      // Should NOT contain the other template's files
+      expect(fileNames).not.toContain(`${otherUuid}.template`)
+      expect(fileNames).not.toContain(`${otherUuid}.metadata`)
+
+      await app.close()
+    })
+  })
+
+  describe('GET /api/export-template-by-name/:slug', () => {
+    it('returns 404 for unknown slug', async () => {
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: `/api/export-template-by-name/${encodeURIComponent('P Nonexistent')}` })
+      expect(res.statusCode).toBe(404)
+      const body = JSON.parse(res.body)
+      expect(body.error).toMatch(/not found/)
+      await app.close()
+    })
+
+    it('returns a ZIP matching the slug UUID', async () => {
+      const uuid = 'deadbeef-1234-5678-9abc-def012345678'
+      writeFileSync(config.customRegistry, JSON.stringify({
+        templates: [{ name: 'Slug Template', filename: 'custom/P SlugTpl', iconCode: '\ue9d8', landscape: false, categories: ['Custom'], rmMethodsId: uuid }],
+      }))
+      writeFileSync(resolve(config.customDir, 'P SlugTpl.template'), JSON.stringify({
+        name: 'Slug Template', author: 'test', orientation: 'portrait', constants: [], items: [],
+      }))
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: `/api/export-template-by-name/${encodeURIComponent('P SlugTpl')}` })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toBe('application/zip')
+      expect(res.headers['content-disposition']).toMatch(/Slug_Template/)
+
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      expect(unzipped[`${uuid}.template`]).toBeDefined()
+      expect(unzipped[`${uuid}.metadata`]).toBeDefined()
+      expect(unzipped[`${uuid}.content`]).toBeDefined()
+
+      await app.close()
+    })
+  })
+
   describe('POST /api/restore/cleanup', () => {
     it('removes specified templates from registry and filesystem', async () => {
       writeFileSync(config.customRegistry, JSON.stringify({
@@ -753,6 +1014,101 @@ describe('server routes', () => {
       const reg = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
       expect(reg.templates).toHaveLength(1)
       expect(reg.templates[0].name).toBe('Keep')
+      await app.close()
+    })
+  })
+
+  describe('POST /api/restore-from-backup/:filename', () => {
+    it('rejects invalid filename (no .zip, contains /, contains ..)', async () => {
+      const app = await createApp(config)
+
+      const noZip = await app.inject({ method: 'POST', url: '/api/restore-from-backup/backup.tar' })
+      expect(noZip.statusCode).toBe(400)
+
+      const withSlash = await app.inject({ method: 'POST', url: '/api/restore-from-backup/path%2Fbackup.zip' })
+      expect(withSlash.statusCode).toBe(400)
+
+      const withDots = await app.inject({ method: 'POST', url: '/api/restore-from-backup/..%2F..%2Fevil.zip' })
+      expect(withDots.statusCode).toBe(400)
+
+      await app.close()
+    })
+
+    it('returns 404 for non-existent backup', async () => {
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'POST', url: '/api/restore-from-backup/does-not-exist.zip' })
+      expect(res.statusCode).toBe(404)
+      await app.close()
+    })
+
+    it('restores templates from a server-side backup ZIP', async () => {
+      // Create a valid backup ZIP in appBackupsDir
+      mkdirSync(config.appBackupsDir, { recursive: true })
+      const backupZip = makeBackupZip({
+        customTemplates: [{ filename: 'P Restored', name: 'Restored', content: validTemplate }],
+      })
+      writeFileSync(resolve(config.appBackupsDir, 'remarkable-backup-restore-test.zip'), backupZip)
+
+      const app = await createApp(config)
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/restore-from-backup/remarkable-backup-restore-test.zip?mode=merge',
+      })
+      expect(res.statusCode).toBe(200)
+      const body = JSON.parse(res.body)
+      expect(body.ok).toBe(true)
+      expect(body.added).toContain('Restored')
+
+      // Verify template was actually written to disk
+      expect(existsSync(resolve(config.customDir, 'P Restored.template'))).toBe(true)
+      const reg = JSON.parse(readFileSync(config.customRegistry, 'utf8'))
+      expect(reg.templates.some((t: { name: string }) => t.name === 'Restored')).toBe(true)
+
+      await app.close()
+    })
+  })
+
+  describe('GET /api/backups/:filename/download', () => {
+    it('rejects invalid filename', async () => {
+      const app = await createApp(config)
+
+      const noZip = await app.inject({ method: 'GET', url: '/api/backups/backup.tar/download' })
+      expect(noZip.statusCode).toBe(400)
+
+      const withDots = await app.inject({ method: 'GET', url: '/api/backups/..%2F..%2Fevil.zip/download' })
+      expect(withDots.statusCode).toBe(400)
+
+      await app.close()
+    })
+
+    it('returns 404 for non-existent backup', async () => {
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/backups/does-not-exist.zip/download' })
+      expect(res.statusCode).toBe(404)
+      await app.close()
+    })
+
+    it('returns the ZIP file contents with correct headers', async () => {
+      mkdirSync(config.appBackupsDir, { recursive: true })
+      const backupZip = makeBackupZip({
+        customTemplates: [{ filename: 'P DL Test', name: 'DL Test', content: validTemplate }],
+      })
+      const backupFilename = 'remarkable-backup-download-test.zip'
+      writeFileSync(resolve(config.appBackupsDir, backupFilename), backupZip)
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: `/api/backups/${backupFilename}/download` })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toBe('application/zip')
+      expect(res.headers['content-disposition']).toBe(`attachment; filename="${backupFilename}"`)
+      expect(res.headers['content-length']).toBe(String(backupZip.length))
+
+      // Verify the returned data is a valid ZIP with expected contents
+      const unzipped = unzipSync(new Uint8Array(res.rawPayload))
+      expect(unzipped['backup-manifest.json']).toBeDefined()
+      expect(unzipped['custom/custom-registry.json']).toBeDefined()
+      expect(unzipped['custom/P DL Test.template']).toBeDefined()
+
       await app.close()
     })
   })

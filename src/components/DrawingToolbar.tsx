@@ -19,16 +19,23 @@ import {
 } from './DrawingIcons'
 
 interface DrawingToolbarProps {
+  /** Current drawing editor state. */
   state: DrawingEditorState
   dispatch: React.Dispatch<DrawingAction>
+  /** Active device — determines available scaling modes and dimension labels. */
   deviceId: DeviceId
   orientation: 'portrait' | 'landscape'
+  /** Current template background color (hex). */
   backgroundColor: string
   onBackgroundColorChange: (color: string) => void
+  /** Current template foreground color (hex). */
   foregroundColor: string
   onForegroundColorChange: (color: string) => void
+  /** Callback to reorder items in the z-stack. */
   onMove: (index: number, direction: 'up' | 'down' | 'top' | 'bottom') => void
+  /** Callback to rotate the selected item by a fixed angle. */
   onRotate: (index: number, angleDeg: number) => void
+  /** Callback to flip the selected item along an axis. */
   onFlip: (index: number, axis: 'horizontal' | 'vertical') => void
   canUndo: boolean
   canRedo: boolean

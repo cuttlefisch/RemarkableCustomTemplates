@@ -4,11 +4,20 @@ import { ErrorDetails } from './ErrorDetails'
 import { DEVICES, type DeviceId } from '../../lib/renderer'
 
 interface Props {
+  /** Full device state from the useDevices() hook (shared with parent). */
   devicesState: UseDevices
+  /** Currently preferred device type for template preview dimensions. */
   preferredDevice: DeviceId
+  /** Called when the user selects a different preferred device type. */
   onPreferredChange: (id: DeviceId) => void
 }
 
+/**
+ * Device connection management card on the Device page.
+ * Handles adding, editing, testing, and removing device SSH connections.
+ * Supports password and SSH key authentication, with a guided setup flow
+ * and a "Preferred Device Type" selector for template preview dimensions.
+ */
 export function DeviceConnectionCard({ devicesState, preferredDevice, onPreferredChange }: Props) {
   const { devices, activeDevice, addDevice, updateDevice, removeDevice, testConnection, setupKeys } = devicesState
 

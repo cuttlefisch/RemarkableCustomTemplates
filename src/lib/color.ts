@@ -1,6 +1,11 @@
 import type { ConstantEntry } from '../types/template'
 
-/** WCAG 2.1 relative luminance (range 0–1) */
+/**
+ * Compute WCAG 2.1 relative luminance from a hex color string.
+ *
+ * @param hex - A 7-character hex color string (e.g. `"#1a2b3c"`)
+ * @returns Relative luminance in the range [0, 1] (0 = black, 1 = white)
+ */
 export function relativeLuminanceFromHex(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255
   const g = parseInt(hex.slice(3, 5), 16) / 255
@@ -10,8 +15,14 @@ export function relativeLuminanceFromHex(hex: string): number {
 }
 
 /**
- * true when background is significantly darker than foreground:
- *   contrast ratio ≥ 4.5:1  AND  bg luminance < fg luminance
+ * Determine if a color pair represents a high-contrast dark theme.
+ *
+ * Returns `true` when the background is significantly darker than the foreground:
+ * WCAG contrast ratio >= 4.5:1 AND background luminance < foreground luminance.
+ *
+ * @param bgHex - Background color as a hex string
+ * @param fgHex - Foreground color as a hex string
+ * @returns Whether the pair qualifies as a high-contrast dark theme
  */
 export function isHighContrastDark(bgHex: string, fgHex: string): boolean {
   const bgL = relativeLuminanceFromHex(bgHex)
@@ -22,7 +33,14 @@ export function isHighContrastDark(bgHex: string, fgHex: string): boolean {
   return contrast >= 4.5 && bgL < fgL
 }
 
-/** Pull { key: '#xxxxxx' } entries out of the raw constants array */
+/**
+ * Extract hex color constants from a template's constants array.
+ *
+ * Only entries whose values start with `#` are included.
+ *
+ * @param constants - The template's constants array
+ * @returns A map of constant names to hex color strings
+ */
 export function extractColorConstants(constants: ConstantEntry[]): Record<string, string> {
   const result: Record<string, string> = {}
   for (const entry of constants) {

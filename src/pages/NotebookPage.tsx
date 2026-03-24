@@ -20,6 +20,19 @@ import type { TemplateRegistryEntry } from '../types/registry'
 import { DEVICES, getPreferredDeviceType, setPreferredDeviceType, type DeviceId } from '../lib/renderer'
 import './NotebookPage.css'
 
+/**
+ * Notebook builder page (`/notebook`).
+ *
+ * Two views:
+ * - **List view** — grid of notebook draft cards with bulk select, fork, delete/hide.
+ *   System notebooks (sample/debug) use hide instead of delete.
+ * - **Editor view** (NotebookEditor) — three-panel layout: template picker | page groups | preview.
+ *   Supports drag reorder, per-group page count, auto-save to server, export as ZIP,
+ *   and deploy to device (beta) with conflict detection and overwrite/rename dialog.
+ *
+ * State: notebook list from `useNotebookList` (server-backed with optimistic updates),
+ * active notebook ID, and bulk selection set.
+ */
 export function NotebookPage() {
   const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null)
   const {
@@ -183,39 +196,47 @@ export function NotebookPage() {
                 <div className="notebook-list-card-name">
                   {draft.name || 'Untitled'}
                 </div>
-                <div className="notebook-list-card-chips">
-                  <span className="notebook-list-chip">{totalPages} pg</span>
-                  <span className="notebook-list-chip">{draft.pageGroups.length} grp</span>
-                  {draft.lastModified > 0 && (
-                    <span className="notebook-list-chip">{new Date(draft.lastModified).toLocaleDateString()}</span>
-                  )}
+                <div className="notebook-list-card-meta-row">
+                  <div className="notebook-list-card-chips">
+                    <span className="notebook-list-chip">{totalPages} pg</span>
+                    <span className="notebook-list-chip">{draft.pageGroups.length} grp</span>
+                    {draft.lastModified > 0 && (
+                      <span className="notebook-list-chip">{new Date(draft.lastModified).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                  <div className="notebook-list-card-actions">
+                    <button
+                      type="button"
+                      className="notebook-list-card-action"
+                      title={isSystem ? 'Fork to editable copy' : 'Duplicate notebook'}
+                      aria-label={isSystem ? 'Fork to editable copy' : 'Duplicate notebook'}
+                      onClick={e => handleForkDraft(e, draft.id)}
+                    >
+                      <ForkIcon />
+                    </button>
+                    {isSystem ? (
+                      <button
+                        type="button"
+                        className="notebook-list-card-action notebook-list-card-hide"
+                        title="Hide this built-in notebook"
+                        aria-label="Hide this built-in notebook"
+                        onClick={e => handleHideNotebook(e, draft.id)}
+                      >
+                        <HideIcon />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="notebook-list-card-action notebook-list-card-delete"
+                        title="Delete notebook"
+                        aria-label="Delete notebook"
+                        onClick={e => handleDeleteDraft(e, draft.id)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="notebook-list-card-actions">
-                <span
-                  className="notebook-list-card-action"
-                  title={isSystem ? 'Fork to editable copy' : 'Duplicate notebook'}
-                  onClick={e => handleForkDraft(e, draft.id)}
-                >
-                  <ForkIcon />
-                </span>
-                {isSystem ? (
-                  <span
-                    className="notebook-list-card-action notebook-list-card-hide"
-                    title="Hide this built-in notebook"
-                    onClick={e => handleHideNotebook(e, draft.id)}
-                  >
-                    <HideIcon />
-                  </span>
-                ) : (
-                  <span
-                    className="notebook-list-card-action notebook-list-card-delete"
-                    title="Delete draft"
-                    onClick={e => handleDeleteDraft(e, draft.id)}
-                  >
-                    <TrashIcon />
-                  </span>
-                )}
               </div>
             </button>
           )
@@ -266,10 +287,13 @@ function HideIcon() {
 
 interface DeployConfirmDialogProps {
   notebookName: string
+  /** Number of pages in the existing on-device notebook. */
   existingPageCount: number
+  /** True if the on-device notebook has no handwritten modifications. */
   pristine: boolean
   onOverwrite: () => void
   onCancel: () => void
+  /** Non-null when the "Deploy as New" name input is visible. */
   newName: string | null
   onNewNameChange: (name: string) => void
   onShowNewNameInput: () => void
@@ -336,14 +360,24 @@ function DeployConfirmDialog({
 // ── Editor View (three-panel layout) ──
 
 interface NotebookEditorProps {
+  /** The draft to load into the editor. Undefined if draft was deleted. */
   draft?: NotebookDraft
+  /** True for system notebooks (sample/debug) — disables editing, shows fork button. */
   readOnly?: boolean
   onBack: () => void
+  /** Called on auto-save (500ms debounce) and manual actions that change the draft. */
   onSave: (draft: NotebookDraft) => void
+  /** Navigate the editor to a different notebook (used after fork-on-deploy). */
   onSwitchNotebook: (id: string) => void
+  /** Fork a draft, optionally with a custom name. Returns the new draft or null. */
   onForkDraft: (id: string, customName?: string) => NotebookDraft | null
 }
 
+/**
+ * Three-panel notebook editor: template picker | page groups (center) | preview.
+ * Manages export, deploy (with conflict detection dialog), drag reorder,
+ * and auto-save via the useNotebookEditor reducer.
+ */
 function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onForkDraft }: NotebookEditorProps) {
   const { mergedRegistry, customRegistry } = useRegistryContext()
   const devicesState = useDevices()

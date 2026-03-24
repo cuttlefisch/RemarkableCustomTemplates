@@ -1,6 +1,23 @@
 /**
- * GET /api/backup — export backup ZIP
- * POST /api/restore — import backup ZIP
+ * Backup and restore routes.
+ *
+ * Manages full-state backup/restore of the application, including custom and debug
+ * templates, registries, notebook drafts, deployed manifests, and rm-methods-dist files.
+ *
+ * Routes:
+ * - `GET  /api/backup`                              -- export a timestamped backup ZIP (also saved server-side)
+ * - `POST /api/restore?mode=merge|replace`           -- import a backup ZIP with merge or replace semantics
+ * - `POST /api/restore/preview`                      -- dry-run showing what merge/replace would do
+ * - `POST /api/restore/cleanup`                      -- delete specific local templates after a restore
+ * - `GET  /api/backups`                              -- list server-side backup ZIPs
+ * - `POST /api/restore-from-backup/:filename`        -- restore from a server-side backup
+ * - `GET  /api/backups/:filename/download`           -- download a server-side backup ZIP
+ * - `DELETE /api/backups/:filename`                  -- delete a server-side backup ZIP
+ *
+ * Backup ZIPs include a `backup-manifest.json` with counts and timestamp.
+ * Restore supports two modes: `merge` (add new, skip existing) and `replace` (full overwrite).
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -14,6 +31,12 @@ import { parseRegistry } from '../../src/lib/registry.ts'
 import { readNotebookStore, writeNotebookStore } from '../lib/notebookDraftStore.ts'
 import type { NotebookDraft } from '../../src/types/notebook.ts'
 
+/**
+ * Registers backup and restore routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with data directory paths
+ */
 export default function backupRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/backup
   app.get('/api/backup', async (request, reply) => {

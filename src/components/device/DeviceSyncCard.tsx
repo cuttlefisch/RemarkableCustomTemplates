@@ -5,11 +5,17 @@ import { useBusy } from '../../hooks/useBusy'
 import { readNdjsonStream, type NdjsonProgress } from '../../lib/ndjsonClient'
 
 interface Props {
+  /** Active device ID, or null when no device is selected. */
   deviceId: string | null
+  /** Display name for the active device (used in button labels and headings). */
   deviceName: string
+  /** Whether the device has been configured with SSH credentials. */
   configured: boolean
+  /** Device model string from the last successful connection (e.g. "reMarkable ferrari"). */
   deviceModel?: string
+  /** Firmware version string for error reports. */
   firmwareVersion?: string
+  /** Called after a deploy/rollback completes to refresh registries and backup lists. */
   onSyncComplete?: () => void
 }
 
@@ -589,6 +595,12 @@ function SelectiveDeploySection({
 // Main component
 // ---------------------------------------------------------------------------
 
+/**
+ * Sync operations card on the Device page.
+ * Provides pull (classic + methods), deploy (methods + classic), rollback,
+ * remove-all, sync status comparison, and selective deploy with template picker.
+ * All SSH operations stream progress via NDJSON and auto-refresh sync status on completion.
+ */
 export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, firmwareVersion, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
   const [showPullHelp, setShowPullHelp] = useState(false)

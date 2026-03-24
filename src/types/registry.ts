@@ -1,6 +1,7 @@
-/** Entry in templates.json — describes a template available on the device */
+/** Well-known template category names, plus any custom string. */
 export type TemplateCategory = 'Creative' | 'Lines' | 'Grids' | 'Planners' | 'Dark' | string
 
+/** Entry in templates.json — describes a single template available on the device. */
 export interface TemplateRegistryEntry {
   name: string
   filename: string
@@ -16,6 +17,7 @@ export interface TemplateRegistryEntry {
   iconData?: string
 }
 
+/** The full templates.json structure — an array of registry entries. */
 export interface TemplateRegistry {
   templates: TemplateRegistryEntry[]
 }

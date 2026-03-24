@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { createNotebook, clearNotebookDrafts } from './helpers'
+import { createNotebook, clearNotebookDrafts, restoreAllBuiltinNotebooks } from './helpers'
 
 test.describe('Notebook Bulk Select & Built-in Notebooks', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeEach(async ({ page }) => {
     await clearNotebookDrafts(page)
-    // Restore all hidden built-in notebooks
-    await page.request.post('http://localhost:3000/api/builtin-notebooks/restore-all')
+    await restoreAllBuiltinNotebooks(page)
     await page.goto('/notebook')
     await page.waitForLoadState('networkidle')
   })

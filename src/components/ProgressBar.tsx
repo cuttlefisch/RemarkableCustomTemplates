@@ -6,8 +6,11 @@
 import type { NdjsonProgress } from '../lib/ndjsonClient'
 
 interface ProgressBarProps {
+  /** NDJSON progress state (phase, current, total). null = indeterminate. */
   progress: NdjsonProgress | null
+  /** Fallback label when progress is null. */
   label?: string
+  /** Show the "keep device awake" tip below the bar. */
   showTip?: boolean
 }
 

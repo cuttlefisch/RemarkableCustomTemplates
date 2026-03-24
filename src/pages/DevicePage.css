@@ -302,6 +302,13 @@
   margin: 0 0 8px;
 }
 
+.device-op-subsection-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 12px 0 4px;
+}
+
 .device-op-result {
   font-size: 12px;
   color: var(--color-op-result-success);

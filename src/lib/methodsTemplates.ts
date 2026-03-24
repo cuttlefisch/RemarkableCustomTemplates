@@ -6,6 +6,14 @@ import type { TemplateRegistryEntry } from '../types/registry'
 
 /**
  * Build a registry entry from a pulled rm_methods UUID triplet.
+ *
+ * @param opts - Template metadata extracted from the device
+ * @param opts.uuid - The UUID identifying this methods template on-device
+ * @param opts.visibleName - Human-readable name from the `.metadata` file
+ * @param opts.orientation - Template orientation
+ * @param opts.labels - Category labels (defaults to `['Uncategorized']` if empty)
+ * @param opts.origin - Whether this is an official or custom methods template
+ * @returns A registry entry suitable for `methods-registry.json`
  */
 export function buildMethodsEntry(opts: {
   uuid: string
@@ -27,8 +35,11 @@ export function buildMethodsEntry(opts: {
 }
 
 /**
- * Parse a .metadata file to extract visibleName.
- * Throws if the metadata is not a TemplateType.
+ * Parse a `.metadata` file to extract the `visibleName`.
+ *
+ * @param raw - Raw JSON string from the `.metadata` file
+ * @returns The visible name and type string
+ * @throws If the metadata `type` is not `"TemplateType"` or `visibleName` is missing
  */
 export function parseMethodsMetadata(raw: string): { visibleName: string; type: string } {
   const parsed = JSON.parse(raw) as Record<string, unknown>

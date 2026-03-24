@@ -1,9 +1,19 @@
 /**
- * Remove all custom templates from the device.
+ * Remove-all routes for wiping custom templates from a device.
  *
- * POST /api/devices/:id/remove-all-preview          — list templates that would be removed
- * POST /api/devices/:id/remove-all-execute           — backup + remove + restart
- * GET  /api/devices/:id/remove-all-backup/:filename  — download backup ZIP
+ * Provides a safe two-step workflow: preview what would be removed, then execute
+ * with automatic backup. Combines deploy history (local manifest), device manifest,
+ * and custom-methods registry entries to identify all custom templates.
+ *
+ * Routes:
+ * - `POST /api/devices/:id/remove-all-preview`         -- list templates that would be removed
+ * - `POST /api/devices/:id/remove-all-execute`          -- backup all templates to ZIP, remove from
+ *   device, clear manifests, clean up methods and custom registries, restart xochitl
+ * - `GET  /api/devices/:id/remove-all-backup/:filename` -- download a remove-all backup ZIP
+ *
+ * The execute route streams NDJSON progress events.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -27,6 +37,12 @@ import {
   mergeDeployedUuids,
 } from '../../lib/deviceManifest.ts'
 
+/**
+ * Registers remove-all routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with device store, backup, and registry paths
+ */
 export default function deviceRemoveAllRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/devices/:id/remove-all-backup/:filename
   app.get<{ Params: { id: string; filename: string } }>('/api/devices/:id/remove-all-backup/:filename', async (request, reply) => {

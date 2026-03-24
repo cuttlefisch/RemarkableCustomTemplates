@@ -19,6 +19,13 @@ export type { NotebookDraft } from '../types/notebook'
 
 const MIGRATION_KEY = 'notebook-drafts'
 
+/**
+ * Manages the full list of notebook drafts (user + built-in).
+ * Fetches from the server on mount, handles localStorage migration for legacy data,
+ * and provides optimistic CRUD operations with server-of-record reconciliation.
+ *
+ * @returns Draft list state and mutation functions (create, update, remove, fork, hide, restore).
+ */
 export function useNotebookList() {
   const [drafts, setDrafts] = useState<NotebookDraft[]>([])
   const [builtins, setBuiltins] = useState<NotebookDraft[]>([])

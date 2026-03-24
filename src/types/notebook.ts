@@ -48,7 +48,7 @@ export interface NotebookDefinition {
   reuseUuid?: string
 }
 
-/** CRDT timestamp in "replicaId:sequenceNumber" format */
+/** CRDT-timestamped value in the cPages v2 format. Timestamp is "replicaId:sequenceNumber". */
 export interface CrdtValue<T> {
   timestamp: string
   value: T
@@ -69,7 +69,10 @@ export interface CPages {
   uuids: Array<{ first: string; second: number }>
 }
 
-/** Complete .content file structure */
+/**
+ * Complete `.content` file structure for a reMarkable notebook.
+ * All devices share the 1404x1872 coordinate system for `customZoomPageWidth`/`customZoomPageHeight`.
+ */
 export interface NotebookContent {
   cPages: CPages
   coverPageNumber: number
@@ -95,7 +98,7 @@ export interface NotebookContent {
   zoomMode: string
 }
 
-/** Complete .metadata file structure */
+/** Complete `.metadata` file structure — xochitl document metadata. */
 export interface NotebookMetadata {
   createdTime: string
   deleted: boolean
@@ -114,7 +117,7 @@ export interface NotebookMetadata {
   visibleName: string
 }
 
-/** .local file structure */
+/** `.local` file structure — marks the content format version on device. */
 export interface NotebookLocal {
   contentFormatVersion: 2
 }

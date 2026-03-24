@@ -1,21 +1,7 @@
 import { test, expect } from '@playwright/test'
-import { waitForSidebarLoaded, createNotebook, addPageGroup, clearNotebookDrafts } from './helpers'
+import { waitForSidebarLoaded, createCustomTemplate, cleanupCustomTemplates, assertNoCustomTemplates, createNotebook, addPageGroup, clearNotebookDrafts } from './helpers'
 
-/** Create a custom template via the "+ New" flow */
-async function createCustomTemplate(page: import('@playwright/test').Page, name: string) {
-  const newBtn = page.locator('.sidebar-action-btn', { hasText: '+ New' })
-  await expect(newBtn).toBeVisible()
-  await newBtn.click()
-
-  const nameInput = page.locator('.new-template-name')
-  await expect(nameInput).toBeVisible()
-  await nameInput.fill(name)
-
-  const createBtn = page.locator('.new-template-create-btn')
-  await createBtn.click()
-
-  await expect(page.locator('.template-btn', { hasText: name })).toBeVisible({ timeout: 10_000 })
-}
+const PREFIX = 'E2E Regr'
 
 test.describe('Regression tests', () => {
   test.describe('Copy then edit (filename mismatch fix)', () => {
@@ -25,9 +11,16 @@ test.describe('Regression tests', () => {
       await waitForSidebarLoaded(page)
     })
 
+    test.afterEach(async ({ request }) => {
+      // Clean up both prefixed templates and any "(Copy)" artifacts
+      await cleanupCustomTemplates(request, PREFIX)
+      await cleanupCustomTemplates(request, '(Copy)')
+      await assertNoCustomTemplates(request, PREFIX)
+    })
+
     test('copied template can be loaded after copy', async ({ page }) => {
       // Create a custom template, then copy it
-      const name = `CopyLoad ${Date.now()}`
+      const name = `${PREFIX} CopyLoad ${Date.now()}`
       await createCustomTemplate(page, name)
 
       // Select the new template
@@ -53,7 +46,7 @@ test.describe('Regression tests', () => {
 
     test('copied template can open JSON editor and apply changes', async ({ page }) => {
       // Create and copy a custom template
-      const name = `CopyEdit ${Date.now()}`
+      const name = `${PREFIX} CopyEdit ${Date.now()}`
       await createCustomTemplate(page, name)
 
       // Close the auto-opened editor from creation
@@ -94,7 +87,7 @@ test.describe('Regression tests', () => {
 
     test('copied template survives invert + apply', async ({ page }) => {
       // This is the exact repro from the bug report
-      const name = `CopyInvert ${Date.now()}`
+      const name = `${PREFIX} CopyInvert ${Date.now()}`
       await createCustomTemplate(page, name)
 
       // Close the auto-opened editor from creation
@@ -187,6 +180,71 @@ test.describe('Regression tests', () => {
       await expect(bulkBar).toBeHidden()
       const checkedCount = await page.locator('.bulk-checkbox:checked').count()
       expect(checkedCount).toBe(0)
+    })
+  })
+
+  test.describe('Delete template closes drawing editor', () => {
+    test.beforeEach(async ({ page }) => {
+      page.on('dialog', (d) => d.accept())
+      await page.goto('/')
+      await waitForSidebarLoaded(page)
+    })
+
+    test.afterEach(async ({ request }) => {
+      await cleanupCustomTemplates(request, PREFIX)
+      await assertNoCustomTemplates(request, PREFIX)
+    })
+
+    test('deleting a template while draw editor is open closes the editor', async ({ page }) => {
+      const name = `${PREFIX} DrawDel ${Date.now()}`
+      await createCustomTemplate(page, name)
+
+      // Close the auto-opened JSON editor
+      const closeEditorBtn = page.locator('button', { hasText: 'Close Editor' })
+      if (await closeEditorBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await closeEditorBtn.click()
+        await page.waitForTimeout(300)
+      }
+
+      // Open the drawing editor
+      const drawBtn = page.locator('button', { hasText: 'Draw' })
+      await expect(drawBtn).toBeVisible({ timeout: 5_000 })
+      await drawBtn.click()
+      const toolbar = page.locator('.drawing-toolbar')
+      await expect(toolbar).toBeVisible({ timeout: 10_000 })
+
+      // Delete the template (the Delete button is in the preview action bar)
+      const deleteBtn = page.locator('button', { hasText: 'Delete' })
+      await expect(deleteBtn).toBeVisible({ timeout: 5_000 })
+      await deleteBtn.click()
+      await page.waitForTimeout(500)
+
+      // Drawing toolbar should be gone
+      await expect(toolbar).toBeHidden({ timeout: 5_000 })
+
+      // Template should be removed from sidebar
+      await expect(page.locator('.template-btn', { hasText: name })).toBeHidden({ timeout: 5_000 })
+    })
+
+    test('deleting a template while JSON editor is open closes the editor', async ({ page }) => {
+      const name = `${PREFIX} JsonDel ${Date.now()}`
+      await createCustomTemplate(page, name)
+
+      // JSON editor auto-opens on create — verify it's visible
+      const editor = page.locator('.json-editor, .monaco-editor')
+      await expect(editor.first()).toBeVisible({ timeout: 10_000 })
+
+      // Delete the template
+      const deleteBtn = page.locator('button', { hasText: 'Delete' })
+      await expect(deleteBtn).toBeVisible({ timeout: 5_000 })
+      await deleteBtn.click()
+      await page.waitForTimeout(500)
+
+      // Editor panel should be gone
+      await expect(editor.first()).toBeHidden({ timeout: 5_000 })
+
+      // Template should be removed from sidebar
+      await expect(page.locator('.template-btn', { hasText: name })).toBeHidden({ timeout: 5_000 })
     })
   })
 

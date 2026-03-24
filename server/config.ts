@@ -1,9 +1,16 @@
 /**
- * Server configuration: resolves all data paths from DATA_DIR env var.
+ * Server configuration and path resolution.
  *
- * - Native dev: DATA_DIR defaults to process.cwd() (project root)
- * - Docker: DATA_DIR=/data (persistent volume)
- * - Electron: DATA_DIR = app.getPath('userData')
+ * All data paths are derived from a single `DATA_DIR` root, making the server
+ * portable across environments:
+ * - **Native dev**: `DATA_DIR` defaults to `process.cwd()` (project root)
+ * - **Docker**: `DATA_DIR=/data` (persistent volume mount)
+ * - **Electron**: `DATA_DIR = app.getPath('userData')`
+ *
+ * Exports {@link resolveConfig} to build a {@link ServerConfig} with all derived paths,
+ * and {@link resolveDevicePaths} for per-device backup/SSH directories.
+ *
+ * @module
  */
 
 import { resolve } from 'node:path'
@@ -61,6 +68,13 @@ export interface ServerConfig {
   frontendDistDir?: string
 }
 
+/**
+ * Builds a complete {@link ServerConfig} by resolving all data directory paths
+ * from `DATA_DIR` (env var), with optional overrides for testing or Electron embedding.
+ *
+ * @param overrides - Optional partial config to override env-based defaults
+ * @returns Fully resolved server configuration
+ */
 export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' | 'port' | 'production' | 'samplesPristineDir' | 'frontendDistDir'>>): ServerConfig {
   const dataDir = overrides?.dataDir ?? process.env.DATA_DIR ?? process.cwd()
   const port = overrides?.port ?? (Number(process.env.PORT) || (process.env.NODE_ENV === 'production' ? 3000 : 3001))

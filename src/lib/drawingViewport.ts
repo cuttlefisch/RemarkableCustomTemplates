@@ -5,15 +5,21 @@
  * This keeps getScreenCTM() correct automatically.
  */
 
+/** A 2D point (used for pan offsets and cursor positions). */
 export interface Point {
   x: number
   y: number
 }
 
+/** SVG viewBox parameters controlling the visible region of the template. */
 export interface ViewBox {
+  /** Left edge of the visible region. */
   x: number
+  /** Top edge of the visible region. */
   y: number
+  /** Width of the visible region. */
   w: number
+  /** Height of the visible region. */
   h: number
 }
 
@@ -22,6 +28,12 @@ const MAX_ZOOM = 10
 
 /**
  * Compute the SVG viewBox from template dimensions, zoom level, and pan offset.
+ *
+ * @param templateWidth - Full template width in pixels
+ * @param templateHeight - Full template height in pixels
+ * @param zoom - Zoom level (1 = 100%, >1 = zoomed in)
+ * @param pan - Pan offset from center in template pixels
+ * @returns The computed SVG viewBox
  */
 export function computeViewBox(
   templateWidth: number,
@@ -38,7 +50,17 @@ export function computeViewBox(
 
 /**
  * Zoom centered on a cursor point in template coordinates.
- * Returns new zoom and pan values.
+ *
+ * Adjusts pan so the cursor position stays visually fixed on screen.
+ * Zoom is clamped between 0.1x and 10x.
+ *
+ * @param currentZoom - Current zoom level
+ * @param currentPan - Current pan offset
+ * @param delta - Zoom delta (positive = zoom in, negative = zoom out)
+ * @param cursorPt - Cursor position in template coordinates (zoom anchor)
+ * @param templateWidth - Full template width
+ * @param templateHeight - Full template height
+ * @returns New `{ zoom, pan }` values
  */
 export function zoomAtPoint(
   currentZoom: number,
@@ -75,7 +97,15 @@ export function zoomAtPoint(
 
 /**
  * Clamp pan so the viewBox doesn't drift too far outside the template.
- * Allows up to 50% overflow in each direction.
+ *
+ * Allows up to 50% overflow in each direction so the user can scroll
+ * slightly past the template edge.
+ *
+ * @param pan - The unclamped pan offset
+ * @param zoom - Current zoom level
+ * @param templateWidth - Full template width
+ * @param templateHeight - Full template height
+ * @returns The clamped pan offset
  */
 export function clampPan(
   pan: Point,

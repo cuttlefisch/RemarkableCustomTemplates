@@ -1,8 +1,18 @@
 /**
  * Device pull operations.
  *
- * POST /api/devices/:id/pull-official  — pull official templates from device
- * POST /api/devices/:id/pull-methods   — pull rm_methods templates from device
+ * Pulls template files from a connected reMarkable device via SSH/SFTP.
+ *
+ * Routes:
+ * - `POST /api/devices/:id/pull-official` -- pull official templates from `/usr/share/remarkable/templates`,
+ *   save to `remarkable_official_templates/`, and enrich registry entries with generated icon data.
+ * - `POST /api/devices/:id/pull-methods`  -- scan the device's xochitl data directory for
+ *   `TemplateType` metadata, pull `.template`/`.metadata` pairs, build the methods registry,
+ *   and import any custom-methods entries into the custom registry.
+ *
+ * Both routes stream NDJSON progress events to the client.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -25,6 +35,12 @@ import { readDevice } from '../../lib/deviceStore.ts'
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
 
+/**
+ * Registers device pull routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with device store and template directory paths
+ */
 export default function devicePullRoutes(app: FastifyInstance, config: ServerConfig) {
   // POST /api/devices/:id/pull-official
   app.post<{ Params: { id: string } }>('/api/devices/:id/pull-official', async (request, reply) => {

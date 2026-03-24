@@ -1,6 +1,20 @@
 /**
- * CRUD API routes for notebook drafts.
- * Drafts are stored server-side in a versioned JSON file.
+ * Notebook draft CRUD routes.
+ *
+ * Persists notebook drafts in a versioned JSON store (`data/notebooks.json`).
+ * Supports single-draft CRUD, batch import (for localStorage migration), and
+ * fork (duplicate with new ID). Used by the notebook builder UI with optimistic
+ * updates and 500ms debounced auto-save.
+ *
+ * Routes:
+ * - `GET    /api/notebook-drafts`           -- list all drafts
+ * - `POST   /api/notebook-drafts`           -- create one draft or batch-import `{ drafts: [...] }`
+ * - `PUT    /api/notebook-drafts/:id`       -- update an existing draft
+ * - `DELETE /api/notebook-drafts/:id`       -- delete a draft
+ * - `DELETE /api/notebook-drafts`           -- delete ALL drafts (E2E test cleanup)
+ * - `POST   /api/notebook-drafts/:id/fork`  -- duplicate a draft with a new ID
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -14,6 +28,12 @@ import {
   forkDraft,
 } from '../lib/notebookDraftStore.ts'
 
+/**
+ * Registers notebook draft CRUD routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration (provides `notebookDraftsPath`)
+ */
 export default function notebookDraftRoutes(app: FastifyInstance, config: ServerConfig) {
   const storePath = config.notebookDraftsPath
 

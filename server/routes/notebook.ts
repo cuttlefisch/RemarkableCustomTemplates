@@ -1,9 +1,20 @@
 /**
- * Notebook builder endpoints.
+ * Notebook generation, export, and device deploy routes.
  *
- * POST /api/notebooks/export                  — generate & download notebook ZIP
- * POST /api/devices/:id/deploy-notebook       — deploy notebook to device
- * POST /api/devices/:id/check-notebook        — check if notebook exists on device
+ * Generates reMarkable notebook files in the cPages v2 format from a list of
+ * page groups (template + count pairs). Output includes `.content`, `.metadata`,
+ * `.local` files and optionally per-page `.rm` stubs (required for PPM devices).
+ *
+ * Routes:
+ * - `POST /api/notebooks/export`                -- generate and download a notebook ZIP
+ * - `POST /api/devices/:id/deploy-notebook`     -- generate, push to device via SFTP, restart xochitl
+ * - `POST /api/devices/:id/check-notebook`      -- check if a previously deployed notebook still exists on device
+ *
+ * All devices share the 1404x1872 coordinate system for `.content` files regardless
+ * of physical display dimensions. Per-device `.rm` file strategy: PPM requires stubs,
+ * RM1/RM2 and Paper Pro do not.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -46,6 +57,16 @@ function validateBody(body: NotebookBody | undefined): body is NotebookBody & { 
   return true
 }
 
+/**
+ * Registers notebook export and device deploy routes on the given Fastify instance.
+ *
+ * The deploy route uses NDJSON streaming to report progress as files are generated,
+ * pushed via SFTP, and the device UI is restarted. Supports `reuseUuid` for
+ * update-in-place of previously deployed notebooks.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with data directory paths
+ */
 export default function notebookRoutes(app: FastifyInstance, config: ServerConfig) {
   // POST /api/notebooks/export — download notebook as ZIP
   app.post('/api/notebooks/export', async (request, reply) => {

@@ -1,27 +1,18 @@
 import { test, expect } from '@playwright/test'
-import { waitForSidebarLoaded } from './helpers'
+import { waitForSidebarLoaded, createCustomTemplate, cleanupCustomTemplates, assertNoCustomTemplates } from './helpers'
 
-/** Create a custom template via the "+ New" flow */
-async function createCustomTemplate(page: import('@playwright/test').Page, name: string) {
-  const newBtn = page.locator('.sidebar-action-btn', { hasText: '+ New' })
-  await expect(newBtn).toBeVisible()
-  await newBtn.click()
-
-  const nameInput = page.locator('.new-template-name')
-  await expect(nameInput).toBeVisible()
-  await nameInput.fill(name)
-
-  const createBtn = page.locator('.new-template-create-btn')
-  await createBtn.click()
-
-  await expect(page.locator('.template-btn', { hasText: name })).toBeVisible({ timeout: 10_000 })
-}
+const PREFIX = 'E2E Bulk'
 
 test.describe('Always-visible bulk select', () => {
   test.beforeEach(async ({ page }) => {
     page.on('dialog', (d) => d.accept())
     await page.goto('/')
     await waitForSidebarLoaded(page)
+  })
+
+  test.afterEach(async ({ request }) => {
+    await cleanupCustomTemplates(request, PREFIX)
+    await assertNoCustomTemplates(request, PREFIX)
   })
 
   test('checkboxes are always visible on template items without needing a Select button', async ({ page }) => {
@@ -98,12 +89,12 @@ test.describe('Always-visible bulk select', () => {
 
   test('delete action removes custom templates', async ({ page }) => {
     const ts = Date.now()
-    await createCustomTemplate(page, `BulkDel A ${ts}`)
-    await createCustomTemplate(page, `BulkDel B ${ts}`)
+    await createCustomTemplate(page, `${PREFIX} DelA ${ts}`)
+    await createCustomTemplate(page, `${PREFIX} DelB ${ts}`)
 
     // Find and check both custom templates
-    const entryA = page.locator('.template-btn', { hasText: `BulkDel A ${ts}` })
-    const entryB = page.locator('.template-btn', { hasText: `BulkDel B ${ts}` })
+    const entryA = page.locator('.template-btn', { hasText: `${PREFIX} DelA ${ts}` })
+    const entryB = page.locator('.template-btn', { hasText: `${PREFIX} DelB ${ts}` })
     await entryA.locator('.bulk-checkbox').click()
     await entryB.locator('.bulk-checkbox').click()
 

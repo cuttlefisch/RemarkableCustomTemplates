@@ -9,18 +9,26 @@
 import type { PathData, ScalarValue, RepeatValue, RemarkableTemplate, TemplateItem } from '../types/template'
 import { evaluateExpression } from './expression'
 
+/** A map of constant names to their resolved numeric values. */
 export type ResolvedConstants = Record<string, number>
 
 // ─── Device constants ─────────────────────────────────────────────────────────
 
+/** Specification for a reMarkable device model's template coordinate system. */
 export interface DeviceSpec {
+  /** Machine-readable device identifier (e.g. `'rm'`, `'rmPP'`, `'rmPPM'`). */
   id: string
+  /** Human-readable device name. */
   name: string
+  /** Abbreviated name for compact UI display. */
   shortName: string
+  /** Template width in pixels (portrait orientation). */
   portraitWidth: number
+  /** Template height in pixels (portrait orientation). */
   portraitHeight: number
 }
 
+/** All supported reMarkable device models and their template dimensions. */
 export const DEVICES: Record<string, DeviceSpec> = {
   rm: {
     id: 'rm',
@@ -48,6 +56,7 @@ export const DEVICES: Record<string, DeviceSpec> = {
   },
 }
 
+/** Union of supported device model identifiers. */
 export type DeviceId = keyof typeof DEVICES
 
 /**
@@ -234,6 +243,7 @@ export function computeTileRange(
 // ─── Missing constants validation ─────────────────────────────────────────────
 
 const PATH_COMMANDS = new Set(['M', 'L', 'C', 'Z'])
+/** The set of string-valued repeat modes (as opposed to numeric counts). */
 export const REPEAT_KEYWORDS = new Set(['down', 'infinite', 'up', 'right'])
 
 /**

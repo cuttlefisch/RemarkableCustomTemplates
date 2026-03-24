@@ -24,12 +24,25 @@ function stripSupportedScreens(content: string): string {
   return content
 }
 
+/** Result of building the classic (non-methods) distribution for deploy or export. */
 export interface ClassicBuildResult {
-  /** Map of filename → file content (Buffer for .template, string for registry) */
+  /** Map of filename to file content — Buffer for binary `.template` files, string for the registry. */
   files: Record<string, Buffer | string>
+  /** Number of `.template` files included in the build. */
   templateCount: number
 }
 
+/**
+ * Build the classic template distribution by merging official, debug, and custom templates.
+ *
+ * Merging priority: debug entries override official entries (by filename),
+ * then custom entries are appended (skipping any that collide with official filenames).
+ * Custom and debug templates have string constants resolved and `supportedScreens` stripped.
+ *
+ * @param config - Server configuration with paths to registries and template directories.
+ * @returns The build result containing all file contents and template count.
+ * @throws If the official `templates.json` registry has not been imported yet.
+ */
 export function buildClassicDist(config: ServerConfig): ClassicBuildResult {
   type RegEntry = { filename: string; name?: string; categories?: string[]; isCustom?: boolean; [key: string]: unknown }
 
@@ -120,7 +133,11 @@ export function buildClassicDist(config: ServerConfig): ClassicBuildResult {
   return { files, templateCount: copiedFilenames.size }
 }
 
-/** Write the build result to dist-deploy/ on disk. */
+/**
+ * Write the classic build result to `dist-deploy/` on disk.
+ * @param config - Server configuration with the `classicDistDir` path.
+ * @param result - The build result from {@link buildClassicDist}.
+ */
 export function writeClassicDist(config: ServerConfig, result: ClassicBuildResult): void {
   mkdirSync(config.classicDistDir, { recursive: true })
   for (const [name, content] of Object.entries(result.files)) {

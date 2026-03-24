@@ -9,6 +9,13 @@ import { useState, useCallback, useRef } from 'react'
 
 const MAX_ENTRIES = 50
 
+/**
+ * Generic undo/redo hook for string values (JSON editor text, drawing commits).
+ * Maintains a bounded history stack of up to 50 entries.
+ *
+ * @param initial - The initial string value.
+ * @returns `{ value, setValue, undo, redo, canUndo, canRedo }`.
+ */
 export function useUndoRedo(initial: string) {
   const [value, setValueInternal] = useState(initial)
   const undoStack = useRef<string[]>([])

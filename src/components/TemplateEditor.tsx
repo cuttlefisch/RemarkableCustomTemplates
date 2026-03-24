@@ -8,13 +8,20 @@ import { useTheme } from '../hooks/useTheme'
 import { themes } from '../themes/themes'
 
 export interface TemplateEditorProps {
+  /** The template JSON string to edit. Changing this resets the editor content. */
   json: string
+  /** True if editing an existing custom template; false if forking from an official. */
   isCustom: boolean
+  /** The display name shown in the toolbar and used on save. */
   pendingName: string
+  /** Called when the user changes the name field in the Monaco editor JSON. */
   onPendingNameChange: (name: string) => void
+  /** Called when the user clicks Apply — receives validated JSON and the final name. */
   onApply: (json: string, name: string) => void
   onClose: () => void
+  /** If provided, shows a Delete button (only for custom templates). */
   onDelete?: () => void
+  /** Names already in use — used to prevent duplicate custom template names. */
   existingNames: string[]
 }
 

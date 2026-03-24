@@ -11,10 +11,14 @@ import { evaluateExpression } from './expression'
 import type { ResolvedConstants } from './expression'
 import { deviceBuiltins } from './renderer'
 
+/** Default dark-mode background / light-mode foreground color. */
 export const DARK_BG_COLOR  = '#000000'
+/** Default light-mode background / dark-mode foreground color. */
 export const LIGHT_BG_COLOR = '#ffffff'
 
+/** Constant name used for foreground color in custom templates. */
 export const FOREGROUND_CONST = 'foreground'
+/** Constant name used for background color in custom templates. */
 export const BACKGROUND_CONST = 'background'
 
 /** Full-page filled rectangle used as background, identified by id "bg".
@@ -38,6 +42,13 @@ export function buildBackgroundItem(): GroupItem {
 
 // ─── Color constant helpers ───────────────────────────────────────────────────
 
+/**
+ * Find the hex color value for a named constant in the constants array.
+ *
+ * @param constants - The template's constants array
+ * @param key - The constant name to look up (e.g. `'foreground'`)
+ * @returns The hex color string, or `undefined` if not found
+ */
 export function findColorConstantValue(constants: ConstantEntry[], key: string): string | undefined {
   for (const entry of constants) {
     if (key in entry) {
@@ -48,6 +59,16 @@ export function findColorConstantValue(constants: ConstantEntry[], key: string):
   return undefined
 }
 
+/**
+ * Insert or update a color constant in the constants array.
+ *
+ * If the key already exists, replaces it in-place. Otherwise, prepends it.
+ *
+ * @param constants - The template's constants array
+ * @param key - The constant name
+ * @param value - The hex color value
+ * @returns A new constants array with the value set
+ */
 export function upsertColorConstant(constants: ConstantEntry[], key: string, value: string): ConstantEntry[] {
   const idx = constants.findIndex(e => key in e)
   if (idx >= 0) {
@@ -59,9 +80,13 @@ export function upsertColorConstant(constants: ConstantEntry[], key: string, val
 // ─── Invert colors ────────────────────────────────────────────────────────────
 
 /**
- * Swaps foreground ↔ background constant values.
- * Defaults to light-mode values (fg=#000000, bg=#ffffff) when constants are absent.
- * Does not touch items or categories.
+ * Swap foreground and background constant values in a template JSON string.
+ *
+ * Defaults to light-mode values (`fg=#000000`, `bg=#ffffff`) when constants are absent.
+ * Does not modify items or categories.
+ *
+ * @param json - Template JSON string
+ * @returns Modified JSON string with swapped colors
  */
 export function invertColors(json: string): string {
   const parsed = JSON.parse(json) as Record<string, unknown>
@@ -85,17 +110,20 @@ function escapeRegExp(s: string): string {
 }
 
 /**
- * Resolves and strips non-scalar constants at device-export time.
+ * Resolve and strip non-scalar constants at device-export time.
  *
- * A constant is scalar if its value is a number or a string expression that
- * evaluates to a number (e.g. 'templateWidth / 2'). Non-scalar constants
+ * A constant is "scalar" if its value is a number or a string expression that
+ * evaluates to a number (e.g. `"templateWidth / 2"`). Non-scalar constants
  * (hex colors, arbitrary text) are inlined into item fields and removed from
  * the constants array so the output is device-safe.
  *
  * Inlining rules:
- * - fillColor / strokeColor — exact name lookup
- * - TextItem.text — exact name lookup
- * - ScalarValue expression strings (data tokens, boundingBox, repeat, etc.) — word-boundary substitution
+ * - `fillColor` / `strokeColor` -- exact name lookup
+ * - `TextItem.text` -- exact name lookup
+ * - ScalarValue expression strings (data tokens, boundingBox, repeat, etc.) -- word-boundary substitution
+ *
+ * @param json - Template JSON string with potentially non-scalar constants
+ * @returns Template JSON string safe for device deployment
  */
 export function resolveStringConstants(json: string): string {
   const parsed = JSON.parse(json) as Record<string, unknown>
@@ -205,9 +233,13 @@ export function resolveStringConstants(json: string): string {
 // ─── Color constant injection ─────────────────────────────────────────────────
 
 /**
- * If foreground or background constants are absent, append them with light-mode
- * defaults (fg=#000000, bg=#ffffff). Also injects the bg item if absent.
- * Idempotent. Used in the save-as-new flow.
+ * Ensure foreground/background constants and the background item exist.
+ *
+ * Appends light-mode defaults (`fg=#000000`, `bg=#ffffff`) for any missing
+ * constants, and prepends the `bg` GroupItem if absent. Idempotent.
+ *
+ * @param json - Template JSON string
+ * @returns Template JSON string with color constants and bg item guaranteed
  */
 export function injectColorConstants(json: string): string {
   const parsed = JSON.parse(json) as Record<string, unknown>
@@ -232,9 +264,14 @@ export function injectColorConstants(json: string): string {
 }
 
 /**
- * Replaces #000000 strokeColor/fillColor values with the 'foreground' sentinel
- * throughout the item tree (recursively). Applied when forking official templates
- * so color inversion works out of the box.
+ * Replace hardcoded black/white colors with `foreground`/`background` constant
+ * references throughout the item tree (recursively).
+ *
+ * Applied when forking official templates so color inversion works out of the box.
+ * Maps: `#000000` -> `foreground`, `#ffffff` -> `background`.
+ *
+ * @param json - Template JSON string
+ * @returns Template JSON string with color references replacing hex literals
  */
 export function mapForegroundColors(json: string): string {
   const parsed = JSON.parse(json) as Record<string, unknown>
@@ -273,9 +310,14 @@ export function mapForegroundColors(json: string): string {
 }
 
 /**
- * Ensures the bg item's fillColor/strokeColor reference the 'background' constant
- * by name rather than a hardcoded hex. No-op if bg item is absent.
- * Handles migration of templates that stored resolved hex values.
+ * Ensure the `bg` item references the `background` constant by name.
+ *
+ * Replaces the existing bg item with a fresh one built from `buildBackgroundItem()`.
+ * No-op if the bg item is absent. Handles migration from templates that stored
+ * resolved hex values.
+ *
+ * @param json - Template JSON string
+ * @returns Template JSON string with the bg item's colors normalised
  */
 export function syncBgItemColor(json: string): string {
   const parsed = JSON.parse(json) as Record<string, unknown>
@@ -297,7 +339,12 @@ export function syncBgItemColor(json: string): string {
 
 // ─── Name helpers ─────────────────────────────────────────────────────────────
 
-/** "My Grid 2" → "my-grid-2" */
+/**
+ * Convert a human-readable name to a URL/filename-safe slug.
+ *
+ * @param name - The input name (e.g. `"My Grid 2"`)
+ * @returns A lowercase, hyphen-separated slug (e.g. `"my-grid-2"`)
+ */
 export function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -306,7 +353,13 @@ export function slugify(name: string): string {
     .replace(/-{2,}/g, '-')
 }
 
-/** Returns error message, or null if valid. */
+/**
+ * Validate a custom template name for uniqueness and format.
+ *
+ * @param name - The proposed template name
+ * @param existingNames - Names already in use (case-insensitive comparison)
+ * @returns An error message string, or `null` if the name is valid
+ */
 export function validateCustomName(name: string, existingNames: string[]): string | null {
   const trimmed = name.trim()
   if (!trimmed) return 'Name cannot be empty'
@@ -320,7 +373,17 @@ export function validateCustomName(name: string, existingNames: string[]): strin
   return null
 }
 
-/** Build a registry entry for a new custom template. */
+/**
+ * Build a registry entry for a new custom template.
+ *
+ * The filename is auto-generated with an orientation prefix (`LS` or `P`).
+ *
+ * @param name - Human-readable template name
+ * @param landscape - Whether the template is landscape-oriented
+ * @param categories - Category tags (defaults to `['Custom']`)
+ * @param iconCode - Unicode icon glyph (defaults to US College icon)
+ * @returns A new registry entry with `isCustom: true`
+ */
 export function buildCustomEntry(
   name: string,
   landscape: boolean,
@@ -338,7 +401,16 @@ export function buildCustomEntry(
   }
 }
 
-/** Build a starter template JSON string for a brand-new custom template. */
+/**
+ * Build a starter template JSON string for a brand-new custom template.
+ *
+ * Includes foreground/background color constants, a background item, and
+ * placeholder constants for mobile layout offsets.
+ *
+ * @param name - Template name
+ * @param landscape - Whether to create a landscape template
+ * @returns Pretty-printed JSON string
+ */
 export function buildDefaultTemplate(name: string, landscape: boolean): string {
   const template = {
     name,
@@ -360,12 +432,26 @@ export function buildDefaultTemplate(name: string, landscape: boolean): string {
   return JSON.stringify(template, null, 2)
 }
 
-/** Ensure "Custom" is first; preserve all other tags (including "Dark") from the template file. */
+/**
+ * Ensure `"Custom"` is the first category; preserve all other tags.
+ *
+ * @param cats - Existing category list from the template
+ * @returns A new array with `"Custom"` first, followed by the original tags (minus duplicates)
+ */
 export function mergeCategories(cats: string[]): string[] {
   return ['Custom', ...cats.filter(c => c !== 'Custom')]
 }
 
-/** Prepend custom entries before main entries, deduplicating by rmMethodsId. Does not mutate inputs. */
+/**
+ * Merge two registries, with custom entries taking precedence.
+ *
+ * Custom entries are prepended before main entries. Duplicate `rmMethodsId`
+ * values are deduplicated (first occurrence wins). Does not mutate inputs.
+ *
+ * @param main - The primary (official/methods) registry
+ * @param custom - The user's custom registry
+ * @returns A merged registry with custom entries first
+ */
 export function mergeRegistries(main: TemplateRegistry, custom: TemplateRegistry): TemplateRegistry {
   const all = [...custom.templates, ...main.templates]
   const seen = new Set<string>()
@@ -378,7 +464,15 @@ export function mergeRegistries(main: TemplateRegistry, custom: TemplateRegistry
   return { templates: deduped }
 }
 
-/** Look up the US College icon from the loaded registry, falling back to the known glyph. */
+/**
+ * Look up the US College icon code from the loaded registry.
+ *
+ * Falls back to the known glyph `\ue9d8` if the registry doesn't contain a match.
+ *
+ * @param registry - The loaded template registry (may be `null`)
+ * @param landscape - Whether to prefer the landscape variant
+ * @returns A Unicode icon code string
+ */
 export function getCollegeIconCode(registry: TemplateRegistry | null, landscape: boolean): string {
   const entries = registry?.templates ?? []
   const match = entries.find(t => t.name === 'US College' && !!(t.landscape) === landscape)

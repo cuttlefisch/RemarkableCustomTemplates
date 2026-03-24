@@ -46,7 +46,9 @@ interface DeviceGroup {
 }
 
 interface TemplatesPageProps {
+  /** Active device type for template preview dimensions and scaling. */
   deviceId: DeviceId
+  /** Callback to change the active device type (persisted to localStorage). */
   setDeviceId: (id: DeviceId) => void
 }
 
@@ -56,6 +58,25 @@ function isCustomEntry(entry: TemplateRegistryEntry | null | undefined): boolean
   return entry.isCustom === true || entry.filename.startsWith('custom/')
 }
 
+/**
+ * Templates page (`/`) — the main template browsing and editing interface.
+ *
+ * Layout: collapsible sidebar (list/card view, filters) | canvas preview | JSON editor.
+ * Panels are resizable via drag dividers with sizes persisted in localStorage.
+ *
+ * Key state:
+ * - **Registry** — merged (official + methods + debug) and custom registries from context
+ * - **Selected template** — the entry chosen in the sidebar; drives canvas and editor
+ * - **Editor** — Monaco JSON editor with undo/redo, validation, and orientation toggle
+ * - **Drawing editor** — visual shape tools with a state-machine reducer and intent pattern
+ * - **Sidebar** — source filter (Classic/Methods/Custom), category/orientation/search filters,
+ *   sort, list vs card view, bulk selection with delete/hide
+ *
+ * The drawing editor is activated via the "Draw" button and overlays the canvas with
+ * interactive SVG tools (select, line, polygon, circle, bezier, etc.). Side effects
+ * like auto-save and item moves use an intent pattern: the reducer sets an intent,
+ * and `useEffect` handlers here execute the mutation and clear the intent.
+ */
 export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
   const { registry, customRegistry, setCustomRegistry, loadingRegistry, officialTemplatesAvailable, mergedRegistry, existingCustomNames, refreshRegistry } = useRegistryContext()
   const devicesState = useDevices()
@@ -209,6 +230,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
       setSelected(null)
       setTemplate(null)
       setEditorOpen(false)
+      setDrawingMode(false)
     }
   }
 
@@ -852,6 +874,7 @@ export function TemplatesPage({ deviceId, setDeviceId }: TemplatesPageProps) {
         setSelected(null)
         setTemplate(null)
         setEditorOpen(false)
+        setDrawingMode(false)
       }
     } catch (e) {
       setError(`Failed to delete: ${e instanceof Error ? e.message : String(e)}`)

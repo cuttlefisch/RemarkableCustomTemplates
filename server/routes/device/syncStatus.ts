@@ -1,5 +1,17 @@
 /**
- * POST /api/devices/:id/sync-status — compare local build vs device manifest.
+ * Device sync status route.
+ *
+ * Registers `POST /api/devices/:id/sync-status` which connects to the device, reads its
+ * manifest, builds the local rm_methods dist, and computes a per-template diff showing
+ * which templates are synced, pending deploy, orphaned, or modified.
+ *
+ * Also checks classic (filesystem) template sync status by comparing the device's
+ * `/usr/share/remarkable/templates/templates.json` against the local classic build.
+ *
+ * Includes an overlay for pulled official-methods templates that aren't tracked in the
+ * local build manifest.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -15,6 +27,12 @@ import { computeSyncStatus, computeClassicSyncStatus, addMethodsOverlay, type Cl
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 
+/**
+ * Registers the device sync status route on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with build output and methods registry paths
+ */
 export default function deviceSyncStatusRoutes(app: FastifyInstance, config: ServerConfig) {
   app.post<{ Params: { id: string } }>('/api/devices/:id/sync-status', async (request, reply) => {
     const { id } = request.params

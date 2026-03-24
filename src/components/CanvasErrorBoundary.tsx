@@ -9,6 +9,11 @@ interface CanvasErrorBoundaryProps {
 
 interface CanvasErrorBoundaryState { error: Error | null }
 
+/**
+ * Error boundary that catches render errors in the template canvas tree.
+ * Displays the error message inline and auto-resets when `resetKey` changes,
+ * so editing the template JSON and re-rendering clears the error.
+ */
 export class CanvasErrorBoundary extends Component<CanvasErrorBoundaryProps, CanvasErrorBoundaryState> {
   state: CanvasErrorBoundaryState = { error: null }
 

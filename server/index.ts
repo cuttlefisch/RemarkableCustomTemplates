@@ -1,5 +1,12 @@
 /**
- * Server entry point. Starts Fastify on the configured port.
+ * Server entry point.
+ *
+ * Resolves configuration from environment variables, creates the Fastify app
+ * via {@link createApp}, and starts listening on `0.0.0.0:{port}`. In dev mode
+ * (port 3001), Vite proxies `/api/*` and `/templates/*` here; in production
+ * (port 3000), this process serves both API and static frontend.
+ *
+ * @module
  */
 
 import { createApp } from './app.ts'

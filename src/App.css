@@ -495,7 +495,8 @@ body {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   padding: 8px 12px;
   border-top: 1px solid var(--color-sidebar-header-border);
   background: var(--color-sidebar-bg);
@@ -509,14 +510,15 @@ body {
 }
 
 .sidebar-bulk-delete-btn {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border: 1px solid var(--color-danger-title, #c00);
   border-radius: 4px;
   background: transparent;
   color: var(--color-danger-title, #c00);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -527,13 +529,14 @@ body {
 
 .sidebar-bulk-clear-btn,
 .sidebar-bulk-select-all-btn {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border: 1px solid var(--color-sidebar-header-border);
   border-radius: 4px;
   background: transparent;
   color: var(--color-sidebar-text);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s;
 }
 

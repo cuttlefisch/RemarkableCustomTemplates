@@ -1,8 +1,21 @@
 /**
  * Device deploy operations.
  *
- * POST /api/devices/:id/deploy-methods   — deploy rm_methods templates (optionally selective)
- * POST /api/devices/:id/deploy-classic   — classic deploy (mount rw, push, restart)
+ * Pushes templates to a connected reMarkable device via SSH/SFTP in two formats:
+ *
+ * - **Methods deploy** (`POST /api/devices/:id/deploy-methods`) -- the recommended format.
+ *   Builds rm_methods UUID triplets, backs up current deployment, optionally removes orphaned
+ *   templates, pushes files, updates the device manifest, and restarts xochitl. Supports
+ *   selective deploy (only push specific template UUIDs) or full deploy with orphan cleanup.
+ *   On first deploy, captures the device's pristine state for rollback-original support.
+ *
+ * - **Classic deploy** (`POST /api/devices/:id/deploy-classic`) -- legacy format. Mounts
+ *   the root filesystem read-write, creates a tar backup, pushes to `/usr/share/remarkable/templates`,
+ *   remounts read-only, and restarts xochitl.
+ *
+ * Both routes stream NDJSON progress events to the client.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -29,6 +42,12 @@ import {
 
 const TEMPLATES_PATH = '/usr/share/remarkable/templates'
 
+/**
+ * Registers device deploy routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with build output and backup directory paths
+ */
 export default function deviceDeployRoutes(app: FastifyInstance, config: ServerConfig) {
   // POST /api/devices/:id/deploy-methods
   app.post<{ Params: { id: string } }>('/api/devices/:id/deploy-methods', async (request, reply) => {
@@ -150,7 +169,13 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
         steps.push(`Pushed ${pushed.length} files (selective)`)
 
         // Deployed manifest = union of previously deployed + newly selected (additive merge)
-        const buildManifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RmMethodsManifest
+        let buildManifest: RmMethodsManifest
+        try {
+          buildManifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RmMethodsManifest
+        } catch (err) {
+          stream.error(`Build manifest is missing or corrupt: ${err instanceof Error ? err.message : String(err)}`)
+          return
+        }
 
         // Start with existing deployed manifest if available
         let mergedManifest: RmMethodsManifest

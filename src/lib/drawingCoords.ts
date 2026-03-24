@@ -9,8 +9,12 @@
 import type { Point } from './drawingShapes'
 
 /**
- * Convert screen coordinates to template coordinates using an inverse CTM.
- * The inverseCTM should come from svgElement.getScreenCTM().inverse().
+ * Convert screen (client) coordinates to template coordinates using the
+ * SVG element's current transformation matrix (CTM).
+ *
+ * @param event - Object with `clientX` and `clientY` screen coordinates
+ * @param svgElement - The SVG element whose CTM maps screen to template space
+ * @returns The corresponding point in template coordinate space
  */
 export function screenToTemplate(
   event: { clientX: number; clientY: number },
@@ -26,8 +30,12 @@ export function screenToTemplate(
 }
 
 /**
- * Find the closest vertex within a distance threshold.
- * Returns the vertex if within threshold, null otherwise.
+ * Find the closest vertex within a distance threshold (snap-to-point).
+ *
+ * @param point - The reference point to snap from
+ * @param vertices - Candidate snap targets
+ * @param threshold - Maximum distance for a snap to occur
+ * @returns The closest vertex if within threshold, or `null`
  */
 export function snapToVertex(point: Point, vertices: Point[], threshold: number): Point | null {
   if (vertices.length === 0) return null
@@ -45,6 +53,10 @@ export function snapToVertex(point: Point, vertices: Point[], threshold: number)
 
 /**
  * Euclidean distance between two points.
+ *
+ * @param a - First point
+ * @param b - Second point
+ * @returns The straight-line distance
  */
 export function distanceBetween(a: Point, b: Point): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)

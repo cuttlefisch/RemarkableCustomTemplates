@@ -8,11 +8,13 @@ import { TemplateThumbnail } from './TemplateThumbnail'
 import type { PageGroup } from '../types/notebook'
 
 interface NotebookPageStripProps {
+  /** Page groups from the notebook draft, each with a template thumbnail and count. */
   pageGroups: PageGroup[]
+  /** Scroll direction. 'vertical' for editor preview, 'horizontal' for list cards. */
   orientation?: 'vertical' | 'horizontal'
-  /** Max pages to render (for compact list view) */
+  /** Max pages to render (for compact list view). */
   maxPages?: number
-  /** Display variant: 'strip' for scrollable list, 'stack' for fanned paper effect */
+  /** Display variant: 'strip' for scrollable list, 'stack' for fanned paper effect. */
   variant?: 'strip' | 'stack'
   className?: string
 }

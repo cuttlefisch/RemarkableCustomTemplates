@@ -114,10 +114,18 @@
   margin-bottom: 6px;
 }
 
+.notebook-list-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
 .notebook-list-card-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  min-width: 0;
 }
 
 .notebook-list-chip {
@@ -132,16 +140,15 @@
 }
 
 .notebook-list-card-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.15s;
 }
 
-.notebook-list-card:hover .notebook-list-card-actions {
+.notebook-list-card:hover .notebook-list-card-actions,
+.notebook-list-card:focus-within .notebook-list-card-actions {
   opacity: 1;
 }
 
@@ -151,6 +158,8 @@
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
+  border: none;
+  background: none;
   border-radius: 3px;
   transition: color 0.15s, background 0.15s;
 }
@@ -284,8 +293,9 @@
 .notebook-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-primary);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -309,7 +319,7 @@
 
 .notebook-toolbar-name {
   flex: 1;
-  min-width: 150px;
+  min-width: 100px;
   max-width: 300px;
   padding: 6px 10px;
   border: 1px solid var(--border-primary);
@@ -341,9 +351,10 @@
 .notebook-toolbar-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 5px;
+  padding: 6px 10px;
   border: 1px solid var(--border-primary);
+  white-space: nowrap;
   border-radius: 4px;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -954,8 +965,9 @@
   bottom: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
   border-top: 1px solid var(--border-primary, var(--color-sidebar-header-border));
   background: var(--bg-primary, var(--color-sidebar-bg));
   flex-shrink: 0;

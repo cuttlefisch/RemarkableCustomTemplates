@@ -1,9 +1,15 @@
 import { useCallback, useRef } from 'react'
 
 interface ResizeDividerProps {
+  /** Called on each mousemove frame with the horizontal pixel delta since last frame. */
   onResize: (deltaX: number) => void
 }
 
+/**
+ * Draggable vertical divider for resizable panel layouts.
+ * Captures the mouse on drag start and reports frame-throttled horizontal deltas
+ * via `onResize`. Used between sidebar, canvas, and editor panels.
+ */
 export function ResizeDivider({ onResize }: ResizeDividerProps) {
   const dragging = useRef(false)
   const lastX = useRef(0)

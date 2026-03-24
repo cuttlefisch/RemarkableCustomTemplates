@@ -12,16 +12,25 @@ import { readManifestUuids } from './manifestUuids.ts'
 import { parseTemplate } from '../../src/lib/parser.ts'
 import { generateTemplateIcon } from '../../src/lib/iconGenerator.ts'
 
+/** Options for building the methods registry from pulled device templates. */
 export interface BuildMethodsRegistryOptions {
+  /** Directory containing pulled `{uuid}.metadata` and `{uuid}.template` files. */
   tempDir: string
+  /** Output directory for the registry and copied `.template` files. */
   outputDir: string
+  /** Path to the local build manifest (used to identify custom-origin templates). */
   manifestPath?: string
+  /** Path to the deployed manifest backup (used to identify custom-origin templates). */
   deployedManifestPath?: string
+  /** UUIDs from the device-side deploy manifest (used to identify custom-origin templates). */
   deviceManifestUuids?: string[]
+  /** UUIDs of debug templates — excluded from custom-origin classification. */
   debugUuids?: string[]
 }
 
+/** Result of building the methods registry. */
 export interface BuildMethodsRegistryResult {
+  /** Number of templates successfully processed and included in the registry. */
   count: number
 }
 
@@ -31,6 +40,17 @@ function inferOrientation(templateBody: Record<string, unknown>): string {
   return 'portrait'
 }
 
+/**
+ * Build `methods-registry.json` from pulled rm_methods UUID files.
+ *
+ * Scans `tempDir` for `{uuid}.metadata` + `{uuid}.template` pairs, classifies
+ * each as `official-methods` or `custom-methods` based on known manifests and
+ * template labels, generates SVG icon data, and writes the registry plus
+ * template files to `outputDir`.
+ *
+ * @param opts - Build configuration.
+ * @returns The number of templates included in the registry.
+ */
 export async function buildMethodsRegistry(opts: BuildMethodsRegistryOptions): Promise<BuildMethodsRegistryResult> {
   const { tempDir, outputDir, manifestPath, deployedManifestPath, deviceManifestUuids, debugUuids } = opts
 

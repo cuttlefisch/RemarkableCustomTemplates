@@ -1,9 +1,20 @@
 /**
  * Device rollback operations.
  *
- * POST /api/devices/:id/rollback-methods    — revert to most recent rm_methods backup
- * POST /api/devices/:id/rollback-original   — restore device to pre-app state
- * POST /api/devices/:id/rollback-classic    — restore tar backup on device
+ * Restores a device to a previous template state by removing orphaned templates,
+ * pushing backup files, and updating manifests.
+ *
+ * Routes:
+ * - `POST /api/devices/:id/rollback-methods`  -- revert to the most recent timestamped
+ *   rm_methods backup. Removes templates added since the backup and restores backed-up files.
+ * - `POST /api/devices/:id/rollback-original` -- restore the device to its pre-app pristine
+ *   state (captured on first deploy). Removes all app-deployed templates.
+ * - `POST /api/devices/:id/rollback-classic`  -- restore the most recent tar backup on the
+ *   device's read-only filesystem (classic deploy format).
+ *
+ * Methods and original rollbacks stream NDJSON progress; classic rollback returns a single response.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -15,6 +26,7 @@ import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
+import type { RmMethodsManifest } from '../../../src/lib/rmMethods.ts'
 import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 import {
@@ -26,6 +38,12 @@ import {
   mergeDeployedUuids,
 } from '../../lib/deviceManifest.ts'
 
+/**
+ * Registers device rollback routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with backup directory paths
+ */
 export default function deviceRollbackRoutes(app: FastifyInstance, config: ServerConfig) {
   // POST /api/devices/:id/rollback-methods
   app.post<{ Params: { id: string } }>('/api/devices/:id/rollback-methods', async (request, reply) => {
@@ -89,7 +107,13 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       steps.push(`Restored ${pushed.length} files from backup`)
 
       // Write device manifest first, then local cache
-      const backupManifestContent = JSON.parse(readFileSync(latestManifest, 'utf8'))
+      let backupManifestContent: RmMethodsManifest
+      try {
+        backupManifestContent = JSON.parse(readFileSync(latestManifest, 'utf8')) as RmMethodsManifest
+      } catch (err) {
+        stream.error(`Backup manifest is corrupt: ${err instanceof Error ? err.message : String(err)}`)
+        return
+      }
       await writeDeviceManifest(sftp, backupManifestContent)
       copyFileSync(latestManifest, devicePaths.deployedManifest)
 
@@ -165,7 +189,13 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
 
       // Update manifest — device first, then local cache
       if (originalUuids.size > 0) {
-        const originalManifestContent = JSON.parse(readFileSync(originalManifestPath, 'utf8'))
+        let originalManifestContent: RmMethodsManifest
+        try {
+          originalManifestContent = JSON.parse(readFileSync(originalManifestPath, 'utf8')) as RmMethodsManifest
+        } catch (err) {
+          stream.error(`Original manifest is corrupt: ${err instanceof Error ? err.message : String(err)}`)
+          return
+        }
         await writeDeviceManifest(sftp, originalManifestContent)
       } else {
         try {

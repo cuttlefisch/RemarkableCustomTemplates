@@ -1,5 +1,13 @@
 /**
- * GET /api/devices/:id/backups — list available rm_methods backups for a device.
+ * Device backup listing route.
+ *
+ * Registers `GET /api/devices/:id/backups` which lists timestamped rm_methods backup
+ * directories for a specific device. Each entry includes the backup name, creation time,
+ * and template count (from the backup's `.manifest` file).
+ *
+ * Backups are created automatically during deploy and sorted newest-first.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -9,6 +17,12 @@ import type { ServerConfig } from '../../config.ts'
 import { resolveDevicePaths } from '../../config.ts'
 import { countManifestUuids } from '../../lib/manifestUuids.ts'
 
+/**
+ * Registers the device backup listing route on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with backup directory paths
+ */
 export default function deviceBackupRoutes(app: FastifyInstance, config: ServerConfig) {
   app.get<{ Params: { id: string } }>('/api/devices/:id/backups', async (request, reply) => {
     const { id } = request.params

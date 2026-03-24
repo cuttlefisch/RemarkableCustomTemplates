@@ -1,5 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
+const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
@@ -7,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   reporter: [['html', { open: 'never' }], ['list']],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: BASE_URL,
     headless: true,
     screenshot: 'only-on-failure',
   },
@@ -27,7 +29,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'make docker-up',
-    url: 'http://localhost:3000',
+    url: BASE_URL,
     reuseExistingServer: true,
     timeout: 60_000,
   },

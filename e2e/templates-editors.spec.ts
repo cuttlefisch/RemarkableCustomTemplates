@@ -1,23 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { waitForSidebarLoaded } from './helpers'
+import { waitForSidebarLoaded, createCustomTemplate, cleanupCustomTemplates, assertNoCustomTemplates } from './helpers'
+
+const PREFIX = 'E2E Editor'
 
 /** Create a custom template and select it so editor buttons are available */
 async function createAndSelectCustomTemplate(page: import('@playwright/test').Page) {
-  const name = `Editor Test ${Date.now()}`
-
-  const newBtn = page.locator('.sidebar-action-btn', { hasText: '+ New' })
-  await expect(newBtn).toBeVisible()
-  await newBtn.click()
-
-  const nameInput = page.locator('.new-template-name')
-  await expect(nameInput).toBeVisible()
-  await nameInput.fill(name)
-
-  const createBtn = page.locator('.new-template-create-btn')
-  await createBtn.click()
-
-  // Wait for the template to appear and be selected
-  await expect(page.locator('.template-btn', { hasText: name })).toBeVisible({ timeout: 10_000 })
+  const name = `${PREFIX} ${Date.now()}`
+  await createCustomTemplate(page, name)
   await expect(page.locator('.preview-meta')).toBeVisible({ timeout: 5_000 })
 
   // Creating a new template auto-opens the JSON editor — close it first
@@ -34,6 +23,11 @@ test.describe('Editor Panels', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await waitForSidebarLoaded(page)
+  })
+
+  test.afterEach(async ({ request }) => {
+    await cleanupCustomTemplates(request, PREFIX)
+    await assertNoCustomTemplates(request, PREFIX)
   })
 
   test('custom template shows Edit JSON button', async ({ page }) => {

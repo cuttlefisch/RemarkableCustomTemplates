@@ -2,9 +2,13 @@
  * Maps raw SSH/network errors to user-friendly messages with troubleshooting hints.
  */
 
+/** User-friendly representation of an SSH/network error with troubleshooting guidance. */
 export interface FriendlyError {
+  /** Short, non-technical description of the problem. */
   message: string
+  /** Actionable troubleshooting suggestion for the user. */
   hint: string
+  /** The original error message for debugging. */
   rawError: string
 }
 
@@ -46,6 +50,13 @@ const patterns: { test: RegExp; message: string; hint: string }[] = [
   },
 ]
 
+/**
+ * Map a raw SSH or network error to a user-friendly message with a troubleshooting hint.
+ * Matches against known error patterns (EHOSTUNREACH, auth failures, etc.)
+ * and falls back to a generic message for unrecognized errors.
+ * @param raw - The original error string or Error object.
+ * @returns A structured friendly error with message, hint, and raw error text.
+ */
 export function formatSshError(raw: string | Error): FriendlyError {
   const rawStr = raw instanceof Error ? raw.message : raw
 

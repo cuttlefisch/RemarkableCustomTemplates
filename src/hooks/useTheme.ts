@@ -13,14 +13,23 @@ const MIGRATION: Record<string, string> = {
   dark: 'one-dark',
 }
 
+/** Value provided by ThemeContext — the active theme, setter, and all available themes. */
 export interface ThemeContextValue {
   theme: Theme
   setTheme: (themeId: string) => void
   themes: Theme[]
 }
 
+/** React context for theme state. Must be provided by a parent using `useThemeProvider`. */
 export const ThemeContext = createContext<ThemeContextValue>(null!)
 
+/**
+ * Initializes theme state from localStorage (with migration from legacy IDs),
+ * applies CSS custom properties on change, and persists the selection.
+ * Use at the app root to provide `ThemeContext`.
+ *
+ * @returns ThemeContextValue to pass into `ThemeContext.Provider`.
+ */
 export function useThemeProvider(): ThemeContextValue {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return themes[0]
@@ -53,6 +62,10 @@ export function useThemeProvider(): ThemeContextValue {
   return { theme, setTheme, themes }
 }
 
+/**
+ * Consume the current theme from `ThemeContext`. Must be used within a `ThemeContext.Provider`.
+ * @returns The active theme, setter function, and list of all available themes.
+ */
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext)
   if (!ctx) throw new Error('useTheme must be used within a ThemeContext.Provider')

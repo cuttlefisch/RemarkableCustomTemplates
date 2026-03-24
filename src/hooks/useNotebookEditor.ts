@@ -8,6 +8,7 @@ import type { PageGroup } from '../types/notebook'
 import { getPreferredDeviceType, type DeviceId } from '../lib/renderer'
 import type { NotebookDraft } from './useNotebookList'
 
+/** State of the notebook editor — tracks name, page groups, device, and selection. */
 export interface NotebookEditorState {
   id: string
   name: string
@@ -18,6 +19,7 @@ export interface NotebookEditorState {
   deployedUuid?: string
 }
 
+/** Discriminated union of notebook editor actions. Discriminant field: `type`. */
 export type NotebookEditorAction =
   | { type: 'SET_NAME'; name: string }
   | { type: 'ADD_GROUP'; group: PageGroup }
@@ -32,6 +34,7 @@ export type NotebookEditorAction =
   | { type: 'LOAD'; draft: NotebookDraft }
   | { type: 'RESET' }
 
+/** Default initial state for the notebook editor (empty, portrait, rm device). */
 export const initialNotebookEditorState: NotebookEditorState = {
   id: '',
   name: '',
@@ -41,6 +44,7 @@ export const initialNotebookEditorState: NotebookEditorState = {
   orientation: 'portrait',
 }
 
+/** Pure reducer for notebook editor state — handles page group CRUD, reordering, and draft loading. */
 export function notebookEditorReducer(
   state: NotebookEditorState,
   action: NotebookEditorAction,
@@ -135,7 +139,10 @@ export function notebookEditorReducer(
 }
 
 /**
- * Hook for notebook editor state. Optionally auto-saves to a callback on every change.
+ * Hook for notebook editor state with optional debounced auto-save (500ms).
+ *
+ * @param onAutoSave - Called with the current state after each change, debounced at 500ms.
+ * @returns `{ state, dispatch }` — dispatch `NotebookEditorAction` to mutate state.
  */
 export function useNotebookEditor(onAutoSave?: (state: NotebookEditorState) => void) {
   const [state, dispatch] = useReducer(notebookEditorReducer, initialNotebookEditorState)

@@ -1,5 +1,17 @@
 /**
- * Custom templates CRUD: POST/PUT/PATCH/DELETE /api/custom-templates
+ * Custom template CRUD routes.
+ *
+ * Registers endpoints for creating, updating, renaming, and deleting user-authored
+ * templates stored in the `custom/` directory. Each mutation also updates
+ * `custom-registry.json` and auto-generates an SVG icon from the template content.
+ *
+ * Routes:
+ * - `POST   /api/custom-templates`        -- create a new template
+ * - `PUT    /api/custom-templates/:slug`   -- update content (and optionally registry entry)
+ * - `PATCH  /api/custom-templates/:slug`   -- rename + update (old file removed if slug changes)
+ * - `DELETE /api/custom-templates/:slug`   -- delete template, file, and any linked methods entry
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -10,6 +22,7 @@ import { assertWithin } from '../lib/pathSecurity.ts'
 import { parseTemplate } from '../../src/lib/parser.ts'
 import { generateTemplateIcon } from '../../src/lib/iconGenerator.ts'
 
+/** Attempt to parse a template and generate its SVG icon; returns `undefined` on failure. */
 function tryGenerateIcon(content: string): string | undefined {
   try {
     const tpl = parseTemplate(JSON.parse(content))
@@ -17,6 +30,7 @@ function tryGenerateIcon(content: string): string | undefined {
   } catch { return undefined }
 }
 
+/** Read the custom registry from disk, returning an empty list if the file is missing or corrupt. */
 function readRegistry(config: ServerConfig): { templates: unknown[] } {
   try {
     return JSON.parse(readFileSync(config.customRegistry, 'utf8')) as { templates: unknown[] }
@@ -25,6 +39,16 @@ function readRegistry(config: ServerConfig): { templates: unknown[] } {
   }
 }
 
+/**
+ * Registers custom template CRUD routes on the given Fastify instance.
+ *
+ * All routes enforce path-traversal protection and auto-regenerate SVG icon data
+ * on create/update. The DELETE handler also cleans up linked methods-registry
+ * entries and methods template files when the deleted template has an `rmMethodsId`.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with data directory paths
+ */
 export default function customTemplateRoutes(app: FastifyInstance, config: ServerConfig) {
   // POST /api/custom-templates — create new template
   app.post('/api/custom-templates', async (request, reply) => {
@@ -63,7 +87,7 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
   app.put('/api/custom-templates/:slug', async (request, reply) => {
     try {
       const { slug } = request.params as { slug: string }
-      const filename = decodeURIComponent(slug)
+      const filename = slug // Fastify already decodes route params
       const body = request.body as {
         content: string
         entry?: unknown
@@ -106,7 +130,7 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
   app.patch('/api/custom-templates/:slug', async (request, reply) => {
     try {
       const { slug } = request.params as { slug: string }
-      const oldSlug = decodeURIComponent(slug)
+      const oldSlug = slug // Fastify already decodes route params
       const body = request.body as {
         newSlug: string
         newName: string
@@ -140,7 +164,7 @@ export default function customTemplateRoutes(app: FastifyInstance, config: Serve
   app.delete('/api/custom-templates/:slug', async (request, reply) => {
     try {
       const { slug } = request.params as { slug: string }
-      const filename = decodeURIComponent(slug)
+      const filename = slug // Fastify already decodes route params
       const filePath = resolve(config.customDir, `${filename}.template`)
       assertWithin(config.customDir, filePath)
       if (existsSync(filePath)) unlinkSync(filePath)

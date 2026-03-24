@@ -1,6 +1,15 @@
 /**
- * GET /templates/* — serve template files from official, debug, and methods dirs.
- * Merges debug + methods + official registries for GET /templates/templates.json.
+ * Template file serving routes.
+ *
+ * Registers `GET /templates/*` which serves `.template` and registry JSON files
+ * from multiple source directories (official, custom, debug, samples, methods).
+ *
+ * For `GET /templates/templates.json`, returns a merged registry combining
+ * debug, samples (minus hidden), methods, and official template entries.
+ * All other paths resolve to the matching source directory with path-traversal
+ * protection via {@link assertWithin}.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -9,6 +18,16 @@ import { resolve } from 'node:path'
 import type { ServerConfig } from '../config.ts'
 import { assertWithin } from '../lib/pathSecurity.ts'
 
+/**
+ * Registers the `GET /templates/*` route on the given Fastify instance.
+ *
+ * The wildcard path is matched against subdirectory prefixes (`custom/`, `debug/`,
+ * `samples/`, `methods/`) to route to the correct data directory. The special path
+ * `templates.json` returns the merged registry from all template sources.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with data directory paths
+ */
 export default function templateRoutes(app: FastifyInstance, config: ServerConfig) {
   app.get('/templates/*', async (request, reply) => {
     const wildcard = (request.params as Record<string, string>)['*']

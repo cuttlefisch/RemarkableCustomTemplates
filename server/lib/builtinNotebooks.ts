@@ -17,9 +17,16 @@ interface RegistryEntry {
 }
 
 /**
- * Generate a NotebookDraft from a template registry file.
- * Each registry entry becomes one page group (count=1).
- * Returns null if the registry is missing or empty.
+ * Generate a virtual NotebookDraft from a template registry file.
+ * Each registry entry becomes one page group with `count=1`, creating
+ * a "showcase" notebook containing every template in the registry.
+ * These notebooks are never stored in `notebooks.json` — they are
+ * generated on demand and have deterministic IDs.
+ * @param registryPath - Absolute path to the registry JSON file.
+ * @param id - Deterministic ID for the generated notebook (e.g. `__sample-notebook__`).
+ * @param name - Display name for the notebook.
+ * @param source - Source classification (`'sample'` or `'debug'`).
+ * @returns The generated notebook draft, or null if the registry is missing or empty.
  */
 export function generateBuiltinNotebook(
   registryPath: string,

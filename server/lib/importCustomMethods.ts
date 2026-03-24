@@ -20,14 +20,30 @@ interface MethodsRegistryEntry {
   iconData?: string
 }
 
+/** Paths required for importing custom-methods entries into the custom collection. */
 export interface ImportCustomMethodsConfig {
+  /** Path to `methods-registry.json` (source of custom-methods entries). */
   methodsRegistry: string
+  /** Path to `custom-registry.json` (target for imported entries). */
   customRegistry: string
+  /** Directory for custom `.template` files (destination for copied templates). */
   customDir: string
+  /** Directory containing methods `.template` files (source for copies). */
   methodsDir: string
+  /** Path to `debug-registry.json` (entries here are skipped to avoid duplicates). */
   debugRegistry: string
 }
 
+/**
+ * Import `custom-methods` entries from the methods registry into the custom collection.
+ *
+ * For each methods registry entry with `origin: 'custom-methods'` that isn't already
+ * in the custom or debug registries (matched by `rmMethodsId`), copies the `.template`
+ * file into `customDir` and adds a registry entry to `custom-registry.json`.
+ *
+ * @param config - Paths for registries and template directories.
+ * @returns The number of templates imported (0 if none were new).
+ */
 export function importCustomMethodsEntries(config: ImportCustomMethodsConfig): number {
   let methodsEntries: MethodsRegistryEntry[]
   try {

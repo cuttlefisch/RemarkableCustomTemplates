@@ -6,7 +6,13 @@
 
 import { readFileSync, existsSync } from 'node:fs'
 
-/** Read sorted UUIDs from a manifest file (JSON or plain text). */
+/**
+ * Read sorted template UUIDs from a manifest file on disk.
+ * Supports both JSON manifest format (`{ templates: { uuid: ... } }`)
+ * and legacy plain-text format (one UUID per line).
+ * @param path - Absolute path to the manifest file.
+ * @returns Sorted array of UUID strings, or empty array if file is missing/empty.
+ */
 export function readManifestUuids(path: string): string[] {
   if (!existsSync(path)) return []
   const txt = readFileSync(path, 'utf8').trim()
@@ -21,12 +27,23 @@ export function readManifestUuids(path: string): string[] {
   }
 }
 
-/** Count UUIDs in a manifest file. */
+/**
+ * Count the number of template UUIDs in a manifest file.
+ * @param path - Absolute path to the manifest file.
+ * @returns Number of UUIDs found (0 if file is missing).
+ */
 export function countManifestUuids(path: string): number {
   return readManifestUuids(path).length
 }
 
-/** Return UUIDs present in oldPath but absent from newPath. */
+/**
+ * Compute UUIDs that were removed between two manifest versions.
+ * Returns UUIDs present in `oldPath` but absent from `newPath` (set difference).
+ * Useful for identifying orphaned templates after a rebuild.
+ * @param oldPath - Path to the previous manifest.
+ * @param newPath - Path to the current manifest.
+ * @returns Sorted array of removed UUIDs.
+ */
 export function diffManifestUuids(oldPath: string, newPath: string): string[] {
   const oldSet = new Set(readManifestUuids(oldPath))
   const newSet = new Set(readManifestUuids(newPath))

@@ -1,6 +1,18 @@
 /**
- * Built-in notebook routes — virtual notebooks generated from template registries.
- * Hide/restore uses same pattern as sampleTemplates.ts.
+ * Built-in (virtual) notebook routes.
+ *
+ * Generates sample and debug notebooks on demand from their respective template
+ * registries. These notebooks have deterministic IDs (`__sample-notebook__`,
+ * `__debug-notebook__`) and cannot be deleted -- only hidden. Hidden state is
+ * persisted in `custom/hidden-notebooks.json`.
+ *
+ * Routes:
+ * - `GET  /api/builtin-notebooks`              -- list non-hidden built-in notebooks
+ * - `GET  /api/builtin-notebooks/hidden`        -- list hidden notebook IDs
+ * - `POST /api/builtin-notebooks/hide`          -- hide a notebook by ID
+ * - `POST /api/builtin-notebooks/restore-all`   -- clear hidden list (restore all)
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -10,6 +22,7 @@ import type { ServerConfig } from '../config.ts'
 import { generateBuiltinNotebook } from '../lib/builtinNotebooks.ts'
 import type { NotebookDraft } from '../../src/types/notebook.ts'
 
+/** Read the hidden-notebooks JSON file, returning an empty array if missing or corrupt. */
 function readHidden(path: string): string[] {
   if (!existsSync(path)) return []
   try {
@@ -19,12 +32,19 @@ function readHidden(path: string): string[] {
   }
 }
 
+/** Write the hidden-notebooks JSON file, creating parent directories as needed. */
 function writeHidden(path: string, hidden: string[]): void {
   const dir = dirname(path)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   writeFileSync(path, JSON.stringify(hidden, null, 2))
 }
 
+/**
+ * Registers built-in notebook routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration (provides registry paths and hidden-notebooks path)
+ */
 export default function builtinNotebookRoutes(app: FastifyInstance, config: ServerConfig) {
   /** GET /api/builtin-notebooks — returns non-hidden built-in notebooks */
   app.get('/api/builtin-notebooks', async () => {

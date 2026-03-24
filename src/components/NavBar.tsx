@@ -3,6 +3,12 @@ import { useTheme } from '../hooks/useTheme'
 import { useBusy } from '../hooks/useBusy'
 import './NavBar.css'
 
+/**
+ * Top-level navigation bar rendered on every page.
+ * Contains links to Devices, Templates, and Notebooks pages,
+ * a theme switcher dropdown, and a busy indicator that blocks
+ * navigation while device operations are in flight.
+ */
 export function NavBar() {
   const { theme, setTheme, themes } = useTheme()
   const { isBusy } = useBusy()

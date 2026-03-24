@@ -1,18 +1,29 @@
 import { useState, useRef, useEffect } from 'react'
 
 interface Props {
+  /** Whether official (classic) templates have been imported. null = still checking. */
   officialTemplatesAvailable: boolean | null
+  /** Callback to display a success message in the parent page. */
   onStatus: (msg: string) => void
+  /** Callback to display an error message in the parent page. */
   onError: (msg: string) => void
+  /** Called after operations that change the template registry (e.g. restoring samples). */
   onRefreshRegistry?: () => void
 }
 
+/**
+ * Import and export card on the Device page.
+ * Provides classic template folder import, ZIP export (classic and rm_methods formats),
+ * and management of hidden system templates and notebooks.
+ */
 export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, onError, onRefreshRegistry }: Props) {
   const [importing, setImporting] = useState(false)
   const [showImportHelp, setShowImportHelp] = useState(false)
   const officialInputRef = useRef<HTMLInputElement>(null)
   const [hiddenSamplesCount, setHiddenSamplesCount] = useState<number | null>(null)
+  const [hiddenNotebooksCount, setHiddenNotebooksCount] = useState<number | null>(null)
   const [restoringAllSamples, setRestoringAllSamples] = useState(false)
+  const [restoringAllNotebooks, setRestoringAllNotebooks] = useState(false)
 
   useEffect(() => {
     fetch('/api/sample-templates/hidden')
@@ -21,6 +32,13 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
       .catch((err) => {
         console.error('[load-hidden-samples]', err instanceof Error ? err.message : String(err))
         setHiddenSamplesCount(0)
+      })
+    fetch('/api/builtin-notebooks/hidden')
+      .then(r => r.json())
+      .then((data: { hidden: string[] }) => setHiddenNotebooksCount(data.hidden.length))
+      .catch((err) => {
+        console.error('[load-hidden-notebooks]', err instanceof Error ? err.message : String(err))
+        setHiddenNotebooksCount(0)
       })
   }, [])
 
@@ -37,6 +55,20 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
       onError(`Failed to restore samples: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setRestoringAllSamples(false)
+    }
+  }
+
+  async function handleRestoreAllNotebooks() {
+    setRestoringAllNotebooks(true)
+    try {
+      const res = await fetch('/api/builtin-notebooks/restore-all', { method: 'POST' })
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
+      setHiddenNotebooksCount(0)
+      onStatus('Restored all hidden system notebooks.')
+    } catch (e) {
+      onError(`Failed to restore notebooks: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setRestoringAllNotebooks(false)
     }
   }
 
@@ -191,25 +223,48 @@ export function DeviceImportExportCard({ officialTemplatesAvailable, onStatus, o
         </div>
 
         <div className="device-op-section">
-          <h3 className="device-op-section-title">Sample Templates</h3>
+          <h3 className="device-op-section-title">System Templates &amp; Notebooks</h3>
           <p className="device-card-desc">
-            Sample templates showcase the template format's features. Hidden samples can be restored here.
+            Built-in sample and debug templates and notebooks showcase the format's features.
+            Hidden items can be restored here.
           </p>
+
+          <h4 className="device-op-subsection-title">Templates</h4>
           {hiddenSamplesCount === null ? (
             <p className="device-card-hint">Loading...</p>
           ) : hiddenSamplesCount === 0 ? (
-            <p className="device-card-hint">All sample templates are visible.</p>
+            <p className="device-card-hint">All system templates are visible.</p>
           ) : (
             <>
               <p className="device-card-hint">
-                {hiddenSamplesCount} sample template{hiddenSamplesCount !== 1 ? 's' : ''} hidden.
+                {hiddenSamplesCount} system template{hiddenSamplesCount !== 1 ? 's' : ''} hidden.
               </p>
               <button
                 className="device-card-btn"
                 onClick={handleRestoreAllSamples}
                 disabled={restoringAllSamples}
               >
-                {restoringAllSamples ? 'Restoring...' : 'Restore All Samples'}
+                {restoringAllSamples ? 'Restoring...' : 'Restore All Templates'}
+              </button>
+            </>
+          )}
+
+          <h4 className="device-op-subsection-title">Notebooks</h4>
+          {hiddenNotebooksCount === null ? (
+            <p className="device-card-hint">Loading...</p>
+          ) : hiddenNotebooksCount === 0 ? (
+            <p className="device-card-hint">All system notebooks are visible.</p>
+          ) : (
+            <>
+              <p className="device-card-hint">
+                {hiddenNotebooksCount} system notebook{hiddenNotebooksCount !== 1 ? 's' : ''} hidden.
+              </p>
+              <button
+                className="device-card-btn"
+                onClick={handleRestoreAllNotebooks}
+                disabled={restoringAllNotebooks}
+              >
+                {restoringAllNotebooks ? 'Restoring...' : 'Restore All Notebooks'}
               </button>
             </>
           )}

@@ -10,27 +10,40 @@ import type { TemplateRegistry, TemplateRegistryEntry } from '../types/registry'
 // Types
 // ---------------------------------------------------------------------------
 
+/** Metadata stored in `backup-manifest.json` inside a backup ZIP. */
 export interface BackupManifest {
+  /** Schema version — currently always `1`. */
   version: 1
-  createdAt: string // ISO 8601
+  /** ISO 8601 timestamp of when the backup was created. */
+  createdAt: string
+  /** Count of templates by source. */
   templateCount: { custom: number; debug: number }
+  /** Number of notebook drafts included in the backup, if any. */
   notebookCount?: number
 }
 
+/** Result of validating a backup ZIP's structure and contents. */
 export interface BackupValidationResult {
+  /** Whether the backup passed all validation checks. */
   valid: boolean
+  /** Fatal errors that prevent restore (e.g. missing manifest, invalid JSON). */
   errors: string[]
+  /** Non-fatal issues (e.g. orphan files, missing rmMethodsId). */
   warnings: string[]
   manifest: BackupManifest | null
   customRegistry: TemplateRegistry | null
   debugRegistry: TemplateRegistry | null
+  /** Paths of `.template` files found under `custom/`. */
   customTemplateFiles: string[]
+  /** Paths of `.template` files found under `debug/`. */
   debugTemplateFiles: string[]
 }
 
+/** Describes whether an incoming backup entry should be added or skipped during merge. */
 export interface MergeAction {
   entry: TemplateRegistryEntry
   action: 'add' | 'skip'
+  /** Why the entry was skipped (e.g. `"UUID match"`, `"filename match"`). */
   reason?: string
 }
 
@@ -38,6 +51,14 @@ export interface MergeAction {
 // buildBackupManifest
 // ---------------------------------------------------------------------------
 
+/**
+ * Create a backup manifest with the current timestamp.
+ *
+ * @param customCount - Number of custom templates in the backup
+ * @param debugCount - Number of debug templates in the backup
+ * @param notebookCount - Number of notebook drafts (omitted from manifest if zero)
+ * @returns A new BackupManifest
+ */
 export function buildBackupManifest(customCount: number, debugCount: number, notebookCount?: number): BackupManifest {
   return {
     version: 1,
@@ -51,6 +72,16 @@ export function buildBackupManifest(customCount: number, debugCount: number, not
 // validateBackupContents
 // ---------------------------------------------------------------------------
 
+/**
+ * Validate the contents of a backup ZIP.
+ *
+ * Checks manifest version, parses registries, cross-references registry entries
+ * against template files, detects orphans, and validates that all `.template`
+ * files parse correctly.
+ *
+ * @param files - Map of ZIP entry paths to their raw byte content
+ * @returns Validation result with errors, warnings, and parsed registries
+ */
 export function validateBackupContents(files: Record<string, Uint8Array>): BackupValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
@@ -188,6 +219,16 @@ export function validateBackupContents(files: Record<string, Uint8Array>): Backu
 // computeMergeActions
 // ---------------------------------------------------------------------------
 
+/**
+ * Determine which incoming entries to add vs skip during a merge restore.
+ *
+ * Matching is done first by `rmMethodsId` (UUID), then by `filename`.
+ * Entries that match an existing entry are skipped.
+ *
+ * @param incoming - Entries from the backup being restored
+ * @param existing - Entries already in the current registry
+ * @returns An action for each incoming entry
+ */
 export function computeMergeActions(
   incoming: TemplateRegistryEntry[],
   existing: TemplateRegistryEntry[],

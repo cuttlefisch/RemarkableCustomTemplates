@@ -6,26 +6,45 @@
 import { Client } from 'ssh2'
 import { readFileSync } from 'node:fs'
 
+/** Configuration for connecting to a reMarkable device over SSH. */
 export interface DeviceConfig {
-  id: string                     // auto-generated UUID
-  nickname: string               // user-chosen display name
+  /** Auto-generated UUID identifying this device in the store. */
+  id: string
+  /** User-chosen display name for the device. */
+  nickname: string
+  /** IP address or hostname of the device. */
   deviceIp: string
-  sshPort: number                // default 22
+  /** SSH port (default 22). */
+  sshPort: number
+  /** Authentication strategy — password auth is cleared after SSH key setup. */
   authMethod: 'password' | 'key'
-  sshPassword?: string           // cleared after key setup
-  privateKeyPath?: string        // data/ssh/<deviceId>/id_remarkable
-  lastConnected?: string         // ISO timestamp
-  deviceModel?: string           // cached from test-connection
-  firmwareVersion?: string       // cached from test-connection
+  /** Device root password; cleared once SSH keys are installed. */
+  sshPassword?: string
+  /** Path to the private key file (e.g. `data/ssh/<deviceId>/id_remarkable`). */
+  privateKeyPath?: string
+  /** ISO 8601 timestamp of the last successful connection. */
+  lastConnected?: string
+  /** Device model string cached from test-connection (e.g. "reMarkable 2.0"). */
+  deviceModel?: string
+  /** Firmware version cached from test-connection. */
+  firmwareVersion?: string
 }
 
+/** Result of executing a command on a remote device via SSH. */
 export interface ExecResult {
   stdout: string
   stderr: string
+  /** Exit code of the remote process (0 = success). */
   code: number
 }
 
-/** Connect to a device using the given config. */
+/**
+ * Open an SSH connection to a reMarkable device.
+ * Always connects as `root` with a 10-second ready timeout.
+ * @param config - Device connection settings (IP, port, auth method).
+ * @returns A connected ssh2 Client ready for exec/SFTP.
+ * @throws If no authentication method is configured or the connection fails.
+ */
 export function connect(config: DeviceConfig): Promise<Client> {
   return new Promise((resolve, reject) => {
     const client = new Client()
@@ -53,7 +72,12 @@ export function connect(config: DeviceConfig): Promise<Client> {
   })
 }
 
-/** Execute a command on the remote device. */
+/**
+ * Execute a shell command on the remote device.
+ * @param client - An already-connected ssh2 Client.
+ * @param command - The shell command string to run.
+ * @returns Captured stdout, stderr, and exit code.
+ */
 export function exec(client: Client, command: string): Promise<ExecResult> {
   return new Promise((resolve, reject) => {
     client.exec(command, (err, stream) => {

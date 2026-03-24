@@ -6,6 +6,7 @@ import type { NotebookDraft } from '../types/notebook'
 
 const BASE = '/api/notebook-drafts'
 
+/** Fetch all user notebook drafts from the server. */
 export async function fetchDrafts(): Promise<NotebookDraft[]> {
   const res = await fetch(BASE)
   if (!res.ok) throw new Error(`Failed to fetch drafts: ${res.status}`)
@@ -13,6 +14,7 @@ export async function fetchDrafts(): Promise<NotebookDraft[]> {
   return data.drafts
 }
 
+/** Create a single notebook draft on the server. */
 export async function createDraftApi(draft: NotebookDraft): Promise<NotebookDraft> {
   const res = await fetch(BASE, {
     method: 'POST',
@@ -24,6 +26,7 @@ export async function createDraftApi(draft: NotebookDraft): Promise<NotebookDraf
   return data.draft
 }
 
+/** Batch-create multiple drafts in a single request (used for localStorage migration). */
 export async function batchCreateDrafts(drafts: NotebookDraft[]): Promise<number> {
   const res = await fetch(BASE, {
     method: 'POST',
@@ -35,6 +38,7 @@ export async function batchCreateDrafts(drafts: NotebookDraft[]): Promise<number
   return data.imported
 }
 
+/** Update an existing notebook draft by ID. */
 export async function updateDraftApi(draft: NotebookDraft): Promise<NotebookDraft> {
   const res = await fetch(`${BASE}/${draft.id}`, {
     method: 'PUT',
@@ -46,11 +50,17 @@ export async function updateDraftApi(draft: NotebookDraft): Promise<NotebookDraf
   return data.draft
 }
 
+/** Delete a notebook draft by ID. */
 export async function deleteDraftApi(id: string): Promise<void> {
   const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`Failed to delete draft: ${res.status}`)
 }
 
+/**
+ * Fork (duplicate) a notebook draft server-side.
+ * @param id - The source draft ID to fork.
+ * @param customName - Optional name for the forked copy; server auto-generates if omitted.
+ */
 export async function forkDraftApi(id: string, customName?: string): Promise<NotebookDraft> {
   const res = await fetch(`${BASE}/${id}/fork`, {
     method: 'POST',

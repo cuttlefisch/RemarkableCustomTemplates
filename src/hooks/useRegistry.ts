@@ -4,6 +4,7 @@ import { parseTemplate } from '../lib/parser'
 import { mergeCategories, mergeRegistries } from '../lib/customTemplates'
 import type { TemplateRegistry } from '../types/registry'
 
+/** State shape for the template registry context — official, custom, and merged registries. */
 export interface RegistryState {
   registry: TemplateRegistry | null
   setRegistry: React.Dispatch<React.SetStateAction<TemplateRegistry | null>>
@@ -16,14 +17,26 @@ export interface RegistryState {
   refreshRegistry: () => void
 }
 
+/** React context for template registry state. Provide via `useRegistry()` at the app root. */
 export const RegistryContext = createContext<RegistryState | null>(null)
 
+/**
+ * Consume the template registry from `RegistryContext`. Must be within a provider.
+ * @returns The full registry state including official, custom, and merged registries.
+ */
 export function useRegistryContext(): RegistryState {
   const ctx = useContext(RegistryContext)
   if (!ctx) throw new Error('useRegistryContext must be used within RegistryContext.Provider')
   return ctx
 }
 
+/**
+ * Fetches and manages the official + custom template registries.
+ * Loads `templates.json` and `custom-registry.json` on mount, syncs categories
+ * from template files, and provides a merged view for the UI.
+ *
+ * @returns Registry state with official, custom, and merged registries plus a refresh trigger.
+ */
 export function useRegistry(): RegistryState {
   const [registry, setRegistry] = useState<TemplateRegistry | null>(null)
   const [customRegistry, setCustomRegistry] = useState<TemplateRegistry>({ templates: [] })

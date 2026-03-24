@@ -11,18 +11,31 @@ import { evaluateExpression, type ResolvedConstants } from './expression'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** A 2D point in template coordinate space. */
 export interface Point {
   x: number
   y: number
 }
 
+/** Visual properties applied to drawn shapes. */
 export interface ShapeProps {
+  /** Whether fill is enabled for this shape. */
   fillEnabled: boolean
+  /** Fill color as a hex string (e.g. `"#ff0000"`). */
   fillColor: string
+  /** Stroke color as a hex string. */
   strokeColor: string
+  /** Stroke width in template pixels. */
   strokeWidth: number
 }
 
+/**
+ * Controls how drawn coordinates are stored in the template.
+ *
+ * - `'proportional'`: Coordinates are wrapped in `drawnScaleX`/`drawnScaleY`
+ *   expressions that scale relative to the base device dimensions.
+ * - `'fixed'`: Coordinates are stored as literal numbers, pixel-exact for one device.
+ */
 export type ScalingMode =
   | { type: 'proportional'; baseWidth: number; baseHeight: number }
   | { type: 'fixed' }
@@ -36,8 +49,14 @@ function roundCoord(value: number): number {
 
 /**
  * Scale a coordinate value for the given axis and scaling mode.
- * In fixed mode, returns the rounded number.
- * In proportional mode, wraps in a drawnScaleX/Y expression string.
+ *
+ * In fixed mode, returns the rounded number. In proportional mode, wraps in a
+ * `drawnScaleX`/`drawnScaleY` expression string for multi-device scaling.
+ *
+ * @param value - The raw coordinate value
+ * @param axis - Which axis (`'x'` or `'y'`) determines the scale constant used
+ * @param scaling - The active scaling mode
+ * @returns A numeric literal or expression string
  */
 export function scaleCoord(value: number, axis: 'x' | 'y', scaling: ScalingMode): ScalarValue {
   const rounded = roundCoord(value)
@@ -47,7 +66,14 @@ export function scaleCoord(value: number, axis: 'x' | 'y', scaling: ScalingMode)
 }
 
 /**
- * Build the scale constant entries to inject into a template's constants array.
+ * Build the `drawnScaleX`/`drawnScaleY` constant entries for proportional scaling.
+ *
+ * These constants are injected into a template's constants array so that
+ * drawn shapes scale proportionally across different device dimensions.
+ *
+ * @param baseWidth - The template width of the device the shape was drawn on
+ * @param baseHeight - The template height of the device the shape was drawn on
+ * @returns Two constant entries for `drawnScaleX` and `drawnScaleY`
  */
 export function buildScaleConstants(baseWidth: number, baseHeight: number): ConstantEntry[] {
   return [
@@ -70,6 +96,12 @@ function makePathItem(data: PathData, props: ShapeProps, allowFill: boolean): Pa
 
 /**
  * Build a cross-shaped point marker at the given center.
+ *
+ * @param center - Center point in template coordinates
+ * @param size - Half-length of each arm of the cross
+ * @param props - Visual properties (stroke color/width)
+ * @param scaling - Coordinate scaling mode
+ * @returns A PathItem with two perpendicular line segments
  */
 export function buildPointItem(
   center: Point,
@@ -301,15 +333,21 @@ export function buildBezierItem(
 
 // ─── Bezier handle extraction & rebuilding ────────────────────────────────────
 
+/** Structured representation of a cubic bezier path's knots and control points. */
 export interface BezierHandles {
+  /** Anchor points (knots) of the bezier path. */
   knots: Point[]
-  controlPoints: [Point, Point][]  // [cp1, cp2] per segment
+  /** Control point pairs `[cp1, cp2]` for each segment between consecutive knots. */
+  controlPoints: [Point, Point][]
+  /** Whether the path forms a closed loop. */
   closed: boolean
 }
 
 /**
- * Parse M + n×C [+ Z] PathData into structured bezier handles.
- * Returns null if data contains expressions or isn't pure bezier format.
+ * Parse `M + n×C [+ Z]` PathData into structured bezier handles.
+ *
+ * @param data - Flat PathData token array
+ * @returns Structured handles, or `null` if data contains expressions or non-bezier commands
  */
 export function extractBezierHandles(data: PathData): BezierHandles | null {
   if (data.length < 3 || data[0] !== 'M') return null
@@ -359,7 +397,10 @@ export function extractBezierHandles(data: PathData): BezierHandles | null {
 }
 
 /**
- * Serialize BezierHandles back to flat PathData (always numeric).
+ * Serialize BezierHandles back to flat numeric PathData.
+ *
+ * @param handles - Structured bezier handles to serialize
+ * @returns Flat PathData token array with numeric coordinates
  */
 export function rebuildBezierPathData(handles: BezierHandles): PathData {
   const data: PathData = ['M', handles.knots[0].x, handles.knots[0].y]
@@ -378,11 +419,14 @@ export function rebuildBezierPathData(handles: BezierHandles): PathData {
 
 /**
  * Compute Hobby's spline control points from anchor points.
- * Returns one { cp1, cp2 } pair per segment.
  *
- * Hobby's algorithm minimizes bending energy. It computes "turning angles"
- * at each knot by solving a tridiagonal system, then converts those angles
+ * Hobby's algorithm minimizes bending energy by computing "turning angles"
+ * at each knot via a tridiagonal system, then converting those angles
  * to cubic bezier control points via Hobby's velocity function.
+ *
+ * @param anchors - Ordered knot points of the spline
+ * @param closed - Whether the spline forms a closed loop
+ * @returns One `{ cp1, cp2 }` control point pair per segment
  */
 export function computeHobbyControlPoints(
   anchors: Point[],
@@ -481,10 +525,15 @@ function normalizeAngle(a: number): number {
 
 /**
  * Hobby's velocity function.
- * Returns the factor alpha such that the control arm length = d * alpha / 3.
- * For theta = phi = 0 (straight line), returns 1.
+ *
+ * Returns the factor alpha such that the control arm length = `d * alpha / 3`.
+ * For `theta = phi = 0` (straight line), returns `1`.
  *
  * Based on John Hobby's 1986 paper "Smooth, Easy to Compute Interpolating Splines".
+ *
+ * @param theta - Turning angle at the start knot of the segment
+ * @param phi - Turning angle at the end knot of the segment
+ * @returns The velocity factor (typically between 0.5 and 2)
  */
 export function hobbyAlpha(theta: number, phi: number): number {
   const st = Math.sin(theta)
@@ -672,8 +721,13 @@ export function buildBezierItemHobby(
 // ─── Translation ─────────────────────────────────────────────────────────────
 
 /**
- * Translate a PathItem by (dx, dy). Returns null if the path contains
- * expression strings (proportional mode) since those can't be simply offset.
+ * Translate a PathItem by `(dx, dy)`.
+ *
+ * @param item - The path item to translate
+ * @param dx - Horizontal offset in template pixels
+ * @param dy - Vertical offset in template pixels
+ * @returns A new PathItem with translated coordinates, or `null` if the path
+ *   contains expression strings (proportional mode) that can't be offset
  */
 export function translatePathItem(item: PathItem, dx: number, dy: number): PathItem | null {
   const commands = new Set(['M', 'L', 'C', 'Z'])
@@ -701,8 +755,12 @@ export function translatePathItem(item: PathItem, dx: number, dy: number): PathI
 // ─── Reordering (layering) ───────────────────────────────────────────────────
 
 /**
- * Reorder an item in an array by direction.
- * Returns the same array reference if no change was made.
+ * Reorder an item in an array by direction (for z-order layering).
+ *
+ * @param items - The array to reorder
+ * @param fromIndex - Index of the item to move
+ * @param direction - `'up'`/`'down'` swap by one; `'top'`/`'bottom'` move to end/start
+ * @returns A new array with the item moved, or the same reference if no change
  */
 export function reorderItem<T>(items: T[], fromIndex: number, direction: 'up' | 'down' | 'top' | 'bottom'): T[] {
   if (fromIndex < 0 || fromIndex >= items.length) return items
@@ -740,7 +798,12 @@ export function reorderItem<T>(items: T[], fromIndex: number, direction: 'up' | 
 // ─── Rotation ────────────────────────────────────────────────────────────────
 
 /**
- * Rotate a point around a center by angleDeg degrees.
+ * Rotate a point around a center by the given angle.
+ *
+ * @param point - The point to rotate
+ * @param angleDeg - Rotation angle in degrees (positive = clockwise)
+ * @param center - Center of rotation
+ * @returns The rotated point, rounded to 4 decimal places
  */
 export function rotatePoint(point: Point, angleDeg: number, center: Point): Point {
   const rad = (angleDeg * Math.PI) / 180
@@ -755,8 +818,12 @@ export function rotatePoint(point: Point, angleDeg: number, center: Point): Poin
 }
 
 /**
- * Rotate all coordinates in a PathData array around the centroid.
- * Returns null if the path contains expression strings.
+ * Rotate all coordinates in a PathData array around the given center (or centroid).
+ *
+ * @param data - Flat PathData token array
+ * @param angleDeg - Rotation angle in degrees
+ * @param center - Optional center of rotation (defaults to the path's centroid)
+ * @returns A new PathData with rotated coordinates, or `null` if the path contains expression strings
  */
 export function rotatePathData(data: PathData, angleDeg: number, center?: Point): PathData | null {
   // First, extract all numeric coordinate pairs to compute centroid
@@ -815,8 +882,10 @@ export function rotatePathData(data: PathData, angleDeg: number, center?: Point)
 // ─── Path bounds ─────────────────────────────────────────────────────────────
 
 /**
- * Compute bounding box from numeric-only path data.
- * Returns null if the path contains expression strings.
+ * Compute axis-aligned bounding box from numeric-only path data.
+ *
+ * @param data - Flat PathData token array
+ * @returns The bounding box, or `null` if the path contains expression strings or has no points
  */
 export function computePathBounds(data: PathData): { minX: number; minY: number; maxX: number; maxY: number } | null {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
@@ -856,12 +925,16 @@ export function computePathBounds(data: PathData): { minX: number; minY: number;
 // ─── Expression resolution for path data ──────────────────────────────────
 
 /**
- * Resolve expression strings in PathData to numeric values using resolved
- * constants. Returns null if any expression cannot be evaluated.
- */
-/**
- * Translate a PathItem by (dx, dy), resolving expression strings if needed.
- * Falls back to resolving expressions to fixed numeric coordinates.
+ * Translate a PathItem by `(dx, dy)`, resolving expression strings if needed.
+ *
+ * First attempts a direct translation. If the path contains expressions,
+ * resolves them to numeric values and then translates.
+ *
+ * @param item - The path item to translate
+ * @param dx - Horizontal offset
+ * @param dy - Vertical offset
+ * @param constants - Resolved constants for expression evaluation
+ * @returns A translated PathItem, or `null` if expressions cannot be resolved
  */
 export function translatePathItemResolved(
   item: PathItem, dx: number, dy: number, constants: ResolvedConstants
@@ -874,8 +947,16 @@ export function translatePathItemResolved(
 }
 
 /**
- * Rotate PathData by angleDeg, resolving expression strings if needed.
- * Falls back to resolving expressions to fixed numeric coordinates.
+ * Rotate PathData by `angleDeg`, resolving expression strings if needed.
+ *
+ * First attempts a direct rotation. If the path contains expressions,
+ * resolves them to numeric values and then rotates.
+ *
+ * @param data - Flat PathData token array
+ * @param angleDeg - Rotation angle in degrees
+ * @param constants - Resolved constants for expression evaluation
+ * @param center - Optional center of rotation
+ * @returns Rotated PathData, or `null` if expressions cannot be resolved
  */
 export function rotatePathDataResolved(
   data: PathData, angleDeg: number, constants: ResolvedConstants, center?: Point
@@ -891,7 +972,12 @@ export function rotatePathDataResolved(
 
 /**
  * Scale all coordinates in a PathData array around an origin point.
- * Returns null if the path contains expression strings.
+ *
+ * @param data - Flat PathData token array
+ * @param scaleX - Horizontal scale factor
+ * @param scaleY - Vertical scale factor
+ * @param origin - The fixed point around which scaling occurs
+ * @returns Scaled PathData, or `null` if the path contains expression strings
  */
 export function scalePathData(
   data: PathData, scaleX: number, scaleY: number, origin: Point,
@@ -920,7 +1006,14 @@ export function scalePathData(
 }
 
 /**
- * Scale PathData, resolving expression strings if needed.
+ * Scale PathData, resolving expression strings to numeric values if needed.
+ *
+ * @param data - Flat PathData token array
+ * @param scaleX - Horizontal scale factor
+ * @param scaleY - Vertical scale factor
+ * @param origin - The fixed point around which scaling occurs
+ * @param constants - Resolved constants for expression evaluation
+ * @returns Scaled PathData, or `null` if expressions cannot be resolved
  */
 export function scalePathDataResolved(
   data: PathData, scaleX: number, scaleY: number, origin: Point,
@@ -935,7 +1028,15 @@ export function scalePathDataResolved(
 
 /**
  * Compute scale factors from a bounding-box handle drag.
- * Returns { scaleX, scaleY } based on handle position and drag delta.
+ *
+ * Corner handles enforce proportional (uniform) scaling. Edge handles lock
+ * the perpendicular axis. Scale is clamped to a minimum of 0.01.
+ *
+ * @param handlePosition - Handle identifier: `'tl'`, `'tr'`, `'bl'`, `'br'`, `'t'`, `'b'`, `'l'`, `'r'`
+ * @param anchor - The opposite corner/edge from the dragged handle
+ * @param originalHandlePos - Handle position at drag start
+ * @param currentPos - Current cursor position in template coordinates
+ * @returns Scale factors `{ scaleX, scaleY }`
  */
 export function computeScaleFactors(
   handlePosition: string,
@@ -973,6 +1074,16 @@ export function computeScaleFactors(
   return { scaleX: rawScaleX, scaleY: rawScaleY }
 }
 
+/**
+ * Resolve all expression strings in PathData to numeric values.
+ *
+ * SVG commands (`M`, `L`, `C`, `Z`) and numeric tokens pass through unchanged.
+ * String tokens are evaluated as expressions against the provided constants.
+ *
+ * @param data - Flat PathData token array (may contain expression strings)
+ * @param constants - Resolved constants for expression evaluation
+ * @returns Fully numeric PathData, or `null` if any expression fails to evaluate
+ */
 export function resolvePathDataNumeric(data: PathData, constants: ResolvedConstants): PathData | null {
   const result: PathData = []
   for (const token of data) {

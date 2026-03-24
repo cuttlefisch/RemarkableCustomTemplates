@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface Props {
+  /** Active device ID, or null when no device is selected. */
   deviceId: string | null
+  /** Display name for the active device (used in headings). */
   deviceName: string
+  /** Whether the device has been configured with SSH credentials. */
   configured: boolean
+  /** Callback to display a success message in the parent page. */
   onStatus: (msg: string) => void
+  /** Callback to display an error message in the parent page. */
   onError: (msg: string) => void
+  /** Incrementing key that triggers a reload of the backup lists. */
   refreshKey?: number
 }
 
@@ -40,6 +46,12 @@ type RestoreResult = {
   details?: string[]
 }
 
+/**
+ * Backup management card on the Device page.
+ * Handles app-level backup/restore (ZIP download, upload, server-stored backups)
+ * and shows per-device deploy backups created during rm_methods deployments.
+ * Restore uses a two-step flow: preview what will change, then confirm.
+ */
 export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus: _onStatus, onError: _onError, refreshKey }: Props) {
   const [restoring, setRestoring] = useState(false)
   const [restoringServer, setRestoringServer] = useState<string | null>(null)

@@ -21,7 +21,16 @@ function nextId(prefix: string): string {
   return `${prefix}--${++_idCounter}`
 }
 
-/** Parse raw JSON (already decoded from a .template file) into a typed object. */
+/**
+ * Parse raw JSON (already decoded from a .template file) into a typed object.
+ *
+ * Validates all required fields, normalises orientation, parses constants and
+ * items recursively, and assigns auto-generated IDs to items that lack them.
+ *
+ * @param raw - Parsed JSON value from a `.template` file
+ * @returns A fully typed and validated template object
+ * @throws If required fields are missing, have wrong types, or items have unknown types
+ */
 export function parseTemplate(raw: unknown): RemarkableTemplate {
   if (typeof raw !== 'object' || raw === null) {
     throw new Error('Template must be a JSON object')
@@ -40,7 +49,12 @@ export function parseTemplate(raw: unknown): RemarkableTemplate {
   }
 }
 
-/** Serialise a typed template back to a plain object suitable for JSON.stringify. */
+/**
+ * Serialise a typed template back to a plain object suitable for `JSON.stringify`.
+ *
+ * @param t - The typed template to serialise
+ * @returns A plain object that can be round-tripped through JSON
+ */
 export function serializeTemplate(t: RemarkableTemplate): unknown {
   return t
 }

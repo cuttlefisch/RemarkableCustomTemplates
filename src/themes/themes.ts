@@ -1,4 +1,4 @@
-/** Monaco standalone theme data (mirrors editor.IStandaloneThemeData) */
+/** Monaco editor theme data (mirrors `editor.IStandaloneThemeData`). Colors must be hex/hex8 only. */
 export interface MonacoThemeData {
   base: 'vs' | 'vs-dark' | 'hc-black'
   inherit: boolean
@@ -6,6 +6,7 @@ export interface MonacoThemeData {
   colors: Record<string, string>
 }
 
+/** A complete theme definition: CSS custom properties (`tokens`) plus a matching Monaco theme. */
 export interface Theme {
   id: string
   name: string
@@ -25,6 +26,7 @@ import { nord } from './palettes/nord'
 import { solarizedDark } from './palettes/solarized-dark'
 import { tokyoNight } from './palettes/tokyo-night'
 
+/** All available themes, ordered: light themes first, then dark themes. */
 export const themes: Theme[] = [
   githubLight,
   oneLight,

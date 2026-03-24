@@ -4,6 +4,13 @@
 
 import type { TemplateRegistry, TemplateRegistryEntry } from '../types/registry'
 
+/**
+ * Parse and validate raw JSON into a typed template registry.
+ *
+ * @param raw - Parsed JSON value from a `templates.json` file
+ * @returns A validated registry with typed entries
+ * @throws If the structure is invalid or required fields are missing
+ */
 export function parseRegistry(raw: unknown): TemplateRegistry {
   if (typeof raw !== 'object' || raw === null) throw new Error('Registry must be a JSON object')
   const r = raw as Record<string, unknown>
@@ -38,6 +45,13 @@ function parseEntry(raw: unknown): TemplateRegistryEntry {
   }
 }
 
+/**
+ * Append an entry to the registry. Does not mutate the original.
+ *
+ * @param registry - The existing registry
+ * @param entry - The new entry to append
+ * @returns A new registry with the entry added at the end
+ */
 export function addEntry(
   registry: TemplateRegistry,
   entry: TemplateRegistryEntry,
@@ -45,10 +59,25 @@ export function addEntry(
   return { templates: [...registry.templates, entry] }
 }
 
+/**
+ * Remove an entry by filename. Does not mutate the original.
+ *
+ * @param registry - The existing registry
+ * @param filename - The filename to match for removal
+ * @returns A new registry with the matching entry removed
+ */
 export function removeEntry(registry: TemplateRegistry, filename: string): TemplateRegistry {
   return { templates: registry.templates.filter(t => t.filename !== filename) }
 }
 
+/**
+ * Update fields of an entry matched by filename. Does not mutate the original.
+ *
+ * @param registry - The existing registry
+ * @param filename - The filename to match
+ * @param patch - Partial fields to merge into the matched entry
+ * @returns A new registry with the matched entry updated
+ */
 export function updateEntry(
   registry: TemplateRegistry,
   filename: string,
@@ -61,6 +90,13 @@ export function updateEntry(
   }
 }
 
+/**
+ * Return all entries that belong to the given category.
+ *
+ * @param registry - The registry to filter
+ * @param category - Category name to match (e.g. `"Custom"`, `"Life/organize"`)
+ * @returns Matching entries (may be empty)
+ */
 export function filterByCategory(
   registry: TemplateRegistry,
   category: string,

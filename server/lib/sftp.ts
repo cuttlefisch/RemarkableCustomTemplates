@@ -6,9 +6,14 @@ import type { Client, SFTPWrapper } from 'ssh2'
 import { mkdirSync, readdirSync, statSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 
+/** Callback invoked during multi-file transfers to report progress. */
 export type ProgressCallback = (current: number, total: number) => void
 
-/** Get an SFTP session from an SSH client. */
+/**
+ * Open an SFTP session from an established SSH connection.
+ * @param client - A connected ssh2 Client.
+ * @returns An SFTPWrapper for file transfer operations.
+ */
 export function getSftp(client: Client): Promise<SFTPWrapper> {
   return new Promise((resolve, reject) => {
     client.sftp((err, sftp) => {
@@ -18,7 +23,12 @@ export function getSftp(client: Client): Promise<SFTPWrapper> {
   })
 }
 
-/** List files in a remote directory. */
+/**
+ * List filenames in a remote directory.
+ * @param sftp - An active SFTP session.
+ * @param remotePath - Absolute path to the remote directory.
+ * @returns Array of filenames (not full paths).
+ */
 export function listRemoteDir(sftp: SFTPWrapper, remotePath: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     sftp.readdir(remotePath, (err, list) => {
@@ -28,7 +38,13 @@ export function listRemoteDir(sftp: SFTPWrapper, remotePath: string): Promise<st
   })
 }
 
-/** Download a single file from remote to local. */
+/**
+ * Download a single file from the device to the local filesystem.
+ * Creates parent directories on the local side if needed.
+ * @param sftp - An active SFTP session.
+ * @param remotePath - Absolute path on the device.
+ * @param localPath - Destination path on the local filesystem.
+ */
 export function pullFile(sftp: SFTPWrapper, remotePath: string, localPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     mkdirSync(dirname(localPath), { recursive: true })
@@ -39,7 +55,12 @@ export function pullFile(sftp: SFTPWrapper, remotePath: string, localPath: strin
   })
 }
 
-/** Upload a single file from local to remote. */
+/**
+ * Upload a single file from the local filesystem to the device.
+ * @param sftp - An active SFTP session.
+ * @param localPath - Source path on the local filesystem.
+ * @param remotePath - Destination path on the device.
+ */
 export function pushFile(sftp: SFTPWrapper, localPath: string, remotePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     sftp.fastPut(localPath, remotePath, (err) => {
@@ -49,7 +70,15 @@ export function pushFile(sftp: SFTPWrapper, localPath: string, remotePath: strin
   })
 }
 
-/** Recursively download a remote directory to a local path. */
+/**
+ * Download all files from a remote directory to a local path.
+ * @param sftp - An active SFTP session.
+ * @param remotePath - Absolute path to the remote directory.
+ * @param localPath - Local destination directory (created if missing).
+ * @param filter - Optional predicate to include only matching filenames.
+ * @param onProgress - Optional callback invoked after each file is pulled.
+ * @returns Array of filenames that were successfully downloaded.
+ */
 export async function pullDirectory(
   sftp: SFTPWrapper,
   remotePath: string,
@@ -73,7 +102,16 @@ export async function pullDirectory(
   return pulled
 }
 
-/** Recursively upload a local directory to a remote path. */
+/**
+ * Upload all files from a local directory to a remote path.
+ * Only regular files are uploaded (subdirectories are skipped).
+ * @param sftp - An active SFTP session.
+ * @param localPath - Local source directory.
+ * @param remotePath - Absolute path to the remote destination directory.
+ * @param filter - Optional predicate to include only matching filenames.
+ * @param onProgress - Optional callback invoked after each file is pushed.
+ * @returns Array of filenames that were successfully uploaded.
+ */
 export async function pushDirectory(
   sftp: SFTPWrapper,
   localPath: string,
@@ -100,7 +138,16 @@ export async function pushDirectory(
   return pushed
 }
 
-/** Download specific files from a remote directory. */
+/**
+ * Download a specific list of files from a remote directory.
+ * Files that don't exist on the device are silently skipped with a warning.
+ * @param sftp - An active SFTP session.
+ * @param remoteDir - Absolute path to the remote directory containing the files.
+ * @param filenames - List of filenames to download.
+ * @param localDir - Local destination directory (created if missing).
+ * @param onProgress - Optional callback invoked after each file attempt (including skips).
+ * @returns Array of filenames that were successfully downloaded.
+ */
 export async function pullFiles(
   sftp: SFTPWrapper,
   remoteDir: string,
@@ -127,7 +174,15 @@ export async function pullFiles(
   return pulled
 }
 
-/** Remove specific files from a remote directory. */
+/**
+ * Delete specific files from a remote directory.
+ * Files that don't exist on the device are silently skipped with a warning.
+ * @param sftp - An active SFTP session.
+ * @param remoteDir - Absolute path to the remote directory containing the files.
+ * @param filenames - List of filenames to remove.
+ * @param onProgress - Optional callback invoked after each file attempt (including skips).
+ * @returns Array of filenames that were successfully removed.
+ */
 export async function removeFiles(
   sftp: SFTPWrapper,
   remoteDir: string,
@@ -157,7 +212,12 @@ export async function removeFiles(
   return removed
 }
 
-/** Read a remote file's contents as a string. */
+/**
+ * Read a remote file's contents as a UTF-8 string.
+ * @param sftp - An active SFTP session.
+ * @param remotePath - Absolute path to the file on the device.
+ * @returns The file contents as a string.
+ */
 export function readRemoteFile(sftp: SFTPWrapper, remotePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = ''
@@ -168,7 +228,12 @@ export function readRemoteFile(sftp: SFTPWrapper, remotePath: string): Promise<s
   })
 }
 
-/** Write a string to a remote file. */
+/**
+ * Write a UTF-8 string to a remote file, replacing its contents.
+ * @param sftp - An active SFTP session.
+ * @param remotePath - Absolute path to the file on the device.
+ * @param content - The string content to write.
+ */
 export function writeRemoteFile(sftp: SFTPWrapper, remotePath: string, content: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const stream = sftp.createWriteStream(remotePath, { encoding: 'utf8' })

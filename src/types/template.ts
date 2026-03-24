@@ -14,6 +14,7 @@ export type ConstantEntry = Record<string, ScalarValue>
 
 // ─── Bounding box ────────────────────────────────────────────────────────────
 
+/** Axis-aligned rectangle used as the tile size for group repetition. */
 export interface BoundingBox {
   x: ScalarValue
   y: ScalarValue
@@ -32,6 +33,7 @@ export interface BoundingBox {
  */
 export type RepeatValue = number | 'infinite' | 'down' | string
 
+/** Controls how many times a group tile repeats along each axis. */
 export interface RepeatConfig {
   rows?: RepeatValue
   columns?: RepeatValue
@@ -47,12 +49,16 @@ export interface RepeatConfig {
  *   "C", x1, y1, x2, y2, x, y  — cubic bezier (2 control pts + endpoint)
  *   "Z"                         — close path
  */
+/** SVG-like drawing command: Move, Line, Cubic bezier, Close. */
 export type PathCommand = 'M' | 'L' | 'C' | 'Z'
+/** A single element in a PathData array — either a command letter or a coordinate value. */
 export type PathDataToken = PathCommand | ScalarValue
+/** Flat array of alternating commands and coordinates, e.g. `["M", 0, 0, "L", 100, 100]`. */
 export type PathData = PathDataToken[]
 
 // ─── Items ───────────────────────────────────────────────────────────────────
 
+/** A text label placed at a fixed position. Discriminant: `type: 'text'`. */
 export interface TextItem {
   type: 'text'
   id?: string
@@ -61,6 +67,7 @@ export interface TextItem {
   position: { x: ScalarValue; y: ScalarValue }
 }
 
+/** A stroked/filled SVG-like path. Discriminant: `type: 'path'`. */
 export interface PathItem {
   type: 'path'
   id?: string
@@ -71,6 +78,7 @@ export interface PathItem {
   antialiasing?: string | boolean
 }
 
+/** A repeatable container of child items with a bounding box tile. Discriminant: `type: 'group'`. */
 export interface GroupItem {
   type: 'group'
   id?: string
@@ -79,10 +87,12 @@ export interface GroupItem {
   children: TemplateItem[]
 }
 
+/** Discriminated union of all renderable template items. Discriminant field: `type`. */
 export type TemplateItem = TextItem | PathItem | GroupItem
 
 // ─── Root template ───────────────────────────────────────────────────────────
 
+/** Root object of a `.template` JSON file — defines a full notebook page layout. */
 export interface RemarkableTemplate {
   name: string
   author: string

@@ -39,8 +39,15 @@ function resolveColor(value: string | undefined, colorConstants: Record<string, 
 }
 
 /**
- * Build a minimal SVG string rendering the template, then return it as a
- * base64 string (suitable for embedding in the `iconData` field).
+ * Generate a base64-encoded SVG thumbnail of a template.
+ *
+ * Renders the full template at icon dimensions (150x200 portrait, 200x150 landscape)
+ * including groups with repeat tiling. Text items are omitted for visual clarity.
+ * The output is suitable for embedding in the `iconData` registry field.
+ *
+ * @param template - The parsed template to render
+ * @param deviceId - Target device for dimension resolution (defaults to `'rm'`)
+ * @returns A base64-encoded SVG string
  */
 export function generateTemplateIcon(template: RemarkableTemplate, deviceId: DeviceId = 'rm'): string {
   const builtins = deviceBuiltins(template.orientation, deviceId)

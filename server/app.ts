@@ -1,6 +1,12 @@
 /**
- * Fastify app factory — creates and configures the server.
- * Separated from index.ts for testability.
+ * Fastify application factory.
+ *
+ * Creates and fully configures a Fastify instance with CORS, body parsers,
+ * all API route modules, icon backfill, and (in production) static file serving
+ * with SPA fallback. Separated from `index.ts` so the app can be instantiated
+ * without binding to a port -- used by tests via `app.inject()`.
+ *
+ * @module
  */
 
 import Fastify from 'fastify'
@@ -28,6 +34,16 @@ import notebookDraftRoutes from './routes/notebookDrafts.ts'
 import builtinNotebookRoutes from './routes/builtinNotebooks.ts'
 import { backfillAllIcons } from './lib/backfillIcons.ts'
 
+/**
+ * Creates a fully configured Fastify application instance.
+ *
+ * Registers all API route modules, sets up CORS and binary body parsers (for ZIP
+ * uploads), runs icon backfill for registries missing `iconData`, and in production
+ * mode serves the Vite-built frontend with SPA fallback routing.
+ *
+ * @param config - Resolved server configuration from {@link resolveConfig}
+ * @returns A ready-to-listen Fastify instance
+ */
 export async function createApp(config: ServerConfig) {
   const app = Fastify({
     logger: true,

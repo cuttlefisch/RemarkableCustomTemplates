@@ -10,16 +10,24 @@ import { createHash } from 'node:crypto'
 // Types
 // ---------------------------------------------------------------------------
 
+/** A single template entry within the rm_methods deployment manifest. */
 export interface ManifestEntry {
+  /** Human-readable template name. */
   name: string
+  /** Semver-style version string (e.g. `"1.0.3"`). */
   templateVersion: string
+  /** Deterministic SHA-256 hash of semantic content (prefixed with `sha256:`). */
   contentHash: string
-  createdTime: string // Unix ms string
+  /** Unix millisecond timestamp as a string (e.g. `"1710672000000"`). */
+  createdTime: string
 }
 
+/** The full rm_methods deployment manifest, tracking all deployed templates. */
 export interface RmMethodsManifest {
-  exportedAt: string // Unix ms string
-  templates: Record<string, ManifestEntry> // keyed by UUID
+  /** Unix millisecond timestamp of the last export. */
+  exportedAt: string
+  /** Template entries keyed by UUID. */
+  templates: Record<string, ManifestEntry>
 }
 
 // ---------------------------------------------------------------------------

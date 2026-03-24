@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { refreshDeviceMenu } from './useElectronIPC'
 
+/** Persisted device configuration returned by the server. */
 export interface DeviceData {
   id: string
   nickname: string
@@ -12,6 +13,7 @@ export interface DeviceData {
   firmwareVersion?: string
 }
 
+/** Return type of `useDevices` — device list state and CRUD/connection operations. */
 export interface UseDevices {
   loading: boolean
   devices: DeviceData[]
@@ -44,6 +46,12 @@ export interface UseDevices {
   setupKeys: (id: string) => Promise<{ ok: boolean; error?: string; hint?: string; rawError?: string }>
 }
 
+/**
+ * Multi-device management hook. Fetches devices on mount, re-fetches on Electron menu changes,
+ * and provides CRUD operations, connection testing, and SSH key setup.
+ *
+ * @returns Device list, active device, and mutation/connection functions.
+ */
 export function useDevices(): UseDevices {
   const [loading, setLoading] = useState(true)
   const [devices, setDevices] = useState<DeviceData[]>([])

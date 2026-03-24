@@ -12,9 +12,14 @@ import { resolve, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { DeviceConfig } from './ssh.ts'
 
+/**
+ * Persisted multi-device configuration store (v2 format).
+ * Stored on disk as `data/device-config.json`.
+ */
 export interface DeviceStore {
   version: 2
   devices: DeviceConfig[]
+  /** ID of the currently selected device, or null if no devices exist. */
   activeDeviceId: string | null
 }
 
@@ -23,8 +28,10 @@ function emptyStore(): DeviceStore {
 }
 
 /**
- * Read the device store, auto-migrating v1 -> v2 if needed.
- * Returns an empty store if the file doesn't exist or can't be parsed.
+ * Read the device store from disk, auto-migrating v1 (flat config) to v2 (multi-device envelope) if needed.
+ * V1 migration assigns a UUID, wraps in an array, and moves SSH keys to a per-device directory.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @returns The deserialized store, or an empty store if the file is missing or corrupt.
  */
 export function readDeviceStore(configPath: string): DeviceStore {
   if (!existsSync(configPath)) return emptyStore()
@@ -88,19 +95,32 @@ export function readDeviceStore(configPath: string): DeviceStore {
   return store
 }
 
-/** Write the device store to disk. */
+/**
+ * Persist the device store to disk. Creates parent directories if needed.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @param store - The store to serialize.
+ */
 export function writeDeviceStore(configPath: string, store: DeviceStore): void {
   mkdirSync(dirname(configPath), { recursive: true })
   writeFileSync(configPath, JSON.stringify(store, null, 2), 'utf8')
 }
 
-/** Read a single device by ID. Returns null if not found. */
+/**
+ * Look up a single device by its UUID.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @param id - The device UUID.
+ * @returns The device config, or null if not found.
+ */
 export function readDevice(configPath: string, id: string): DeviceConfig | null {
   const store = readDeviceStore(configPath)
   return store.devices.find(d => d.id === id) ?? null
 }
 
-/** Upsert a device: update existing or add new. */
+/**
+ * Insert or update a device in the store. Matches by `device.id`.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @param device - The device config to upsert.
+ */
 export function writeDevice(configPath: string, device: DeviceConfig): void {
   const store = readDeviceStore(configPath)
   const idx = store.devices.findIndex(d => d.id === device.id)
@@ -112,7 +132,12 @@ export function writeDevice(configPath: string, device: DeviceConfig): void {
   writeDeviceStore(configPath, store)
 }
 
-/** Remove a device by ID. Clears activeDeviceId if it was the active device. */
+/**
+ * Remove a device by its UUID. If the removed device was active,
+ * the first remaining device becomes active (or null if none remain).
+ * @param configPath - Absolute path to `device-config.json`.
+ * @param id - The device UUID to remove.
+ */
 export function removeDevice(configPath: string, id: string): void {
   const store = readDeviceStore(configPath)
   store.devices = store.devices.filter(d => d.id !== id)
@@ -122,14 +147,23 @@ export function removeDevice(configPath: string, id: string): void {
   writeDeviceStore(configPath, store)
 }
 
-/** Get the active device, or null if none set. */
+/**
+ * Get the currently active device configuration.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @returns The active device config, or null if no device is active.
+ */
 export function getActiveDevice(configPath: string): DeviceConfig | null {
   const store = readDeviceStore(configPath)
   if (!store.activeDeviceId) return null
   return store.devices.find(d => d.id === store.activeDeviceId) ?? null
 }
 
-/** Set the active device by ID. Throws if ID doesn't exist. */
+/**
+ * Set the active device by its UUID.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @param id - The device UUID to activate.
+ * @throws If no device with the given ID exists in the store.
+ */
 export function setActiveDevice(configPath: string, id: string): void {
   const store = readDeviceStore(configPath)
   if (!store.devices.some(d => d.id === id)) {
@@ -139,7 +173,11 @@ export function setActiveDevice(configPath: string, id: string): void {
   writeDeviceStore(configPath, store)
 }
 
-/** List all devices. */
+/**
+ * List all configured devices.
+ * @param configPath - Absolute path to `device-config.json`.
+ * @returns Array of all device configs (may be empty).
+ */
 export function listDevices(configPath: string): DeviceConfig[] {
   return readDeviceStore(configPath).devices
 }

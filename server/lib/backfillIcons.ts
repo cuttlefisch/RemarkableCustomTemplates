@@ -51,6 +51,16 @@ function backfillRegistry(registryPath: string, templateDir: string): number {
   return updated
 }
 
+/**
+ * Backfill missing `iconData` fields across all template registries.
+ *
+ * Scans custom, methods, debug, samples, and official registries. For each entry
+ * missing `iconData`, parses the corresponding `.template` file and generates
+ * an SVG icon string. Updated registries are written back to disk.
+ *
+ * Designed to run once at server startup — idempotent and non-destructive.
+ * @param config - Server configuration with paths to all registries and template directories.
+ */
 export function backfillAllIcons(config: ServerConfig): void {
   const registries: RegistryFile[] = [
     { path: config.customRegistry, templateDir: config.customDir },

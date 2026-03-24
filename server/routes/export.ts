@@ -1,8 +1,23 @@
 /**
- * GET /api/export-templates — zip official + custom + debug templates
- * GET /api/export-rm-methods — zip in rm_methods UUID format
- * GET /api/export-template/:uuid — export single template by rmMethodsId
- * GET /api/export-template-by-name/:slug — export single template by filename slug
+ * Template export routes.
+ *
+ * Provides ZIP download endpoints for exporting templates in two formats:
+ *
+ * - **Classic format** (`GET /api/export-templates`) -- merges official, custom, and debug
+ *   templates into a single `templates.json` registry plus `.template` files, suitable
+ *   for direct deployment to `/usr/share/remarkable/templates`.
+ *
+ * - **rm_methods format** (`GET /api/export-rm-methods`) -- builds UUID-named file triplets
+ *   (`.template`, `.metadata`, `.content`) plus a `.manifest`, suitable for deployment
+ *   to the xochitl data directory.
+ *
+ * - **Single template** (`GET /api/export-template/:uuid` or `/api/export-template-by-name/:slug`)
+ *   -- exports one template in rm_methods format.
+ *
+ * Custom template expressions are resolved (constants inlined) before export so the
+ * output is device-ready without runtime evaluation.
+ *
+ * @module
  */
 
 import type { FastifyInstance } from 'fastify'
@@ -13,10 +28,17 @@ import type { ServerConfig } from '../config.ts'
 import { resolveStringConstants } from '../../src/lib/customTemplates.ts'
 import { buildRmMethodsDist, writeRmMethodsDist } from '../lib/buildRmMethodsDist.ts'
 
+/** Escape non-ASCII characters to `\\uXXXX` sequences for safe JSON transport. */
 function escapeUnicode(str: string): string {
   return str.replace(/[\u0080-\uFFFF]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
 }
 
+/**
+ * Registers template export routes on the given Fastify instance.
+ *
+ * @param app - Fastify instance to register routes on
+ * @param config - Resolved server configuration with data directory paths
+ */
 export default function exportRoutes(app: FastifyInstance, config: ServerConfig) {
   // GET /api/export-templates
   app.get('/api/export-templates', async (request, reply) => {

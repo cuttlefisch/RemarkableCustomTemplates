@@ -10,6 +10,7 @@ import type { CSSProperties } from 'react'
 import { computeViewBox, zoomAtPoint, clampPan } from '../lib/drawingViewport'
 import type { Point } from '../lib/drawingViewport'
 
+/** Configuration for the `useViewport` hook. Supports both controlled and uncontrolled modes. */
 export interface UseViewportOptions {
   templateWidth: number
   templateHeight: number
@@ -27,6 +28,7 @@ export interface UseViewportOptions {
   enabled?: boolean
 }
 
+/** Return value from `useViewport` — viewport state, event handlers, and SVG ref. */
 export interface UseViewportResult {
   zoom: number
   pan: Point
@@ -47,6 +49,14 @@ export interface UseViewportResult {
   svgRef: React.RefObject<SVGSVGElement | null>
 }
 
+/**
+ * Reusable zoom/pan hook for template SVG previews.
+ * Supports controlled mode (drawing editor owns state) and uncontrolled mode (hook manages its own state).
+ * Handles mouse wheel zoom, click-drag pan, and Space+click pan (middle-button mode).
+ *
+ * @param options - Viewport configuration including template dimensions and control mode.
+ * @returns Viewport state, SVG viewBox string, event handler props, and reset function.
+ */
 export function useViewport({
   templateWidth,
   templateHeight,

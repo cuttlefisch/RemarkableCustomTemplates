@@ -8,6 +8,19 @@ import { DeviceImportExportCard } from '../components/device/DeviceImportExportC
 import { DeviceBackupsCard } from '../components/device/DeviceBackupsCard'
 import './DevicePage.css'
 
+/**
+ * Device and Sync page (`/device`).
+ *
+ * Manages multi-device SSH connections, template sync operations (pull, deploy,
+ * rollback), import/export, and backups. Composed of four cards:
+ * - **DeviceConnectionCard** — add/edit/test device connections, preferred device type
+ * - **DeviceSyncCard** — pull, deploy, rollback, remove-all, sync status
+ * - **DeviceImportExportCard** — classic template import, ZIP export, sample management
+ * - **DeviceBackupsCard** — app backups, restore, device deploy backups
+ *
+ * State: device list (from `useDevices`), preferred device type, status/error messages,
+ * and a refresh key to reload backup lists after operations.
+ */
 export function DevicePage() {
   const { officialTemplatesAvailable, refreshRegistry } = useRegistryContext()
   const devicesState = useDevices()

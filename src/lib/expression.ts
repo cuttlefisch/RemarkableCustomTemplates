@@ -11,9 +11,20 @@
 
 import type { ConstantEntry, ScalarValue } from '../types/template'
 
+/** A map of constant names to their resolved numeric values. */
 export type ResolvedConstants = Record<string, number>
 
-/** Compile a flat array of single-key constant objects into a resolved map. */
+/**
+ * Compile a flat array of single-key constant objects into a resolved map.
+ *
+ * Entries are evaluated in order — later entries may reference earlier ones.
+ * Comment entries (strings starting with `#`) are skipped.
+ *
+ * @param entries - Ordered constant definitions from the template
+ * @param builtins - Pre-resolved device constants (templateWidth, etc.)
+ * @returns Fully resolved map of all constant names to numeric values
+ * @throws If any expression cannot be evaluated
+ */
 export function resolveConstants(
   entries: ConstantEntry[],
   builtins: ResolvedConstants = {},
@@ -31,6 +42,13 @@ export function resolveConstants(
 /**
  * Evaluate a single ScalarValue (number literal or string expression)
  * against a resolved constants map.
+ *
+ * Supports arithmetic operators, comparisons, `&&`/`||`, and ternary expressions.
+ *
+ * @param value - A numeric literal or string expression (e.g. `"templateWidth / 2"`)
+ * @param constants - Resolved constant names available for substitution
+ * @returns The evaluated numeric result
+ * @throws If the expression contains unresolvable identifiers or invalid syntax
  */
 export function evaluateExpression(value: ScalarValue, constants: ResolvedConstants): number {
   if (typeof value === 'number') return value

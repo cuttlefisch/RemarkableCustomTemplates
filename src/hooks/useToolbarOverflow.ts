@@ -1,17 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
+/** A toolbar section that can be collapsed into an overflow menu when space is limited. */
 export interface ToolbarGroup {
+  /** Unique identifier, used as `data-toolbar-group` attribute. */
   id: string
-  priority: number // lower = stays visible longer
+  /** Collapse priority — lower numbers stay visible longer (P0 = undo/tools, P3 = zoom/coords). */
+  priority: number
+  /** Render function for the group's contents. */
   render: () => React.ReactNode
 }
 
 /**
+ * Responsive toolbar overflow hook using `ResizeObserver`.
  * Measures toolbar group widths and hides groups in reverse priority order
  * until all visible groups fit without wrapping.
  *
- * All groups must always be rendered in the DOM (hidden ones with display:none)
+ * All groups must always be rendered in the DOM (hidden ones with `display:none`)
  * so this hook can temporarily unhide them for measurement.
+ *
+ * @param groups - Toolbar group definitions with priority and render functions.
+ * @returns `{ containerRef, overflowIds, recalculate }` — attach `containerRef` to the toolbar container.
  */
 export function useToolbarOverflow(groups: ToolbarGroup[]) {
   const containerRef = useRef<HTMLDivElement>(null)

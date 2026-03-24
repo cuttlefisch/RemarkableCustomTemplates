@@ -18,13 +18,32 @@ import {
   type RmMethodsManifest,
 } from '../../src/lib/rmMethods.ts'
 
+/** Result of building the rm_methods distribution for deploy or export. */
 export interface RmMethodsBuildResult {
-  /** Map of filename → file content (UTF-8 strings) */
+  /** Map of filename (e.g. `{uuid}.template`) to UTF-8 file content. */
   files: Record<string, string>
+  /** The build manifest tracking version, hash, and timestamps per template UUID. */
   manifest: RmMethodsManifest
+  /** Number of templates included in the build. */
   templateCount: number
 }
 
+/**
+ * Build the rm_methods distribution from custom, debug, and sample templates.
+ *
+ * For each template entry in the registries:
+ * 1. Resolves string constants in the `.template` file
+ * 2. Generates SVG icon data and injects it into the template body
+ * 3. Strips `supportedScreens` (which causes device-side filtering)
+ * 4. Computes content hashes and resolves version numbers against the previous manifest
+ * 5. Builds `.metadata` and `.content` sidecar files
+ *
+ * Also assigns stable UUIDs (`rmMethodsId`) to registry entries that lack one,
+ * writing the updated registries back to disk.
+ *
+ * @param config - Server configuration with paths to registries and template directories.
+ * @returns The build result containing all file contents, manifest, and template count.
+ */
 export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
   type RegEntry = { filename: string; name: string; landscape?: boolean; categories: string[]; rmMethodsId?: string }
 
@@ -138,7 +157,13 @@ export function buildRmMethodsDist(config: ServerConfig): RmMethodsBuildResult {
   return { files, manifest, templateCount: Object.keys(manifestTemplates).length }
 }
 
-/** Write the build result to rm-methods-dist/ on disk, removing stale files. */
+/**
+ * Write the rm_methods build result to `rm-methods-dist/` on disk.
+ * Removes any files from the directory that are not in the current build,
+ * ensuring a clean output with no orphaned templates.
+ * @param config - Server configuration with the `rmMethodsDistDir` path.
+ * @param result - The build result from {@link buildRmMethodsDist}.
+ */
 export function writeRmMethodsDist(config: ServerConfig, result: RmMethodsBuildResult): void {
   mkdirSync(config.rmMethodsDistDir, { recursive: true })
   for (const [name, content] of Object.entries(result.files)) {
