@@ -65,6 +65,8 @@ export interface XoviDeviceStatus {
   vellumInstalled: boolean
   vellumVersion: string | null
   vellumReenableNeeded: boolean
+  /** QMD filenames on device that don't match any known extension */
+  unknownFiles: string[]
 }
 
 interface Manifest {
@@ -160,6 +162,49 @@ export function validateExclusiveGroups(extensionIds: string[]): string | null {
 }
 
 /**
+ * List `.qmd` filenames in the device's QMD directory via SFTP.
+ * Returns an empty array if the directory doesn't exist or can't be read.
+ */
+export async function listInstalledQmdFiles(sftp: SFTPWrapper): Promise<string[]> {
+  try {
+    const entries = await new Promise<string[]>((resolve, reject) => {
+      sftp.readdir(DEVICE_PATHS.qmdDir, (err, list) => {
+        if (err) {
+          if ((err as NodeJS.ErrnoException).code === '2' || err.message.includes('No such file')) {
+            resolve([])
+          } else {
+            reject(err)
+          }
+        } else {
+          resolve(list.map(e => e.filename))
+        }
+      })
+    })
+    return entries.filter(name => name.endsWith('.qmd'))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Split installed QMD filenames into known (matching a manifest extension) and unknown.
+ * Pure function — no SSH/SFTP dependency.
+ */
+export function classifyQmdFiles(
+  installedFiles: string[],
+  knownDefs: XoviExtensionDef[],
+): { known: string[]; unknown: string[] } {
+  const knownFilenames = new Set(knownDefs.map(d => d.filename))
+  const known: string[] = []
+  const unknown: string[] = []
+  for (const f of installedFiles) {
+    if (knownFilenames.has(f)) known.push(f)
+    else unknown.push(f)
+  }
+  return { known: known.sort(), unknown: unknown.sort() }
+}
+
+/**
  * Check xovi installation status on a connected device.
  * Requires an active SSH client and SFTP session.
  */
@@ -187,33 +232,12 @@ export async function checkXoviStatus(
   const vellumReenableNeeded = vellumInstalled && reenableOut === 'needed'
 
   // List installed QMD files
-  const installedFiles = new Set<string>()
-  if (qtRebuilderInstalled) {
-    try {
-      const entries = await new Promise<string[]>((resolve, reject) => {
-        sftp.readdir(DEVICE_PATHS.qmdDir, (err, list) => {
-          if (err) {
-            // Directory might not exist yet
-            if ((err as NodeJS.ErrnoException).code === '2' || err.message.includes('No such file')) {
-              resolve([])
-            } else {
-              reject(err)
-            }
-          } else {
-            resolve(list.map(e => e.filename))
-          }
-        })
-      })
-      for (const name of entries) {
-        if (name.endsWith('.qmd')) installedFiles.add(name)
-      }
-    } catch {
-      // If we can't read the directory, treat as empty
-    }
-  }
+  const installedFilesList = qtRebuilderInstalled ? await listInstalledQmdFiles(sftp) : []
+  const installedFiles = new Set(installedFilesList)
 
   const qmdVersion = firmwareVersion ? mapFirmwareToQmdVersion(firmwareVersion) : null
   const defs = getExtensionDefs()
+  const { unknown: unknownFiles } = classifyQmdFiles(installedFilesList, defs)
 
   const extensions: XoviExtensionStatus[] = defs.map(def => {
     let available = false
@@ -241,5 +265,6 @@ export async function checkXoviStatus(
     vellumInstalled,
     vellumVersion,
     vellumReenableNeeded,
+    unknownFiles,
   }
 }

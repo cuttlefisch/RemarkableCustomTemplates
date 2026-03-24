@@ -20,6 +20,7 @@ export interface DevicePaths {
   deployedManifest: string    // rm-methods-backups/<deviceId>/.deployed-manifest
   originalBackup: string      // rm-methods-backups/<deviceId>/.original
   sshDir: string              // data/ssh/<deviceId>/
+  xoviDeployedState: string   // rm-methods-backups/<deviceId>/.xovi-deployed
 }
 
 /** Resolve per-device paths for backups, manifests, and SSH keys. */
@@ -30,6 +31,7 @@ export function resolveDevicePaths(config: ServerConfig, deviceId: string): Devi
     deployedManifest: resolve(backupDir, '.deployed-manifest'),
     originalBackup: resolve(backupDir, '.original'),
     sshDir: resolve(config.sshDir, deviceId),
+    xoviDeployedState: resolve(backupDir, '.xovi-deployed'),
   }
 }
 

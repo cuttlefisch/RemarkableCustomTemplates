@@ -45,6 +45,11 @@ interface XoviExtensionStatus {
   filename: string
 }
 
+interface XoviTracking {
+  pristineFiles: string[]
+  deployedExtensionIds: string[]
+}
+
 interface XoviDeviceStatus {
   xoviInstalled: boolean
   qtRebuilderInstalled: boolean
@@ -54,6 +59,8 @@ interface XoviDeviceStatus {
   vellumInstalled: boolean
   vellumVersion: string | null
   vellumReenableNeeded: boolean
+  unknownFiles: string[]
+  tracking: XoviTracking | null
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
@@ -270,14 +277,44 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
     xoviStatus.check() // refresh status after deploy
   }
 
-  async function handleRemoveAll() {
+  async function handleRemoveOurs() {
+    if (!xoviStatus.status) return
+    const tracking = xoviStatus.status.tracking
+    if (!tracking || tracking.deployedExtensionIds.length === 0) return
+
+    // Only remove extensions we deployed that are still installed
+    const installedSet = new Set(xoviStatus.status.extensions.filter(e => e.installed).map(e => e.id))
+    const idsToRemove = tracking.deployedExtensionIds.filter(id => installedSet.has(id))
+    if (idsToRemove.length === 0) return
+
+    const userCount = xoviStatus.status.unknownFiles.length
+    const msg = userCount > 0
+      ? `Remove ${idsToRemove.length} extension(s) deployed by this app? ${userCount} user-installed extension(s) will be preserved.`
+      : `Remove ${idsToRemove.length} extension(s) deployed by this app from ${deviceName}?`
+    if (!window.confirm(msg)) return
+
+    xoviOp.clearResult()
+    await xoviOp.run('xovi-remove', idsToRemove)
+    xoviStatus.check()
+  }
+
+  async function handleRemoveSingle(extId: string, extName: string) {
+    if (!window.confirm(`Remove "${extName}" from ${deviceName}?`)) return
+    xoviOp.clearResult()
+    await xoviOp.run('xovi-remove', [extId])
+    xoviStatus.check()
+  }
+
+  async function handleRemoveAllInstalled() {
     if (!xoviStatus.status) return
     const installedIds = xoviStatus.status.extensions
       .filter(e => e.installed)
       .map(e => e.id)
     if (installedIds.length === 0) return
 
-    if (!window.confirm(`Remove all ${installedIds.length} extension(s) from ${deviceName}?`)) return
+    if (!window.confirm(
+      `Tracking data unavailable — remove all ${installedIds.length} known installed extension(s) from ${deviceName}?`,
+    )) return
 
     xoviOp.clearResult()
     await xoviOp.run('xovi-remove', installedIds)
@@ -291,9 +328,11 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
   }
 
   async function handleVellumRemove() {
-    if (!window.confirm(
-      `This will uninstall xovi, xovi-extensions (qt-resource-rebuilder), and all deployed QMD extensions from ${deviceName}. Continue?`,
-    )) return
+    const userCount = xoviStatus.status?.unknownFiles.length ?? 0
+    const msg = userCount > 0
+      ? `This will uninstall xovi and ALL extensions from ${deviceName}, including ${userCount} user-installed extension(s) not managed by this app. Continue?`
+      : `This will uninstall xovi, xovi-extensions (qt-resource-rebuilder), and all deployed QMD extensions from ${deviceName}. Continue?`
+    if (!window.confirm(msg)) return
     vellumOp.clearResult()
     await vellumOp.run('vellum-remove-xovi')
     xoviStatus.check()
@@ -303,6 +342,8 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
   const xoviReady = status?.xoviInstalled && status?.qtRebuilderInstalled
   const hasAvailable = status?.extensions.some(e => e.available) ?? false
   const hasInstalled = status?.extensions.some(e => e.installed) ?? false
+  const hasTrackedDeployed = (status?.tracking?.deployedExtensionIds.length ?? 0) > 0
+  const hasUnknownFiles = (status?.unknownFiles.length ?? 0) > 0
   const anyLoading = xoviStatus.loading || xoviOp.loading || vellumOp.loading
 
   // Auto-dismiss recovered op banner when status is refreshed
@@ -528,6 +569,17 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                           <span className={`xovi-deploy-badge ${ext.installed ? 'deployed' : 'not-deployed'}`}>
                             {ext.installed ? 'Deployed' : 'Not deployed'}
                           </span>
+                          {ext.installed && (
+                            <button
+                              className="xovi-remove-single-btn"
+                              onClick={(e) => { e.preventDefault(); handleRemoveSingle(ext.id, ext.displayName) }}
+                              disabled={anyLoading}
+                              title={`Remove ${ext.displayName}`}
+                              type="button"
+                            >
+                              &times;
+                            </button>
+                          )}
                         </div>
                         <span className="xovi-extension-desc">{ext.description}</span>
                       </label>
@@ -595,11 +647,40 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                               <span className={`xovi-deploy-badge ${ext.installed ? 'deployed' : 'not-deployed'}`}>
                                 {ext.installed ? 'Deployed' : 'Not deployed'}
                               </span>
+                              {ext.installed && (
+                                <button
+                                  className="xovi-remove-single-btn"
+                                  onClick={(e) => { e.preventDefault(); handleRemoveSingle(ext.id, ext.displayName) }}
+                                  disabled={anyLoading}
+                                  title={`Remove ${ext.displayName}`}
+                                  type="button"
+                                >
+                                  &times;
+                                </button>
+                              )}
                             </div>
                             <span className="xovi-extension-desc">{ext.description}</span>
                           </label>
                         ))}
                     </>
+                  )}
+
+                  {/* Unknown / user-installed extensions */}
+                  {hasUnknownFiles && (
+                    <div className="xovi-unknown-section">
+                      <h3 className="xovi-tier-label">Other Extensions (user-installed)</h3>
+                      <p className="xovi-extension-desc" style={{ marginBottom: 8 }}>
+                        These were installed outside this app and won't be affected by deploy/remove.
+                      </p>
+                      {status.unknownFiles.map(filename => (
+                        <div key={filename} className="xovi-extension-entry xovi-unknown-entry">
+                          <div className="xovi-extension-info">
+                            <span className="xovi-extension-name">{filename}</span>
+                            <span className="xovi-deploy-badge deployed">User-installed</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
 
                   {/* Actions */}
@@ -611,13 +692,22 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                     >
                       {xoviOp.loading ? 'Deploying...' : 'Deploy Selected'}
                     </button>
-                    {hasInstalled && (
+                    {hasTrackedDeployed && hasInstalled && (
                       <button
                         className="device-card-btn device-card-btn-danger"
-                        onClick={handleRemoveAll}
+                        onClick={handleRemoveOurs}
                         disabled={anyLoading}
                       >
-                        Remove All Extensions
+                        Remove Our Extensions
+                      </button>
+                    )}
+                    {!hasTrackedDeployed && hasInstalled && (
+                      <button
+                        className="device-card-btn device-card-btn-danger"
+                        onClick={handleRemoveAllInstalled}
+                        disabled={anyLoading}
+                      >
+                        Remove All Installed
                       </button>
                     )}
                     {status.vellumInstalled && (

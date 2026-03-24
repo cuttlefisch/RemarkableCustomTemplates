@@ -1283,6 +1283,43 @@
   border: 1px solid var(--color-backup-entry-border);
 }
 
+.xovi-remove-single-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  border-radius: 4px;
+  margin-left: auto;
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.xovi-remove-single-btn:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--color-error-text);
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+}
+
+.xovi-remove-single-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.xovi-unknown-section {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-help-border);
+}
+
+.xovi-unknown-entry {
+  padding: 4px 0;
+  opacity: 0.8;
+}
+
 .xovi-radio-group {
   margin: 8px 0;
   padding: 10px 12px;

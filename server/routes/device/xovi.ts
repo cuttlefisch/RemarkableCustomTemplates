@@ -10,6 +10,7 @@
 
 import type { FastifyInstance } from 'fastify'
 import type { ServerConfig } from '../../config.ts'
+import { resolveDevicePaths } from '../../config.ts'
 import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, pushFile } from '../../lib/sftp.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
@@ -17,18 +18,27 @@ import { createTrackedNdjsonStream, OperationAlreadyRunningError } from '../../l
 import { readDevice } from '../../lib/deviceStore.ts'
 import {
   checkXoviStatus,
+  listInstalledQmdFiles,
   getExtensionDefs,
   getQmdFilePath,
   mapFirmwareToQmdVersion,
   validateExclusiveGroups,
   DEVICE_PATHS,
 } from '../../lib/xoviExtensions.ts'
+import {
+  readXoviDeployedState,
+  capturePristineState,
+  addDeployedExtensions,
+  removeDeployedExtensions,
+  writeXoviDeployedState,
+  clearXoviDeployedState,
+} from '../../lib/xoviDeployState.ts'
 
-export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerConfig) {
+export default function deviceXoviRoutes(app: FastifyInstance, config: ServerConfig) {
   // ── POST /api/devices/:id/xovi-status ──────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/devices/:id/xovi-status', async (request, reply) => {
     const { id } = request.params
-    const deviceConfig = readDevice(_config.deviceConfigPath, id)
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
@@ -38,7 +48,15 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       client = await connect(deviceConfig)
       const sftp = await getSftp(client)
       const status = await checkXoviStatus(client, sftp, deviceConfig.firmwareVersion ?? null)
-      return reply.send({ ok: true, ...status })
+      const devicePaths = resolveDevicePaths(config, id)
+      const tracking = readXoviDeployedState(devicePaths.xoviDeployedState)
+      return reply.send({
+        ok: true,
+        ...status,
+        tracking: tracking
+          ? { pristineFiles: tracking.pristineFiles, deployedExtensionIds: tracking.deployedExtensionIds }
+          : null,
+      })
     } catch (err) {
       const friendly = formatSshError(err as Error)
       return reply.status(500).send({ error: friendly.message, hint: friendly.hint, rawError: friendly.rawError })
@@ -50,7 +68,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
   // ── POST /api/devices/:id/xovi-deploy ──────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/devices/:id/xovi-deploy', async (request, reply) => {
     const { id } = request.params
-    const deviceConfig = readDevice(_config.deviceConfigPath, id)
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
@@ -143,6 +161,11 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       // Ensure QMD directory exists
       await exec(client, `mkdir -p ${DEVICE_PATHS.qmdDir}`)
 
+      // Capture pristine device state before our first deploy
+      const devicePaths = resolveDevicePaths(config, id)
+      const existingQmds = await listInstalledQmdFiles(sftp)
+      let trackingState = capturePristineState(devicePaths.xoviDeployedState, existingQmds)
+
       // Deploy QMD files
       for (let i = 0; i < filePaths.length; i++) {
         const { extensionId, localPath, filename } = filePaths[i]
@@ -165,6 +188,10 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       }
       steps.push('Rebuilt hashtable')
 
+      // Update tracking state with deployed extension IDs
+      trackingState = addDeployedExtensions(trackingState, extensionIds)
+      writeXoviDeployedState(devicePaths.xoviDeployedState, trackingState)
+
       // Restart xochitl
       stream.progress('Restarting device UI (final restart)...')
       await exec(client, DEVICE_PATHS.restartCmd)
@@ -182,7 +209,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
   // ── POST /api/devices/:id/xovi-remove ──────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/devices/:id/xovi-remove', async (request, reply) => {
     const { id } = request.params
-    const deviceConfig = readDevice(_config.deviceConfigPath, id)
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
@@ -242,6 +269,14 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
         log = rebuildResult.stdout
       }
 
+      // Update tracking state
+      const devicePaths = resolveDevicePaths(config, id)
+      const trackingState = readXoviDeployedState(devicePaths.xoviDeployedState)
+      if (trackingState) {
+        const updated = removeDeployedExtensions(trackingState, extensionIds)
+        writeXoviDeployedState(devicePaths.xoviDeployedState, updated)
+      }
+
       // Restart xochitl
       stream.progress('Restarting device UI...')
       await exec(client, DEVICE_PATHS.restartCmd)
@@ -259,7 +294,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
   // ── POST /api/devices/:id/vellum-install-xovi ───────────────────────────────
   app.post<{ Params: { id: string } }>('/api/devices/:id/vellum-install-xovi', async (request, reply) => {
     const { id } = request.params
-    const deviceConfig = readDevice(_config.deviceConfigPath, id)
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
@@ -323,7 +358,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
   // ── POST /api/devices/:id/vellum-remove-xovi ────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/devices/:id/vellum-remove-xovi', async (request, reply) => {
     const { id } = request.params
-    const deviceConfig = readDevice(_config.deviceConfigPath, id)
+    const deviceConfig = readDevice(config.deviceConfigPath, id)
     if (!deviceConfig) {
       return reply.status(400).send({ error: 'Device not configured' })
     }
@@ -370,6 +405,11 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
         return
       }
       steps.push('Removed xovi')
+
+      // Clear tracking state — xovi is fully uninstalled
+      const devicePaths = resolveDevicePaths(config, id)
+      clearXoviDeployedState(devicePaths.xoviDeployedState)
+      steps.push('Cleared extension tracking')
 
       // Restart xochitl to apply changes
       stream.progress('Restarting device UI...')
