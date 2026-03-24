@@ -12,6 +12,16 @@ import { readNdjsonStream } from './deviceOpHelpers'
 import type { OpResult, ProgressState } from './deviceOpHelpers'
 import { ProgressBar } from './DeviceOpComponents'
 
+function downloadLog(log: string, filename: string) {
+  const blob = new Blob([log], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 interface Props {
   deviceId: string | null
   deviceName: string
@@ -111,7 +121,8 @@ function useXoviOp(deviceId: string | null) {
         }
       }
       const steps = data.steps as string[] | undefined
-      setResult({ ok: true, message: steps?.join(' \u2192 ') ?? 'Done', steps })
+      const log = data.log as string | undefined
+      setResult({ ok: true, message: steps?.join(' \u2192 ') ?? 'Done', steps, log })
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {
         const streamErr = e as { error: string; hint?: string; rawError?: string }
@@ -634,7 +645,21 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                   )}
                   {xoviOp.result?.ok && (
                     <div className="device-op-result">
-                      <p style={{ margin: 0 }}>{xoviOp.result.message}</p>
+                      <p style={{ margin: 0 }}>
+                        {xoviOp.result.steps?.join(' \u2192 ') ?? 'Done'}
+                        {xoviOp.result.log && (
+                          <>
+                            {' \u2014 '}
+                            <button
+                              className="xovi-download-log-btn"
+                              onClick={() => downloadLog(xoviOp.result!.ok ? xoviOp.result!.log! : '', `xovi-log-${Date.now()}.txt`)}
+                              type="button"
+                            >
+                              Download log
+                            </button>
+                          </>
+                        )}
+                      </p>
                     </div>
                   )}
                 </div>

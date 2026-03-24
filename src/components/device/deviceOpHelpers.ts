@@ -8,7 +8,7 @@ import { useState } from 'react'
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type OpResult =
-  | { ok: true; message: string; steps?: string[] }
+  | { ok: true; message: string; steps?: string[]; log?: string }
   | { ok: false; error: string; hint?: string; rawError?: string }
 
 export interface ProgressState {

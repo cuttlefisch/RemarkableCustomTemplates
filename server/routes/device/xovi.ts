@@ -161,15 +161,14 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
         )
         return
       }
-      const rebuildLog = rebuildResult.stdout.trim()
-      steps.push(rebuildLog ? `Rebuilt hashtable: ${rebuildLog}` : 'Rebuilt hashtable')
+      steps.push('Rebuilt hashtable')
 
       // Restart xochitl
       stream.progress('Restarting device UI...')
       await exec(client, DEVICE_PATHS.restartCmd)
       steps.push('Restarted xochitl')
 
-      stream.done({ steps, extensions: extensionIds, qmdVersion })
+      stream.done({ steps, extensions: extensionIds, qmdVersion, log: rebuildResult.stdout })
     } catch (err) {
       const friendly = formatSshError(err as Error)
       stream.error(friendly.message, friendly.hint, friendly.rawError)
@@ -205,6 +204,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
 
     try {
       const steps: string[] = []
+      let log = ''
 
       stream.progress('Connecting to device...')
       client = await connect(deviceConfig)
@@ -234,8 +234,8 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
           )
           return
         }
-        const rebuildLog = rebuildResult.stdout.trim()
-        steps.push(rebuildLog ? `Rebuilt hashtable: ${rebuildLog}` : 'Rebuilt hashtable')
+        steps.push('Rebuilt hashtable')
+        log = rebuildResult.stdout
       }
 
       // Restart xochitl
@@ -243,7 +243,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       await exec(client, DEVICE_PATHS.restartCmd)
       steps.push('Restarted xochitl')
 
-      stream.done({ steps, removed: extensionIds })
+      stream.done({ steps, removed: extensionIds, log })
     } catch (err) {
       const friendly = formatSshError(err as Error)
       stream.error(friendly.message, friendly.hint, friendly.rawError)

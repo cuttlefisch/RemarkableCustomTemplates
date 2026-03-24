@@ -1120,6 +1120,19 @@
   overflow-x: auto;
 }
 
+.xovi-download-log-btn {
+  background: none;
+  border: none;
+  color: var(--color-link);
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+.xovi-download-log-btn:hover {
+  opacity: 0.8;
+}
+
 .xovi-extension-list {
   margin: 12px 0 0;
 }
