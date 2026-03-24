@@ -107,10 +107,14 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y ruby ruby-dev build-essential rpm
           sudo gem install fpm --no-document
-      - name: Build deb
+      - name: Build deb (x64)
+        if: matrix.arch == 'x64'
+        run: pnpm electron-builder --linux deb --publish never
+      - name: Build deb (arm64)
+        if: matrix.arch == 'arm64'
         run: pnpm electron-builder --linux deb --publish never
         env:
-          USE_SYSTEM_FPM: ${{ matrix.arch == 'arm64' && 'true' || '' }}
+          USE_SYSTEM_FPM: "true"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-deb-${{ matrix.arch }}
@@ -143,10 +147,14 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y ruby ruby-dev build-essential rpm
           sudo gem install fpm --no-document
-      - name: Build rpm
+      - name: Build rpm (x64)
+        if: matrix.arch == 'x64'
+        run: pnpm electron-builder --linux rpm --publish never
+      - name: Build rpm (arm64)
+        if: matrix.arch == 'arm64'
         run: pnpm electron-builder --linux rpm --publish never
         env:
-          USE_SYSTEM_FPM: ${{ matrix.arch == 'arm64' && 'true' || '' }}
+          USE_SYSTEM_FPM: "true"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-rpm-${{ matrix.arch }}
