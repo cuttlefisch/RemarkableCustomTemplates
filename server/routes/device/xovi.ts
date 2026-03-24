@@ -151,7 +151,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       }
 
       // Rebuild hashtable
-      stream.progress('Rebuilding hashtable (this may take a minute)...')
+      stream.progress('Rebuilding hashtable (this may take a minute — the device UI may restart during this process)...')
       const rebuildResult = await exec(client, DEVICE_PATHS.rebuildCmd)
       if (rebuildResult.code !== 0) {
         stream.error(
@@ -164,7 +164,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       steps.push('Rebuilt hashtable')
 
       // Restart xochitl
-      stream.progress('Restarting device UI...')
+      stream.progress('Restarting device UI (final restart)...')
       await exec(client, DEVICE_PATHS.restartCmd)
       steps.push('Restarted xochitl')
 
@@ -222,7 +222,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       }
 
       // Rebuild hashtable (if xovi is present)
-      stream.progress('Rebuilding hashtable (this may take a minute)...')
+      stream.progress('Rebuilding hashtable (this may take a minute — the device UI may restart during this process)...')
       const hasRebuilder = await exec(client, `test -x /home/root/xovi/rebuild_hashtable && echo ok || echo missing`)
       if (hasRebuilder.stdout.trim() === 'ok') {
         const rebuildResult = await exec(client, DEVICE_PATHS.rebuildCmd)
