@@ -13,6 +13,9 @@ RUN pnpm install --frozen-lockfile
 # Copy source
 COPY . .
 
+# Validate xovi extension checksums before building
+RUN pnpm run validate-xovi
+
 # Build frontend and server
 RUN pnpm build
 

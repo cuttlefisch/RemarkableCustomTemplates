@@ -1001,3 +1001,234 @@
   0%, 70% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* ── xovi Extensions card ───────────────────────────────────────────────── */
+
+.xovi-disclaimer {
+  font-size: 12px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+  line-height: 1.5;
+}
+
+.xovi-disclaimer a {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+
+.xovi-disclaimer code {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  background: var(--color-card-code-bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--color-card-code-text);
+}
+
+.xovi-status-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--color-help-bg);
+  border: 1px solid var(--color-help-border);
+}
+
+.xovi-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.xovi-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.xovi-status-badge.installed {
+  color: var(--color-success-text);
+}
+
+.xovi-status-badge.missing {
+  color: var(--color-error-text);
+}
+
+.xovi-install-guidance {
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 6px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.xovi-install-guidance p {
+  margin: 0 0 6px;
+}
+
+.xovi-install-guidance p:last-child {
+  margin-bottom: 0;
+}
+
+.xovi-install-guidance a {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+
+.xovi-reenable-warning {
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 6px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.xovi-reenable-warning p {
+  margin: 0 0 6px;
+}
+
+.xovi-reenable-warning p:last-child {
+  margin-bottom: 0;
+}
+
+.xovi-install-cmd {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  background: var(--color-card-code-bg);
+  color: var(--color-card-code-text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin: 6px 0;
+  overflow-x: auto;
+}
+
+.xovi-download-log-btn {
+  background: none;
+  border: none;
+  color: var(--color-link);
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+.xovi-download-log-btn:hover {
+  opacity: 0.8;
+}
+
+.xovi-extension-list {
+  margin: 12px 0 0;
+}
+
+.xovi-tier-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin: 12px 0 6px;
+}
+
+.xovi-tier-label:first-child {
+  margin-top: 0;
+}
+
+.xovi-extension-entry {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  align-items: start;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.xovi-extension-entry input[type="checkbox"] {
+  margin-top: 2px;
+}
+
+.xovi-extension-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xovi-extension-name {
+  font-weight: 500;
+}
+
+.xovi-extension-desc {
+  grid-column: 2;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.xovi-deploy-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.xovi-deploy-badge.deployed {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+
+.xovi-deploy-badge.not-deployed {
+  background: var(--color-backup-entry-bg);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-backup-entry-border);
+}
+
+.xovi-radio-group {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--color-help-bg);
+  border: 1px solid var(--color-help-border);
+}
+
+.xovi-radio-group > .xovi-extension-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.xovi-radio-group > .xovi-extension-desc {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.xovi-radio-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.xovi-radio-entry input[type="radio"] {
+  margin: 0;
+}
