@@ -12,8 +12,11 @@ public/templates/custom/
 # Methods templates pulled from device
 public/templates/methods/
 
-# Server data (device config, SSH keys)
+# Server data (device config, SSH keys — but not bundled xovi extensions)
 data/
+!**/server/data/
+server/data/*
+!server/data/xovi-extensions/
 
 # Server build output
 dist-server/

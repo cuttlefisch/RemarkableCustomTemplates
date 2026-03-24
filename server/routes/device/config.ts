@@ -37,6 +37,21 @@ import {
   setActiveDevice,
 } from '../../lib/deviceStore.ts'
 
+/**
+ * Map /sys/devices/soc0/machine codenames to normalized device model IDs.
+ * These IDs match the DEVICES record in src/lib/renderer.ts.
+ */
+const MACHINE_TO_MODEL: Record<string, string> = {
+  'reMarkable 1.0': 'rm',
+  'reMarkable 2.0': 'rm',
+  'reMarkable Merlot': 'rmPP',
+  'reMarkable Chiappa': 'rmPPM',
+}
+
+function normalizeDeviceModel(machine: string): string {
+  return MACHINE_TO_MODEL[machine] ?? machine
+}
+
 /** Redact password from a device config for API responses. */
 function redact(device: DeviceConfig): Record<string, unknown> {
   return { ...device, sshPassword: device.sshPassword ? '***' : undefined }
@@ -179,7 +194,7 @@ export default function deviceConfigRoutes(app: FastifyInstance, config: ServerC
         ])
 
         const now = new Date().toISOString()
-        const deviceModel = modelResult.stdout.trim()
+        const deviceModel = normalizeDeviceModel(modelResult.stdout.trim())
         const firmwareVersion = fwResult.stdout.trim() || undefined
 
         // Update cached info on the saved device

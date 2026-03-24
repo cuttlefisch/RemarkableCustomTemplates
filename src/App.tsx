@@ -8,7 +8,7 @@ import { DevicePage } from './pages/DevicePage'
 import { NotebookPage } from './pages/NotebookPage'
 import { useRegistry, RegistryContext } from './hooks/useRegistry'
 import { ThemeContext, useThemeProvider } from './hooks/useTheme'
-import { BusyContext } from './hooks/useBusy'
+import { BusyContext, useBusyProvider } from './hooks/useBusy'
 import { useElectronNavigation } from './hooks/useElectronIPC'
 import { getPreferredDeviceType, setPreferredDeviceType, type DeviceId } from './lib/renderer'
 
@@ -16,7 +16,7 @@ export default function App() {
   const registryState = useRegistry()
   const themeState = useThemeProvider()
   const [deviceId, setDeviceIdState] = useState<DeviceId>(getPreferredDeviceType)
-  const [isBusy, setBusy] = useState(false)
+  const { isBusy, setBusy } = useBusyProvider()
 
   // Listen for Electron menu navigation events (no-op in browser)
   useElectronNavigation()

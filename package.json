@@ -30,7 +30,9 @@
     "electron:build:linux": "pnpm build && node scripts/build-electron.mjs && electron-builder --linux",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "validate-xovi": "tsx scripts/validate-xovi-checksums.ts",
+    "generate-xovi-manifest": "tsx scripts/generate-xovi-manifest.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",

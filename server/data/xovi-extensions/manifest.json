@@ -1,0 +1,72 @@
+{
+  "extensions": {
+    "unlockMethodsContent": {
+      "filename": "unlockMethodsContent.qmd",
+      "displayName": "Unlock Methods Content",
+      "description": "Bypasses subscription check for using on-device Methods templates and documents.",
+      "tier": 1,
+      "category": "essential"
+    },
+    "createPagesRM2Size": {
+      "filename": "createPagesRM2Size.qmd",
+      "displayName": "Create Pages (RM2 Size)",
+      "description": "Forces new pages to use reMarkable 2 dimensions (1404×1872) for cross-device consistency.",
+      "tier": 1,
+      "category": "page-size",
+      "exclusiveGroup": "pageSize"
+    },
+    "createPagesPaperProSize": {
+      "filename": "createPagesPaperProSize.qmd",
+      "displayName": "Create Pages (Paper Pro Size)",
+      "description": "Forces new pages to use Paper Pro dimensions (1620×2160) for cross-device consistency.",
+      "tier": 1,
+      "category": "page-size",
+      "exclusiveGroup": "pageSize"
+    },
+    "preventNotebookZoomOut": {
+      "filename": "preventNotebookZoomOut.qmd",
+      "displayName": "Prevent Notebook Zoom Out",
+      "description": "Forces notebook pages to start at 1x zoom. Designed for Paper Pro Move.",
+      "tier": 1,
+      "category": "essential"
+    },
+    "quicksheetUseTemplate": {
+      "filename": "quicksheetUseTemplate.qmd",
+      "displayName": "Quicksheet Use Template",
+      "description": "New quicksheet pages use the same template as the previous page in the notebook.",
+      "tier": 2,
+      "category": "recommended"
+    }
+  },
+  "checksums": {
+    "3.22/createPagesPaperProSize.qmd": "5d36e170fb9e01d7d3aa4805f42c3fb62d8edb5a8e58e899c9060b86a1a85fb90653983ba511704dc6c626b7d63c105300a232a5112e6a72bdd21fbd4e75e953",
+    "3.22/createPagesRM2Size.qmd": "ef0ce85022fbe63958af209e7a8f27d37f57ef4e6e59b72915cd5d66ce2922003a3919f628fc9746ad65c64995fa9d8e74810386ec8575077825e3987b968574",
+    "3.22/preventNotebookZoomOut.qmd": "84622f7e1f25aba2f32b6dd6f95a731650ddc9fa981d06462fc7df2d7ae75dee94991995283f4476f4f1924385dfc6272bca6a9c5ff17f4e991bbf6b20e3dadf",
+    "3.22/unlockMethodsContent.qmd": "38e4f95fe12f46ff29a05da82bde12d0d856a4263c1e4f61d7a59416e1f2162d6d7d9374a32e5db041bf85590b640b8964e7df03ab64d8a9b28b57faea65c225",
+    "3.23/createPagesPaperProSize.qmd": "05b76484b9d2759dcc89bf264dcd76088520be282f716ff1648e44e55a33e7ae85b0e23fb372a5ff7267c32a9acbb318947bd148d8aac8426075fe64d1915bc8",
+    "3.23/createPagesRM2Size.qmd": "c6a44f7c727a96da197bc77f954c3b7338cc2962a78d3b28b6863b55f8e9aea3c4fd743934c4e9de13d02c48423f16c8088317cc6109d84cae504a1c1991f832",
+    "3.23/preventNotebookZoomOut.qmd": "72bce1d0b909ad7511d13a2bc38ed52b40a98e49bbe29b7cef43a72a554d9dd9a3f91ed643f221e534b47ed6d03aaad15c610998ec990ba99a2b7ee8de5f1a6c",
+    "3.23/unlockMethodsContent.qmd": "9f985a8dc3124d75e471a557bb8d45340422f0433904fe10fc0484e68749da4c26546e26470b7409fde13899f7c3d3437ce4369217532de3f1f2702b14939cd4",
+    "3.24/createPagesPaperProSize.qmd": "b0a19851ac8525e334be80258a520c07fe5aaa7e4e38bd2f85faf4dad1169dcc45d84ccc62ac44948e7bb1cf40a564f27ff118a2b51de85e0750480e7d0db599",
+    "3.24/createPagesRM2Size.qmd": "21cbbfa32dc11c31598b852c93c75f384b64009627a3ecaa04734c0f73ce2c5d7aa565e67e7da87288dcb49960abd860242d4715a98dd35668a51bff4ac40bd1",
+    "3.24/preventNotebookZoomOut.qmd": "a00501646d0c65b3bc6d37d8021252df523f5b61d48ed177fab91b8222c82ba213cd475dbc9bde262f1259369579a5a9e4f8b55adc2f8b701f5874d0e14b1327",
+    "3.24/unlockMethodsContent.qmd": "baf01c78f35a2684ddd749109543072c995f8e70066363ad90919774a8da7c8c949e369d74644ffb9d3144d19bfff855cc542943ba3867a1a233feda669e09fe",
+    "3.25/createPagesPaperProSize.qmd": "d964c00a32faec620bd389386d8469aa45d8020c426768cc926c6a796f2f21bbc590510ad56652e20d5f6fca461e999d8464fabfdb86dd14609c3f0171fb29c8",
+    "3.25/createPagesRM2Size.qmd": "c2fd6a9ff57dadb0c5a03917b350297fd22bc2d8c23e88e4d4491dcc7b67bb9f3d24a539794f4b00849214e440158b4f91b41041f218ffe581b8d72e1ed789f4",
+    "3.25/preventNotebookZoomOut.qmd": "74542be80f09042ae7e657f124fb04cca0ec1292b09fc4882a9729e6e658af67124eb80f08f7bec5285a57bdc8613471e1cbe5e7df09d1c33ee645c3140ea2df",
+    "3.25/quicksheetUseTemplate.qmd": "04b1974384b2e81c9258fa32eb280f7a9ea0339b1cb7f3b6dd856cc698f2b628c78c67a2a5c46573f9b83cbaa28f1db6bf312468a61ae41905c099f7012c1fcf",
+    "3.25/unlockMethodsContent.qmd": "d8a3350bfbddd2c17c417390117217f1ebfb13699483a6c9205d0fefc1fcfa2345aee0231c0a0bfec13d17ef07cf4869862e41d8e1ed08eacdc33d451450a7bc",
+    "3.26/createPagesPaperProSize.qmd": "23f0f72c264dff11d4c279bf7eed225232e2b4f8884e8333c8b0916f78cf623ba91ee6bfe5fa9bf606c5970d35183b539014d135c8d67cf3f7007af68dfbc8ff",
+    "3.26/createPagesRM2Size.qmd": "52cd62a7e8115f9cf1bf071e553e1788965932293a4c29a4c15ce32c617de28cd69c5acb8084d8f3079781f8c321f0059ac4f36c53928c6bf1965c1ab014c9d7",
+    "3.26/preventNotebookZoomOut.qmd": "0593bd35bdfd25ca638ca099f84ac06351d3b04163014a7bbd24c4f0a03796507e506cb837e3dc190686a1301dde27bb4934e49594ea69b91f54030a58ec079c",
+    "3.26/quicksheetUseTemplate.qmd": "7a1ca41028a15d438f02fe93bf5e6092baf7ce5b1adf8fd7f3bd213dbed6e651899058cdd9d3a8e576ca71cf5b3313a4be291f4f973f15295420886c69d3b015",
+    "3.26/unlockMethodsContent.qmd": "db4dadb1dc4a0f993c9f6831d93d2b115493b7b61dd74934c61b919175e3002d79cb6ea50cc0b7548afd44750d7ca682296dcebee3d5846d298f9dfe6b1cd8a9"
+  },
+  "supportedVersions": [
+    "3.22",
+    "3.23",
+    "3.24",
+    "3.25",
+    "3.26"
+  ]
+}

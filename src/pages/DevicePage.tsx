@@ -4,17 +4,27 @@ import { useDevices } from '../hooks/useDevices'
 import { getPreferredDeviceType, deviceModelToDeviceId, setPreferredDeviceType, type DeviceId } from '../lib/renderer'
 import { DeviceConnectionCard } from '../components/device/DeviceConnectionCard'
 import { DeviceSyncCard } from '../components/device/DeviceSyncCard'
+import { DeviceXoviCard } from '../components/device/DeviceXoviCard'
 import { DeviceImportExportCard } from '../components/device/DeviceImportExportCard'
 import { DeviceBackupsCard } from '../components/device/DeviceBackupsCard'
 import './DevicePage.css'
+
+function deviceModelLabel(model?: string): string {
+  if (!model) return ''
+  if (model === 'rm') return 'reMarkable 1/2'
+  if (model === 'rmPP') return 'Paper Pro'
+  if (model === 'rmPPM') return 'Paper Pro Move'
+  return model
+}
 
 /**
  * Device and Sync page (`/device`).
  *
  * Manages multi-device SSH connections, template sync operations (pull, deploy,
- * rollback), import/export, and backups. Composed of four cards:
+ * rollback), import/export, and backups. Composed of five cards:
  * - **DeviceConnectionCard** — add/edit/test device connections, preferred device type
  * - **DeviceSyncCard** — pull, deploy, rollback, remove-all, sync status
+ * - **DeviceXoviCard** — xovi extension management
  * - **DeviceImportExportCard** — classic template import, ZIP export, sample management
  * - **DeviceBackupsCard** — app backups, restore, device deploy backups
  *
@@ -74,7 +84,7 @@ export function DevicePage() {
                 >
                   <span className="device-selector-tab-name">{d.nickname}</span>
                   {d.deviceModel && (
-                    <span className="device-selector-tab-model">{d.deviceModel}</span>
+                    <span className="device-selector-tab-model">{deviceModelLabel(d.deviceModel)}</span>
                   )}
                   {isPreferred && <span className="device-preferred-badge">Preferred</span>}
                 </button>
@@ -85,6 +95,7 @@ export function DevicePage() {
 
         <DeviceConnectionCard devicesState={devicesState} preferredDevice={preferredDevice} onPreferredChange={handlePreferredChange} />
         <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} deviceModel={activeDevice?.deviceModel} firmwareVersion={activeDevice?.firmwareVersion} onSyncComplete={handleSyncComplete} />
+        <DeviceXoviCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} deviceModel={activeDevice?.deviceModel} firmwareVersion={activeDevice?.firmwareVersion} />
         <DeviceImportExportCard
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}

@@ -113,7 +113,7 @@ describe('device SSH integration', () => {
         expect(res.statusCode).toBe(200)
         const body = JSON.parse(res.body)
         expect(body.ok).toBe(true)
-        expect(body.deviceModel).toContain('reMarkable')
+        expect(body.deviceModel).toBe('rm')
         expect(body.firmwareVersion).toMatch(/\d+\.\d+/)
         expect(body.lastConnected).toBeTruthy()
       } finally {
@@ -129,7 +129,7 @@ describe('device SSH integration', () => {
         const store = JSON.parse(readFileSync(config.deviceConfigPath, 'utf8'))
         const saved = store.devices.find((d: DeviceConfig) => d.id === 'test-dev-1')
         expect(saved.lastConnected).toBeTruthy()
-        expect(saved.deviceModel).toContain('reMarkable')
+        expect(saved.deviceModel).toBe('rm')
       } finally {
         await app.close()
       }
