@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   formatNum,
   pathDataToSvgD,
@@ -7,6 +7,8 @@ import {
   deviceBuiltins,
   collectMissingConstants,
   deviceModelToDeviceId,
+  getPreferredDeviceType,
+  setPreferredDeviceType,
   DEVICES,
 } from '../lib/renderer'
 import type { DeviceId } from '../lib/renderer'
@@ -544,5 +546,57 @@ describe('collectMissingConstants', () => {
       },
     ]
     expect(collectMissingConstants(makeTemplate([], items))).toEqual([])
+  })
+})
+
+// ─── getPreferredDeviceType / setPreferredDeviceType ───────────────────────
+
+describe('preferred device type', () => {
+  // Node's --localstorage-file shim is incomplete — mock localStorage for these tests
+  const store = new Map<string, string>()
+  const mockStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
+    removeItem: (key: string) => store.delete(key),
+  }
+
+  beforeEach(() => {
+    store.clear()
+    vi.stubGlobal('localStorage', mockStorage)
+  })
+
+  it('defaults to rm when localStorage is empty', () => {
+    expect(getPreferredDeviceType()).toBe('rm')
+  })
+
+  it('returns stored device type from localStorage', () => {
+    store.set('preferred-device-type', 'rmPP')
+    expect(getPreferredDeviceType()).toBe('rmPP')
+  })
+
+  it('returns rm for invalid stored value', () => {
+    store.set('preferred-device-type', 'invalid-device')
+    expect(getPreferredDeviceType()).toBe('rm')
+  })
+
+  it('setPreferredDeviceType persists and dispatches event', () => {
+    let eventFired = false
+    const handler = () => { eventFired = true }
+    globalThis.addEventListener('preferred-device-changed', handler)
+    try {
+      setPreferredDeviceType('rmPPM')
+      expect(store.get('preferred-device-type')).toBe('rmPPM')
+      expect(eventFired).toBe(true)
+      expect(getPreferredDeviceType()).toBe('rmPPM')
+    } finally {
+      globalThis.removeEventListener('preferred-device-changed', handler)
+    }
+  })
+
+  it('round-trips all valid device IDs', () => {
+    for (const id of Object.keys(DEVICES)) {
+      setPreferredDeviceType(id as DeviceId)
+      expect(getPreferredDeviceType()).toBe(id)
+    }
   })
 })

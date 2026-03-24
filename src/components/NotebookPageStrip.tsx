@@ -16,6 +16,8 @@ interface NotebookPageStripProps {
   maxPages?: number
   /** Display variant: 'strip' for scrollable list, 'stack' for fanned paper effect. */
   variant?: 'strip' | 'stack'
+  /** Fallback iconData by templateRef for groups saved without iconData. */
+  iconDataFallback?: Map<string, string>
   className?: string
 }
 
@@ -32,6 +34,7 @@ export const NotebookPageStrip = memo(function NotebookPageStrip({
   orientation = 'vertical',
   maxPages,
   variant = 'strip',
+  iconDataFallback,
   className,
 }: NotebookPageStripProps) {
   const pages = useMemo(() => {
@@ -44,7 +47,7 @@ export const NotebookPageStrip = memo(function NotebookPageStrip({
           key: `${group.id}-${pi}`,
           groupIndex: gi,
           pageIndex: pi,
-          iconData: group.iconData,
+          iconData: group.iconData ?? iconDataFallback?.get(group.templateRef),
           templateName: group.templateName,
         })
         if (maxPages !== undefined && expanded.length >= maxPages) break
@@ -52,7 +55,7 @@ export const NotebookPageStrip = memo(function NotebookPageStrip({
       if (maxPages !== undefined && expanded.length >= maxPages) break
     }
     return expanded
-  }, [pageGroups, maxPages])
+  }, [pageGroups, maxPages, iconDataFallback])
 
   const totalPages = pageGroups.reduce((sum, g) => sum + g.count, 0)
   const truncated = maxPages !== undefined && totalPages > maxPages

@@ -41,6 +41,7 @@ export function NotebookPage() {
   const [activeNotebookId, setActiveNotebookId] = useState<string | null>(
     () => sessionStorage.getItem(ACTIVE_NOTEBOOK_KEY),
   )
+  const { mergedRegistry, customRegistry } = useRegistryContext()
   const {
     allNotebooks, hiddenCount, loading,
     createDraft, updateDraft, removeDraft, getDraft, forkDraft,
@@ -101,6 +102,19 @@ export function NotebookPage() {
     e.stopPropagation()
     forkDraft(id)
   }, [forkDraft])
+
+  // Icon fallback map for notebook list thumbnails (groups saved without iconData)
+  const listIconFallback = useMemo(() => {
+    const map = new Map<string, string>()
+    const sources = [mergedRegistry?.templates, customRegistry?.templates].filter(Boolean).flat()
+    for (const t of sources) {
+      if (t.iconData) {
+        const ref = resolveTemplateRef(t)
+        if (!map.has(ref)) map.set(ref, t.iconData)
+      }
+    }
+    return map
+  }, [mergedRegistry, customRegistry])
 
   // Bulk actions
   const handleBulkAction = useCallback(() => {
@@ -213,6 +227,7 @@ export function NotebookPage() {
                     pageGroups={draft.pageGroups}
                     maxPages={4}
                     variant="stack"
+                    iconDataFallback={listIconFallback}
                   />
                 ) : (
                   <div className="notebook-list-card-icon"><NotebookIcon /></div>
@@ -475,6 +490,18 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
     }
     return templates
   }, [mergedRegistry, customRegistry])
+
+  // Lookup map for iconData fallback — page groups saved before iconData existed need this
+  const iconDataByRef = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of allTemplates) {
+      if (t.iconData) {
+        const ref = resolveTemplateRef(t)
+        if (!map.has(ref)) map.set(ref, t.iconData)
+      }
+    }
+    return map
+  }, [allTemplates])
 
   const allCategories = useMemo(() => {
     const cats = new Set<string>()
@@ -998,7 +1025,7 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
                   onDragEnd={readOnly ? undefined : handleDragEnd}
                 >
                   {!readOnly && <span className="notebook-group-drag-handle" title="Drag to reorder"><GripIcon /></span>}
-                  <TemplateThumbnail iconData={group.iconData} />
+                  <TemplateThumbnail iconData={group.iconData ?? iconDataByRef.get(group.templateRef)} />
                   <div className="notebook-group-info">
                     <div className="notebook-group-name">{group.templateName}</div>
                     <div className="notebook-group-ref">{group.templateRef}</div>
@@ -1055,6 +1082,7 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
               <NotebookPageStrip
                 pageGroups={state.pageGroups}
                 orientation="vertical"
+                iconDataFallback={iconDataByRef}
               />
             ) : (
               <div className="notebook-preview-empty">
