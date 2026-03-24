@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
+import { unzipSync } from 'fflate'
 import { resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createApp } from '../app.ts'
@@ -273,6 +274,63 @@ describe('device routes (/api/devices)', () => {
       expect(body.backups).toHaveLength(1)
       expect(body.backups[0].name).toBe('rm-methods_20260318_120000')
       expect(body.backups[0].templateCount).toBe(1)
+      await app.close()
+    })
+  })
+
+  describe('GET /api/devices/:id/backups/:name/download', () => {
+    it('downloads a deploy backup as ZIP', async () => {
+      writeDeviceStore(config.deviceConfigPath, {
+        version: 2,
+        devices: [{ id: 'dl-1', nickname: 'DL', deviceIp: '1.1.1.1', sshPort: 22, authMethod: 'password' }],
+        activeDeviceId: 'dl-1',
+      })
+
+      const backupDir = resolve(config.rmMethodsBackupDir, 'dl-1', 'rm-methods_20260320_100000')
+      mkdirSync(backupDir, { recursive: true })
+      writeFileSync(resolve(backupDir, '.manifest'), JSON.stringify({ exportedAt: '1', templates: { 'abc-123': { name: 'Grid' } } }))
+      writeFileSync(resolve(backupDir, 'abc-123.template'), '{"name":"Grid"}')
+      writeFileSync(resolve(backupDir, 'abc-123.metadata'), '{}')
+      writeFileSync(resolve(backupDir, 'abc-123.content'), '{}')
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/devices/dl-1/backups/rm-methods_20260320_100000/download' })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toBe('application/zip')
+      expect(res.headers['content-disposition']).toContain('rm-methods_20260320_100000.zip')
+
+      const zip = unzipSync(new Uint8Array(res.rawPayload))
+      const filenames = Object.keys(zip).sort()
+      expect(filenames).toContain('.manifest')
+      expect(filenames).toContain('abc-123.template')
+      expect(filenames).toContain('abc-123.metadata')
+      expect(filenames).toContain('abc-123.content')
+      await app.close()
+    })
+
+    it('returns 404 for nonexistent backup', async () => {
+      writeDeviceStore(config.deviceConfigPath, {
+        version: 2,
+        devices: [{ id: 'dl-2', nickname: 'DL2', deviceIp: '1.1.1.1', sshPort: 22, authMethod: 'password' }],
+        activeDeviceId: 'dl-2',
+      })
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/devices/dl-2/backups/rm-methods_99999999_999999/download' })
+      expect(res.statusCode).toBe(404)
+      await app.close()
+    })
+
+    it('rejects path traversal attempts', async () => {
+      writeDeviceStore(config.deviceConfigPath, {
+        version: 2,
+        devices: [{ id: 'dl-3', nickname: 'DL3', deviceIp: '1.1.1.1', sshPort: 22, authMethod: 'password' }],
+        activeDeviceId: 'dl-3',
+      })
+
+      const app = await createApp(config)
+      const res = await app.inject({ method: 'GET', url: '/api/devices/dl-3/backups/..%2F..%2Fetc/download' })
+      expect(res.statusCode).toBe(400)
       await app.close()
     })
   })

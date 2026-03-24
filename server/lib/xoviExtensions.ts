@@ -15,7 +15,19 @@ import { exec } from './ssh.ts'
 // ── paths ────────────────────────────────────────────────────────────────────
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-export const XOVI_DATA_DIR = resolve(__dirname, '../data/xovi-extensions')
+const DEFAULT_XOVI_DATA_DIR = resolve(__dirname, '../data/xovi-extensions')
+
+/** Resolved xovi extensions data directory. Set via {@link setXoviDataDir}. */
+export let XOVI_DATA_DIR = DEFAULT_XOVI_DATA_DIR
+
+/**
+ * Override the xovi extensions data directory.
+ * Called from app.ts when ServerConfig.xoviDataDir is set (e.g. Electron).
+ */
+export function setXoviDataDir(dir: string): void {
+  XOVI_DATA_DIR = dir
+  _resetManifestCache()
+}
 
 /** Device-side paths */
 export const DEVICE_PATHS = {

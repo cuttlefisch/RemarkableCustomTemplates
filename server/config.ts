@@ -66,6 +66,8 @@ export interface ServerConfig {
   hiddenNotebooksPath: string
   /** Override for frontend dist directory (Electron passes this explicitly) */
   frontendDistDir?: string
+  /** Override for xovi extensions data directory (Electron passes this explicitly) */
+  xoviDataDir?: string
 }
 
 /**
@@ -75,7 +77,7 @@ export interface ServerConfig {
  * @param overrides - Optional partial config to override env-based defaults
  * @returns Fully resolved server configuration
  */
-export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' | 'port' | 'production' | 'samplesPristineDir' | 'frontendDistDir'>>): ServerConfig {
+export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' | 'port' | 'production' | 'samplesPristineDir' | 'frontendDistDir' | 'xoviDataDir'>>): ServerConfig {
   const dataDir = overrides?.dataDir ?? process.env.DATA_DIR ?? process.cwd()
   const port = overrides?.port ?? (Number(process.env.PORT) || (process.env.NODE_ENV === 'production' ? 3000 : 3001))
   const production = overrides?.production ?? process.env.NODE_ENV === 'production'
@@ -111,5 +113,6 @@ export function resolveConfig(overrides?: Partial<Pick<ServerConfig, 'dataDir' |
     notebookDraftsPath: resolve(dataDir, 'data/notebooks.json'),
     hiddenNotebooksPath: resolve(templatesDir, 'custom/hidden-notebooks.json'),
     frontendDistDir: overrides?.frontendDistDir,
+    xoviDataDir: overrides?.xoviDataDir,
   }
 }

@@ -16,6 +16,7 @@ import type { DeviceConfig } from '../lib/ssh.ts'
 import { startMockSshServer, type MockSshServer } from './helpers/mockSshServer.ts'
 import { seedMethodsTemplates, seedClassicTemplates } from './helpers/seedDeviceFs.ts'
 import { parseNdjson } from './helpers/ndjsonHelper.ts'
+import { startOperation, _resetForTests as resetTracker } from '../lib/operationTracker.ts'
 
 // Longer timeout — SSH handshake adds overhead
 const TEST_TIMEOUT = 15_000
@@ -93,6 +94,7 @@ describe('device SSH integration', () => {
   beforeEach(() => {
     config = makeConfig()
     mockServer.resetFs()
+    resetTracker()
   })
 
   afterEach(() => {
@@ -937,6 +939,30 @@ describe('device SSH integration', () => {
         const pageDir = resolve(xochitlDir, notebookUuid)
         const rmFiles = readdirSync(pageDir).filter(f => f.endsWith('.rm'))
         expect(rmFiles).toHaveLength(3)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns 409 when another operation is already running on the device', async () => {
+      createDevice(config, mockServer)
+      // Simulate a running operation on the same device
+      startOperation('test-dev-1', 'deploy-methods')
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/deploy-notebook',
+          payload: {
+            name: 'Conflict Test',
+            pageGroups: [{ id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 1 }],
+          },
+        })
+        expect(res.statusCode).toBe(409)
+        const body = JSON.parse(res.body)
+        expect(body.error).toContain('already running')
+        expect(body.operationName).toBe('deploy-methods')
       } finally {
         await app.close()
       }

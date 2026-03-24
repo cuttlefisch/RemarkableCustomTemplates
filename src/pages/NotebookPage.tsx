@@ -4,10 +4,12 @@ import { useNotebookEditor, type NotebookEditorState } from '../hooks/useNoteboo
 import { useNotebookList, type NotebookDraft } from '../hooks/useNotebookList'
 import { useDevices } from '../hooks/useDevices'
 import { useBusy } from '../hooks/useBusy'
+import { useActiveOperation } from '../hooks/useActiveOperation'
 import { TemplateThumbnail } from '../components/TemplateThumbnail'
 import { NotebookPageStrip } from '../components/NotebookPageStrip'
 import { ProgressBar } from '../components/ProgressBar'
 import { ErrorDetails } from '../components/device/ErrorDetails'
+import { RecoveredOperation } from '../components/device/RecoveredOperation'
 import { ResizeDivider } from '../components/ResizeDivider'
 import { TemplateCanvas } from '../components/TemplateCanvas'
 import { DeviceSelector } from '../components/DeviceSelector'
@@ -33,13 +35,23 @@ import './NotebookPage.css'
  * State: notebook list from `useNotebookList` (server-backed with optimistic updates),
  * active notebook ID, and bulk selection set.
  */
+const ACTIVE_NOTEBOOK_KEY = 'remarkable-active-notebook'
+
 export function NotebookPage() {
-  const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null)
+  const [activeNotebookId, setActiveNotebookId] = useState<string | null>(
+    () => sessionStorage.getItem(ACTIVE_NOTEBOOK_KEY),
+  )
   const {
     allNotebooks, hiddenCount, loading,
     createDraft, updateDraft, removeDraft, getDraft, forkDraft,
     hideNotebook, restoreAll,
   } = useNotebookList()
+
+  // Persist active notebook across refresh
+  useEffect(() => {
+    if (activeNotebookId) sessionStorage.setItem(ACTIVE_NOTEBOOK_KEY, activeNotebookId)
+    else sessionStorage.removeItem(ACTIVE_NOTEBOOK_KEY)
+  }, [activeNotebookId])
 
   // Bulk selection state
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set())
@@ -125,8 +137,22 @@ export function NotebookPage() {
   }, [])
 
   if (activeNotebookId) {
+    // Wait for notebook list to load before entering editor (draft won't resolve during loading)
+    if (loading) {
+      return <div className="notebook-list-loading">Loading notebooks...</div>
+    }
     const draft = getDraft(activeNotebookId)
-    const isSystem = draft?.source === 'sample' || draft?.source === 'debug'
+    // If draft not found but notebook list is empty, fetch likely failed (rapid refresh) — keep waiting
+    if (!draft && allNotebooks.length === 0) {
+      return <div className="notebook-list-loading">Loading notebooks...</div>
+    }
+    // If the stored ID no longer exists (deleted externally), fall back to list view
+    if (!draft) {
+      sessionStorage.removeItem(ACTIVE_NOTEBOOK_KEY)
+      setActiveNotebookId(null)
+      return null
+    }
+    const isSystem = draft.source === 'sample' || draft.source === 'debug'
     return (
       <NotebookEditor
         key={activeNotebookId}
@@ -396,14 +422,7 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
     })
   }, [onSave, readOnly])
 
-  const { state, dispatch } = useNotebookEditor(handleAutoSave)
-
-  // Load draft on mount
-  useEffect(() => {
-    if (draft) {
-      dispatch({ type: 'LOAD', draft })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const { state, dispatch } = useNotebookEditor(handleAutoSave, draft)
 
   const [searchFilter, setSearchFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
@@ -415,6 +434,15 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
   const [exporting, setExporting] = useState(false)
   const [deploying, setDeploying] = useState(false)
   const [deployProgress, setDeployProgress] = useState<NdjsonProgress | null>(null)
+
+  // Recover in-progress or recently completed notebook deploy after page refresh
+  const recoveredOp = useActiveOperation(devicesState.activeDeviceId ?? null)
+  const NOTEBOOK_OP_NAMES = useMemo(() => new Set(['deploy-notebook']), [])
+
+  // Auto-dismiss recovered banner when a new deploy starts or completes
+  useEffect(() => {
+    if (deploying && recoveredOp.isRecovered) recoveredOp.dismiss()
+  }, [deploying]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Block navigation during deploy
   useEffect(() => {
@@ -620,6 +648,10 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ templateIds: [...methodsUuids] }),
         })
+
+        if (deployTemplatesRes.status === 409) {
+          throw { error: 'Another device operation is still in progress. Please wait for it to finish before deploying.', hint: 'Check the Device & Sync page for running operations.' }
+        }
 
         const contentType = deployTemplatesRes.headers.get('content-type') ?? ''
         if (contentType.includes('application/x-ndjson')) {
@@ -852,6 +884,18 @@ function NotebookEditor({ draft, readOnly, onBack, onSave, onSwitchNotebook, onF
           </>
         )}
       </div>
+
+      {/* Recovered operation banner (page refresh during deploy) */}
+      {recoveredOp.isRecovered && recoveredOp.activeOp && !deploying && (
+        <div style={{ padding: '0 16px' }}>
+          <RecoveredOperation
+            op={recoveredOp.activeOp}
+            operationNames={NOTEBOOK_OP_NAMES}
+            onDismiss={recoveredOp.dismiss}
+            deviceModel={devicesState.activeDevice?.deviceModel}
+          />
+        </div>
+      )}
 
       {/* Progress bar for deploy operations */}
       {deployProgress && (

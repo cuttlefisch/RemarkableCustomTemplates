@@ -327,6 +327,22 @@
   margin: 6px 0 0;
 }
 
+/* ── Recovered operation banner ───────────────────────────────────── */
+
+.device-op-recovered {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-active);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.device-op-recovered-label {
+  font-size: 13px;
+  margin: 0 0 6px;
+  color: var(--color-text-primary);
+}
+
 /* ── Backup list ───────────────────────────────────────────────────── */
 
 .device-backup-list {

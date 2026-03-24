@@ -526,8 +526,20 @@ export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus: 
             <div className="device-backup-list">
               {deviceBackups.map(b => (
                 <div key={b.name} className="device-backup-entry">
-                  <span className="device-backup-name">{formatDeviceBackupName(b.name)}</span>
-                  <span className="device-backup-count">{b.templateCount} templates</span>
+                  <div className="device-backup-info">
+                    <span className="device-backup-name">{formatDeviceBackupName(b.name)}</span>
+                    <span className="device-backup-count">{b.templateCount} templates</span>
+                  </div>
+                  <div className="device-backup-actions">
+                    <a
+                      className="device-backup-action-btn"
+                      href={`/api/devices/${deviceId}/backups/${encodeURIComponent(b.name)}/download`}
+                      download
+                      title="Download this deploy backup as ZIP"
+                    >
+                      Download
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>

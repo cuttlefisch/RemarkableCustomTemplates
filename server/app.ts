@@ -29,6 +29,8 @@ import deviceBackupRoutes from './routes/device/backups.ts'
 import deviceRemoveAllRoutes from './routes/device/removeAll.ts'
 import deviceSyncStatusRoutes from './routes/device/syncStatus.ts'
 import deviceXoviRoutes from './routes/device/xovi.ts'
+import deviceActiveOperationRoutes from './routes/device/activeOperation.ts'
+import { setXoviDataDir } from './lib/xoviExtensions.ts'
 import sampleTemplateRoutes from './routes/sampleTemplates.ts'
 import notebookRoutes from './routes/notebook.ts'
 import notebookDraftRoutes from './routes/notebookDrafts.ts'
@@ -46,6 +48,9 @@ import { backfillAllIcons } from './lib/backfillIcons.ts'
  * @returns A ready-to-listen Fastify instance
  */
 export async function createApp(config: ServerConfig) {
+  // Override xovi data dir if provided (Electron bundles it as extraResource)
+  if (config.xoviDataDir) setXoviDataDir(config.xoviDataDir)
+
   const app = Fastify({
     logger: true,
     bodyLimit: 52428800, // 50MB for backup uploads
@@ -75,6 +80,7 @@ export async function createApp(config: ServerConfig) {
   deviceRemoveAllRoutes(app, config)
   deviceSyncStatusRoutes(app, config)
   deviceXoviRoutes(app, config)
+  deviceActiveOperationRoutes(app, config)
   sampleTemplateRoutes(app, config)
   notebookRoutes(app, config)
   notebookDraftRoutes(app, config)

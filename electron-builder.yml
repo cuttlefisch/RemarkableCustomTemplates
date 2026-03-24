@@ -25,6 +25,8 @@ extraResources:
     to: templates/debug/
   - from: public/templates/samples/
     to: templates/samples/
+  - from: server/data/xovi-extensions/
+    to: xovi-extensions/
   - from: dist/
     to: dist/
 

@@ -29,7 +29,7 @@ import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { buildRmMethodsDist, writeRmMethodsDist } from '../../lib/buildRmMethodsDist.ts'
 import { buildClassicDist, writeClassicDist } from '../../lib/buildClassicDist.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
-import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { createTrackedNdjsonStream, OperationAlreadyRunningError } from '../../lib/operationTracker.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 import type { RmMethodsManifest } from '../../../src/lib/rmMethods.ts'
 import {
@@ -67,7 +67,9 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
     }
 
     const devicePaths = resolveDevicePaths(config, id)
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'deploy-methods') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
 
     let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
@@ -268,7 +270,9 @@ export default function deviceDeployRoutes(app: FastifyInstance, config: ServerC
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'deploy-classic') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
 
     let client2: Awaited<ReturnType<typeof connect>> | null = null
     try {

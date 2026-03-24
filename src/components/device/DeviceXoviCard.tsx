@@ -11,6 +11,8 @@ import { ErrorDetails } from './ErrorDetails'
 import { readNdjsonStream } from './deviceOpHelpers'
 import type { OpResult, ProgressState } from './deviceOpHelpers'
 import { ProgressBar } from './DeviceOpComponents'
+import { useActiveOperation } from '../../hooks/useActiveOperation'
+import { RecoveredOperation } from './RecoveredOperation'
 
 function downloadLog(log: string, filename: string) {
   const blob = new Blob([log], { type: 'text/plain' })
@@ -189,10 +191,15 @@ const DISCLAIMER_KEY = 'xoviDisclaimerAccepted'
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+const XOVI_OP_NAMES = new Set([
+  'xovi-deploy', 'xovi-remove', 'vellum-install-xovi', 'vellum-remove-xovi',
+])
+
 export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, firmwareVersion }: Props) {
   const xoviStatus = useXoviStatus(deviceId)
   const xoviOp = useXoviOp(deviceId)
   const vellumOp = useVellumOp(deviceId)
+  const recoveredOp = useActiveOperation(deviceId)
   const [helpOpen, setHelpOpen] = useState(false)
 
   // Compute default selections from status
@@ -298,6 +305,11 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
   const hasInstalled = status?.extensions.some(e => e.installed) ?? false
   const anyLoading = xoviStatus.loading || xoviOp.loading || vellumOp.loading
 
+  // Auto-dismiss recovered op banner when status is refreshed
+  useEffect(() => {
+    if (xoviStatus.status && recoveredOp.isRecovered) recoveredOp.dismiss()
+  }, [xoviStatus.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Block page navigation while an operation is running
   const { setBusy } = useBusy()
   useEffect(() => {
@@ -311,6 +323,17 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
       <h2 className="device-card-title">xovi Extensions</h2>
 
       <div className="device-card-body">
+      {/* Recovered operation banner */}
+      {recoveredOp.isRecovered && recoveredOp.activeOp && (
+        <RecoveredOperation
+          op={recoveredOp.activeOp}
+          operationNames={XOVI_OP_NAMES}
+          onDismiss={recoveredOp.dismiss}
+          deviceModel={deviceModel}
+          firmwareVersion={firmwareVersion}
+        />
+      )}
+
       {/* Collapsible help */}
       <button
         className="device-form-help-toggle"

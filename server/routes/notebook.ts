@@ -26,7 +26,7 @@ import type { ServerConfig } from '../config.ts'
 import { connect, exec } from '../lib/ssh.ts'
 import { getSftp, pushFile, readRemoteFile } from '../lib/sftp.ts'
 import { formatSshError } from '../lib/sshErrors.ts'
-import { createNdjsonStream } from '../lib/ndjsonStream.ts'
+import { createTrackedNdjsonStream, OperationAlreadyRunningError } from '../lib/operationTracker.ts'
 import { readDevice } from '../lib/deviceStore.ts'
 import { RM_METHODS_PATH } from '../lib/deviceManifest.ts'
 import {
@@ -197,7 +197,10 @@ export default function notebookRoutes(app: FastifyInstance, config: ServerConfi
       return reply.status(400).send({ error: msg })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'deploy-notebook') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
+
     let client: Awaited<ReturnType<typeof connect>> | null = null
     let stagingDir: string | null = null
 

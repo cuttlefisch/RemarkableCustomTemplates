@@ -124,7 +124,7 @@ export function notebookEditorReducer(
         id: action.draft.id,
         name: action.draft.name,
         pageGroups: action.draft.pageGroups,
-        deviceId: action.draft.deviceId || getPreferredDeviceType(),
+        deviceId: getPreferredDeviceType(),
         orientation: action.draft.orientation,
         deployedUuid: action.draft.deployedUuid,
         selectedGroupIndex: null,
@@ -144,8 +144,16 @@ export function notebookEditorReducer(
  * @param onAutoSave - Called with the current state after each change, debounced at 500ms.
  * @returns `{ state, dispatch }` — dispatch `NotebookEditorAction` to mutate state.
  */
-export function useNotebookEditor(onAutoSave?: (state: NotebookEditorState) => void) {
-  const [state, dispatch] = useReducer(notebookEditorReducer, initialNotebookEditorState)
+export function useNotebookEditor(onAutoSave?: (state: NotebookEditorState) => void, initialDraft?: { id: string; name: string; pageGroups: import('../types/notebook').PageGroup[]; deviceId?: string; orientation?: 'portrait' | 'landscape'; deployedUuid?: string }) {
+  const [state, dispatch] = useReducer(notebookEditorReducer, initialDraft ? {
+    id: initialDraft.id,
+    name: initialDraft.name,
+    pageGroups: initialDraft.pageGroups,
+    deviceId: getPreferredDeviceType(),
+    orientation: initialDraft.orientation ?? 'portrait',
+    deployedUuid: initialDraft.deployedUuid,
+    selectedGroupIndex: null,
+  } : initialNotebookEditorState)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Debounced auto-save

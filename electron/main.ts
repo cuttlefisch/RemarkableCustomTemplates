@@ -43,6 +43,10 @@ async function startServer() {
     ? join(process.resourcesPath, 'templates', 'samples')
     : join(process.cwd(), 'public', 'templates', 'samples')
 
+  const xoviDataDir = isPackaged
+    ? join(process.resourcesPath, 'xovi-extensions')
+    : undefined
+
   // Seed data directories on first run
   if (isPackaged) {
     seedDataDir(dataDir, resourcesPath)
@@ -54,6 +58,7 @@ async function startServer() {
     production: true,
     frontendDistDir,
     samplesPristineDir,
+    xoviDataDir,
   })
 
   fastifyApp = await createApp(config)

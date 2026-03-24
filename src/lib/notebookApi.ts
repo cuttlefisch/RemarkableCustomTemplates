@@ -48,6 +48,12 @@ export async function deployNotebook(
     body: JSON.stringify(definition),
   })
 
+  if (res.status === 409) {
+    throw Object.assign(new Error('Another device operation is still in progress. Please wait for it to finish before deploying.'), {
+      hint: 'Check the Device & Sync page for running operations.',
+    })
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Deploy failed' })) as { error?: string }
     throw new Error(err.error || `Deploy failed (${res.status})`)

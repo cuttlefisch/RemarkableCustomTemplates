@@ -27,7 +27,7 @@ import { getSftp, pushDirectory, removeFiles } from '../../lib/sftp.ts'
 import { readManifestUuids } from '../../lib/manifestUuids.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
 import type { RmMethodsManifest } from '../../../src/lib/rmMethods.ts'
-import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { createTrackedNdjsonStream, OperationAlreadyRunningError } from '../../lib/operationTracker.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 import {
   RM_METHODS_PATH,
@@ -75,7 +75,9 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       return reply.status(400).send({ error: `Backup ${latest} has no manifest.` })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'rollback-methods') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
 
     let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
@@ -149,7 +151,9 @@ export default function deviceRollbackRoutes(app: FastifyInstance, config: Serve
       return reply.status(400).send({ error: 'Original backup manifest is missing.' })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'rollback-original') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
 
     let client: Awaited<ReturnType<typeof connect>> | null = null
     try {

@@ -13,7 +13,7 @@ import type { ServerConfig } from '../../config.ts'
 import { connect, exec } from '../../lib/ssh.ts'
 import { getSftp, pushFile } from '../../lib/sftp.ts'
 import { formatSshError } from '../../lib/sshErrors.ts'
-import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { createTrackedNdjsonStream, OperationAlreadyRunningError } from '../../lib/operationTracker.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 import {
   checkXoviStatus,
@@ -105,7 +105,9 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       }
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'xovi-deploy') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
     let client: Awaited<ReturnType<typeof connect>> | null = null
 
     try {
@@ -199,7 +201,9 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       return reply.status(400).send({ error: `Unknown extensions: ${unknownIds.join(', ')}` })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'xovi-remove') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
     let client: Awaited<ReturnType<typeof connect>> | null = null
 
     try {
@@ -260,7 +264,9 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'vellum-install-xovi') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
     let client: Awaited<ReturnType<typeof connect>> | null = null
 
     try {
@@ -322,7 +328,9 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'vellum-remove-xovi') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
     let client: Awaited<ReturnType<typeof connect>> | null = null
 
     try {
@@ -340,6 +348,14 @@ export default function deviceXoviRoutes(app: FastifyInstance, _config: ServerCo
           'Cannot remove xovi without Vellum. Remove manually via SSH if needed.',
         )
         return
+      }
+
+      // Remove any deployed QMD files first — after vellum del, rebuild_hashtable
+      // won't be available, so we must clean up while xovi is still installed.
+      stream.progress('Removing deployed QMD extensions...')
+      const qmdClean = await exec(client, `rm -rf ${DEVICE_PATHS.qmdDir}/*.qmd 2>/dev/null; echo ok`)
+      if (qmdClean.stdout.trim() === 'ok') {
+        steps.push('Cleaned up QMD extensions')
       }
 
       // Remove all three packages explicitly — vellum del doesn't cascade to dependencies

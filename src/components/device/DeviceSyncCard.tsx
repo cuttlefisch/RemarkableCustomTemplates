@@ -5,6 +5,8 @@ import { useBusy } from '../../hooks/useBusy'
 import { readNdjsonStream, type NdjsonProgress } from '../../lib/ndjsonClient'
 import { useDeviceOp } from './deviceOpHelpers'
 import { OpButton } from './DeviceOpComponents'
+import { useActiveOperation } from '../../hooks/useActiveOperation'
+import { RecoveredOperation } from './RecoveredOperation'
 
 interface Props {
   /** Active device ID, or null when no device is selected. */
@@ -490,9 +492,15 @@ function SelectiveDeploySection({
  * remove-all, sync status comparison, and selective deploy with template picker.
  * All SSH operations stream progress via NDJSON and auto-refresh sync status on completion.
  */
+const SYNC_OP_NAMES = new Set([
+  'deploy-methods', 'deploy-classic', 'pull-official', 'pull-methods',
+  'rollback-methods', 'rollback-original', 'remove-all',
+])
+
 export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, firmwareVersion, onSyncComplete }: Props) {
   const [showHelp, setShowHelp] = useState(false)
   const [showPullHelp, setShowPullHelp] = useState(false)
+  const recoveredOp = useActiveOperation(deviceId)
   const [autoRefreshed, setAutoRefreshed] = useState(false)
   const autoRefreshTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const syncStatus = useSyncStatus(deviceId)
@@ -548,6 +556,11 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
   )
   const removeAll = useRemoveAll(deviceId)
 
+  // Auto-dismiss recovered op banner when sync status refreshes
+  useEffect(() => {
+    if (syncStatus.status && recoveredOp.isRecovered) recoveredOp.dismiss()
+  }, [syncStatus.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Prevent concurrent device operations
   const anyOpRunning =
     pullOfficial.loading || pullMethods.loading ||
@@ -580,6 +593,15 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
           <p className="device-card-hint">Set up a device connection to enable sync operations.</p>
         ) : (
           <>
+            {recoveredOp.isRecovered && recoveredOp.activeOp && (
+              <RecoveredOperation
+                op={recoveredOp.activeOp}
+                operationNames={SYNC_OP_NAMES}
+                onDismiss={recoveredOp.dismiss}
+                deviceModel={deviceModel}
+                firmwareVersion={firmwareVersion}
+              />
+            )}
             <button
               className="device-form-help-toggle"
               onClick={() => setShowHelp(!showHelp)}

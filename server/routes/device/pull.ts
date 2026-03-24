@@ -29,7 +29,7 @@ import { readDeviceManifest, parseManifestUuids } from '../../lib/deviceManifest
 import { formatSshError } from '../../lib/sshErrors.ts'
 import { parseTemplate } from '../../../src/lib/parser.ts'
 import { generateTemplateIcon } from '../../../src/lib/iconGenerator.ts'
-import { createNdjsonStream } from '../../lib/ndjsonStream.ts'
+import { createTrackedNdjsonStream, OperationAlreadyRunningError } from '../../lib/operationTracker.ts'
 import { readDevice } from '../../lib/deviceStore.ts'
 
 const RM_METHODS_PATH = '/home/root/.local/share/remarkable/xochitl'
@@ -50,7 +50,9 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
       return reply.status(400).send({ error: 'Device not configured' })
     }
 
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'pull-official') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
 
     let client: Awaited<ReturnType<typeof connect>> | null = null
     try {
@@ -99,7 +101,9 @@ export default function devicePullRoutes(app: FastifyInstance, config: ServerCon
     }
 
     const devicePaths = resolveDevicePaths(config, id)
-    const stream = createNdjsonStream(reply)
+    let stream
+    try { stream = createTrackedNdjsonStream(reply, id, 'pull-methods') }
+    catch (e) { if (e instanceof OperationAlreadyRunningError) return reply.status(409).send({ error: e.message, operationName: e.operationName }); throw e }
 
     let client: Awaited<ReturnType<typeof connect>> | null = null
     try {

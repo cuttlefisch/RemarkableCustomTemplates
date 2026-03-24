@@ -91,4 +91,34 @@ test.describe('Notebook Builder', () => {
 
     await expect(page.locator('.notebook-list-new')).toBeVisible({ timeout: 5_000 })
   })
+
+  test('page refresh stays on notebook editor with data intact', async ({ page }) => {
+    await createNotebook(page)
+    await addPageGroup(page, 0)
+    await expect(page.getByText('PAGE GROUPS (1)')).toBeVisible({ timeout: 5_000 })
+
+    // Refresh the page
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+
+    // Should stay on editor (not fall back to list view)
+    const backBtn = page.locator('.notebook-toolbar-back')
+    await expect(backBtn).toBeVisible({ timeout: 10_000 })
+
+    // Page group data should be loaded
+    await expect(page.getByText('PAGE GROUPS (1)')).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('back button clears session so refresh shows list', async ({ page }) => {
+    await createNotebook(page)
+    const backBtn = page.locator('.notebook-toolbar-back')
+    await expect(backBtn).toBeVisible({ timeout: 5_000 })
+    await backBtn.click()
+    await page.waitForTimeout(300)
+
+    // Refresh — should stay on list view, not re-enter editor
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('.notebook-list-new')).toBeVisible({ timeout: 5_000 })
+  })
 })
