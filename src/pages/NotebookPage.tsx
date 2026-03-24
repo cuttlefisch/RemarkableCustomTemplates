@@ -106,7 +106,9 @@ export function NotebookPage() {
   // Icon fallback map for notebook list thumbnails (groups saved without iconData)
   const listIconFallback = useMemo(() => {
     const map = new Map<string, string>()
-    const sources = [mergedRegistry?.templates, customRegistry?.templates].filter(Boolean).flat()
+    const sources = [mergedRegistry?.templates, customRegistry?.templates]
+      .filter((a): a is NonNullable<typeof a> => a != null)
+      .flat()
     for (const t of sources) {
       if (t.iconData) {
         const ref = resolveTemplateRef(t)
