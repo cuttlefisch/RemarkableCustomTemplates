@@ -126,8 +126,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: node scripts/build-electron.mjs
+      - name: Install native fpm (arm64)
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y ruby ruby-dev build-essential rpm
+          sudo gem install fpm --no-document
       - name: Build deb
         run: pnpm electron-builder --linux deb --publish never
+        env:
+          USE_SYSTEM_FPM: ${{ matrix.arch == 'arm64' && 'true' || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: rc-linux-deb-${{ matrix.arch }}
@@ -156,8 +163,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: node scripts/build-electron.mjs
+      - name: Install native fpm (arm64)
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y ruby ruby-dev build-essential rpm
+          sudo gem install fpm --no-document
       - name: Build rpm
         run: pnpm electron-builder --linux rpm --publish never
+        env:
+          USE_SYSTEM_FPM: ${{ matrix.arch == 'arm64' && 'true' || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: rc-linux-rpm-${{ matrix.arch }}
