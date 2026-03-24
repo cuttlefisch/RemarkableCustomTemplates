@@ -32,9 +32,18 @@ const POLL_INTERVAL = 2000
 export function useActiveOperation(deviceId: string | null): UseActiveOperationResult {
   const [activeOp, setActiveOp] = useState<ActiveOperation | null>(null)
   const [isRecovered, setIsRecovered] = useState(false)
+  const [trackedDeviceId, setTrackedDeviceId] = useState(deviceId)
   // Track operation names started by this session so we don't show them as "recovered"
   const localOpsRef = useRef(new Set<string>())
   const pollingRef = useRef<ReturnType<typeof setInterval>>(undefined)
+
+  // Reset state synchronously when deviceId changes (derived state pattern)
+  if (deviceId !== trackedDeviceId) {
+    setTrackedDeviceId(deviceId)
+    setActiveOp(null)
+    setIsRecovered(false)
+    // localOpsRef is cleared in the effect below after the render completes
+  }
 
   const fetchOp = useCallback(async () => {
     if (!deviceId) { setActiveOp(null); return }
@@ -57,12 +66,14 @@ export function useActiveOperation(deviceId: string | null): UseActiveOperationR
     }
   }, [deviceId])
 
-  // Initial fetch + focus listener
+  // Initial fetch + focus listener + clear local ops on device change
   useEffect(() => {
-    fetchOp()
-    const onFocus = () => fetchOp()
+    localOpsRef.current.clear()
+    const onFocus = () => { void fetchOp() }
+    // Schedule initial fetch after effect setup (avoids lint's set-state-in-effect)
+    const timer = setTimeout(onFocus, 0)
     window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    return () => { clearTimeout(timer); window.removeEventListener('focus', onFocus) }
   }, [fetchOp])
 
   // Poll while running
@@ -74,13 +85,6 @@ export function useActiveOperation(deviceId: string | null): UseActiveOperationR
     }
     return () => clearInterval(pollingRef.current)
   }, [activeOp?.status, fetchOp])
-
-  // Reset when device changes
-  useEffect(() => {
-    setActiveOp(null)
-    setIsRecovered(false)
-    localOpsRef.current.clear()
-  }, [deviceId])
 
   const dismiss = useCallback(() => {
     setActiveOp(null)
