@@ -52,7 +52,14 @@ jobs:
           path: dist-electron-release/*.exe
 
   build-linux-appimage:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -70,11 +77,18 @@ jobs:
         run: pnpm electron-builder --linux AppImage --publish never
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-appimage
+          name: linux-appimage-${{ matrix.arch }}
           path: dist-electron-release/*.AppImage
 
   build-linux-deb:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -92,11 +106,18 @@ jobs:
         run: pnpm electron-builder --linux deb --publish never
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-deb
+          name: linux-deb-${{ matrix.arch }}
           path: dist-electron-release/*.deb
 
   build-linux-rpm:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -114,7 +135,7 @@ jobs:
         run: pnpm electron-builder --linux rpm --publish never
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-rpm
+          name: linux-rpm-${{ matrix.arch }}
           path: dist-electron-release/*.rpm
 
   publish-release:
