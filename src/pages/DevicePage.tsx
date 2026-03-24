@@ -3,9 +3,18 @@ import { useRegistryContext } from '../hooks/useRegistry'
 import { useDevices } from '../hooks/useDevices'
 import { DeviceConnectionCard } from '../components/device/DeviceConnectionCard'
 import { DeviceSyncCard } from '../components/device/DeviceSyncCard'
+import { DeviceXoviCard } from '../components/device/DeviceXoviCard'
 import { DeviceImportExportCard } from '../components/device/DeviceImportExportCard'
 import { DeviceBackupsCard } from '../components/device/DeviceBackupsCard'
 import './DevicePage.css'
+
+function deviceModelLabel(model?: string): string {
+  if (!model) return ''
+  if (model === 'rm') return 'reMarkable 1/2'
+  if (model === 'rmPP') return 'Paper Pro'
+  if (model === 'rmPPM') return 'Paper Pro Move'
+  return model
+}
 
 export function DevicePage() {
   const { officialTemplatesAvailable, refreshRegistry } = useRegistryContext()
@@ -44,7 +53,7 @@ export function DevicePage() {
               >
                 <span className="device-selector-tab-name">{d.nickname}</span>
                 {d.deviceModel && (
-                  <span className="device-selector-tab-model">{d.deviceModel}</span>
+                  <span className="device-selector-tab-model">{deviceModelLabel(d.deviceModel)}</span>
                 )}
               </button>
             ))}
@@ -53,6 +62,7 @@ export function DevicePage() {
 
         <DeviceConnectionCard devicesState={devicesState} />
         <DeviceSyncCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} deviceModel={activeDevice?.deviceModel} firmwareVersion={activeDevice?.firmwareVersion} onSyncComplete={handleSyncComplete} />
+        <DeviceXoviCard deviceId={deviceId} deviceName={activeDevice?.nickname ?? 'Device'} configured={configured} deviceModel={activeDevice?.deviceModel} firmwareVersion={activeDevice?.firmwareVersion} />
         <DeviceImportExportCard
           officialTemplatesAvailable={officialTemplatesAvailable}
           onStatus={setStatus}

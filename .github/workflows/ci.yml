@@ -18,6 +18,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run validate-xovi
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build

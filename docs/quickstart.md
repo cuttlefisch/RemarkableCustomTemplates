@@ -85,7 +85,15 @@ Each deploy:
 
 > **Native vs PDF templates:** This app creates native `.template` files — vector-based pages that render instantly, use minimal battery, and zoom infinitely. PDF templates have their advantages (inter-page links, complex layouts) but are rasterized at fixed resolution and use more memory.
 
-## 7. Back up your templates
+## 7. Enhance with xovi extensions (optional)
+
+If you've installed [xovi](https://github.com/asivery/xovi) on your device, you can deploy curated UI extensions directly from the **Device & Sync** page. These extensions unlock Methods templates without a Connect subscription, normalize page sizes across devices, and improve quicksheet behavior.
+
+Scroll to the **xovi Extensions** card, click **Check xovi Status**, select your extensions, and deploy. See the [xovi extensions guide](xovi-extensions.md) for full details.
+
+> **Don't have xovi?** Everything else in this app works without it. xovi is only needed if you want the optional UI extensions described above.
+
+## 8. Back up your templates
 
 Click **↓ Backup** on the **Device & Sync** page to download a ZIP of all your custom templates. This preserves UUIDs needed for device sync continuity.
 
@@ -93,7 +101,7 @@ To restore: click **↑ Restore** and select the backup ZIP. A preview shows wha
 
 ![Backup restore preview](images/backup-restore-preview.png)
 
-## 8. Rollback
+## 9. Rollback
 
 If something goes wrong, use the **Device & Sync** page to roll back:
 

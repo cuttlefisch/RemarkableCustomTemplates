@@ -22,6 +22,7 @@ import deviceRollbackRoutes from './routes/device/rollback.ts'
 import deviceBackupRoutes from './routes/device/backups.ts'
 import deviceRemoveAllRoutes from './routes/device/removeAll.ts'
 import deviceSyncStatusRoutes from './routes/device/syncStatus.ts'
+import deviceXoviRoutes from './routes/device/xovi.ts'
 import sampleTemplateRoutes from './routes/sampleTemplates.ts'
 import { backfillAllIcons } from './lib/backfillIcons.ts'
 
@@ -54,6 +55,7 @@ export async function createApp(config: ServerConfig) {
   deviceBackupRoutes(app, config)
   deviceRemoveAllRoutes(app, config)
   deviceSyncStatusRoutes(app, config)
+  deviceXoviRoutes(app, config)
   sampleTemplateRoutes(app, config)
 
   // Backfill iconData for any registry entries missing it

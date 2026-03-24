@@ -285,6 +285,14 @@ For programmatic use: `POST /api/restore?mode=merge` (or `mode=replace` to overw
 
 ---
 
+## xovi extensions
+
+If you have [xovi](https://github.com/asivery/xovi) installed on your device, you can deploy curated UI extensions that enhance the template experience — unlocking Methods templates without a Connect subscription, normalizing page dimensions across device families, and improving quicksheet behavior. Extensions are managed from the **xovi Extensions** card on the **Device & Sync** page.
+
+See the [xovi extensions guide](xovi-extensions.md) for the full list of available extensions, deployment instructions, and troubleshooting.
+
+---
+
 ## Caveats
 
 > [!WARNING]

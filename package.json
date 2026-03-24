@@ -20,7 +20,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "generate-sample-icons": "tsx scripts/generate-sample-icons.ts"
+    "generate-sample-icons": "tsx scripts/generate-sample-icons.ts",
+    "validate-xovi": "tsx scripts/validate-xovi-checksums.ts",
+    "generate-xovi-manifest": "tsx scripts/generate-xovi-manifest.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",

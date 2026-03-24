@@ -7,14 +7,14 @@ import { TemplatesPage } from './pages/TemplatesPage'
 import { DevicePage } from './pages/DevicePage'
 import { useRegistry, RegistryContext } from './hooks/useRegistry'
 import { ThemeContext, useThemeProvider } from './hooks/useTheme'
-import { BusyContext } from './hooks/useBusy'
+import { BusyContext, useBusyProvider } from './hooks/useBusy'
 import type { DeviceId } from './lib/renderer'
 
 export default function App() {
   const registryState = useRegistry()
   const themeState = useThemeProvider()
   const [deviceId, setDeviceId] = useState<DeviceId>('rm')
-  const [isBusy, setBusy] = useState(false)
+  const { isBusy, setBusy } = useBusyProvider()
 
   return (
     <ThemeContext.Provider value={themeState}>
