@@ -49,6 +49,7 @@ DATA_DIR/
 │   └── {deviceId}/                      # Per-device deploy state
 │       ├── .deployed-manifest           # What is currently deployed on this device
 │       ├── .original                    # Original device state before first deploy
+│       ├── .xovi-deployed               # xovi extension deploy state (pristine + tracked IDs)
 │       └── rm-methods_YYYYMMDD_HHMMSS/  # Timestamped rollback snapshots
 ├── notebook-dist/                       # Generated notebook files (staging, cleaned after deploy)
 │   └── {uuid}/
@@ -75,6 +76,7 @@ DATA_DIR/
 | Sample Templates | `samples/*.template` + `samples-registry.json` | Bundled with app | Read-only; user hides via `hidden-samples.json` | No |
 | Built-in Notebooks | Virtual (generated from registries) | N/A | Generated on demand; hidden via `hidden-notebooks.json` | No |
 | Deploy State | `rm-methods-backups/{deviceId}/.deployed-manifest` | JSON manifest | Read/write on deploy/rollback | Yes |
+| xovi Deploy State | `rm-methods-backups/{deviceId}/.xovi-deployed` | JSON | `readXoviDeployedState`/`writeXoviDeployedState` | No |
 | App Backups | `data/backups/*.zip` | ZIP archive | Created on backup, listed, downloaded, deleted | N/A |
 
 ### Store versioning
@@ -317,6 +319,16 @@ Restore (POST /api/restore?mode=merge|replace):
 | POST | `/api/devices/:id/remove-all-preview` | Preview what remove-all would delete |
 | POST | `/api/devices/:id/remove-all-execute` | Remove all deployed templates from device |
 
+### xovi Extensions
+
+| Method | Route | Description |
+|---|---|---|
+| POST | `/api/devices/:id/xovi-status` | Check xovi + extension status on device |
+| POST | `/api/devices/:id/xovi-deploy` | Deploy QMD extension files (NDJSON stream) |
+| POST | `/api/devices/:id/xovi-remove` | Remove QMD extension files (NDJSON stream) |
+| POST | `/api/devices/:id/vellum-install-xovi` | Install xovi via Vellum (NDJSON stream) |
+| POST | `/api/devices/:id/vellum-remove-xovi` | Remove xovi via Vellum (NDJSON stream) |
+
 ---
 
 ## Backup ZIP Structure
@@ -359,6 +371,7 @@ data/ssh/{deviceId}/
 rm-methods-backups/{deviceId}/
 ├── .deployed-manifest         # JSON manifest of what is currently on this device
 ├── .original                  # Snapshot of device state before first deploy
+├── .xovi-deployed             # xovi extension deploy state (pristine + tracked IDs)
 └── rm-methods_YYYYMMDD_HHMMSS/  # Timestamped rollback snapshots (one per deploy)
 ```
 
@@ -372,6 +385,7 @@ interface DevicePaths {
   deployedManifest: string    // rm-methods-backups/{deviceId}/.deployed-manifest
   originalBackup: string      // rm-methods-backups/{deviceId}/.original
   sshDir: string              // data/ssh/{deviceId}/
+  xoviDeployedState: string   // rm-methods-backups/{deviceId}/.xovi-deployed
 }
 ```
 

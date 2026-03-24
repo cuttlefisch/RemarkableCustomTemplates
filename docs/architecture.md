@@ -18,7 +18,8 @@ remarkable_templates/
 │   │   └── device/              ← SSH device operations (config, pull, deploy, rollback)
 │   ├── lib/             ← ssh.ts, sftp.ts, pathSecurity.ts, manifestUuids.ts, buildMethodsRegistry.ts,
 │   │                       deviceStore.ts, deviceManifest.ts, ndjsonStream.ts, sshErrors.ts,
-│   │                       notebookDraftStore.ts, builtinNotebooks.ts
+│   │                       notebookDraftStore.ts, builtinNotebooks.ts,
+│   │                       xoviExtensions.ts, xoviDeployState.ts
 │   └── __tests__/       ← server tests
 ├── src/
 │   ├── types/       ← template.ts, registry.ts, notebook.ts
@@ -90,7 +91,8 @@ server/routes/
     ├── rollback.ts      ← POST /api/devices/:id/rollback-methods, rollback-original, rollback-classic
     ├── backups.ts       ← GET /api/devices/:id/backups
     ├── syncStatus.ts    ← POST /api/devices/:id/sync-status
-    └── removeAll.ts     ← POST /api/devices/:id/remove-all-preview, remove-all-execute
+    ├── removeAll.ts     ← POST /api/devices/:id/remove-all-preview, remove-all-execute
+    └── xovi.ts          ← xovi extension management (status, deploy, remove, vellum)
 ```
 
 ## Data flow

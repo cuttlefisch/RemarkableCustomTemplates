@@ -58,6 +58,7 @@ server/
       backups.ts     — GET /api/devices/:id/backups
       syncStatus.ts  — POST /api/devices/:id/sync-status
       removeAll.ts   — POST /api/devices/:id/remove-all-preview, remove-all-execute, GET backup download
+      xovi.ts        — xovi extension status, deploy, remove, vellum install/remove
   lib/
     pathSecurity.ts  — assertWithin() path traversal guard
     ssh.ts           — programmatic SSH via ssh2 (no ~/.ssh/config needed)
@@ -70,6 +71,8 @@ server/
     sshErrors.ts     — SSH error formatting with user-friendly hints
     notebookDraftStore.ts — versioned JSON store for notebook drafts
     builtinNotebooks.ts — generate virtual notebooks from template registries
+    xoviExtensions.ts    — extension defs, firmware mapping, device status checking
+    xoviDeployState.ts   — per-device deploy state tracking (pristine capture, deployed IDs)
   __tests__/
     helpers/
       mockSshServer.ts — in-process ssh2 mock server for integration tests
@@ -178,6 +181,12 @@ lib/drawingViewport.ts    — viewport math (zoom-to-fit, pan bounds)
 ### rm_methods deploy (preferred)
 
 rm_methods is the recommended deployment format — it syncs templates across paired devices via the reMarkable cloud. Build generates `rm-methods-dist/` with UUID-named file triplets (`.template`, `.metadata`, `.content`) plus a `.manifest` file (JSON with name, version, hash, createdTime per UUID). `rm-methods-backups/.deployed-manifest` tracks what's currently on the device, enabling orphan cleanup on deploy and precise rollbacks. See `docs/device-sync.md` for full details.
+
+### xovi extensions (`server/routes/device/xovi.ts`, `server/lib/xoviExtensions.ts`)
+
+Five POST routes manage xovi QMD extension deployment on reMarkable devices. Extensions are `.qmd` patch files applied by the xovi framework's qt-resource-rebuilder. The manifest at `server/data/xovi-extensions/manifest.json` defines available extensions, supported firmware versions, and checksums.
+
+Deploy state tracking (`xoviDeployState.ts`) records which extensions were deployed by this app vs. user-installed, enabling selective removal. On first deploy, a "pristine snapshot" of existing QMD files is captured. The `.xovi-deployed` JSON file is stored per-device at `rm-methods-backups/{deviceId}/.xovi-deployed`. `unknownFiles` in the status response identifies QMD files on the device that don't match any known extension definition. The UI shows these as "User-installed" (display only, never auto-removed).
 
 ### Backup/restore (`lib/backup.ts`)
 

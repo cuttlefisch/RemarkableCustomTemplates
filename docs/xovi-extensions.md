@@ -82,11 +82,12 @@ When you add a quicksheet page (quick-add at the bottom of a notebook), it norma
 ## How to remove
 
 1. On the **xovi Extensions** card, click **Check xovi Status**
-2. Click **Remove All Extensions**
-3. Confirm the removal
-4. The device UI restarts with stock behavior restored
+2. To remove a single extension, click the **x** button next to it
+3. To remove all extensions deployed by this app, click **Remove Our Extensions** — user-installed extensions are preserved
+4. Confirm the removal
+5. The device UI restarts with stock behavior restored
 
-To remove individual extensions, uncheck them and deploy again — only checked extensions will be present after deployment.
+If the app has no tracking data (e.g. extensions were deployed before tracking was added), a **Remove All Installed** fallback button appears instead, which removes all known installed extensions.
 
 ## After a firmware update
 
@@ -96,6 +97,17 @@ When your reMarkable receives a firmware update:
 2. Open the app and click **Check xovi Status** to see the current state
 3. If the new firmware version is supported, click **Deploy Selected** to re-deploy
 4. If the new firmware version is not yet supported, you'll see a message — new versions are typically supported within a few days by the community
+
+## Deploy state tracking
+
+When extensions are first deployed to a device, the app captures a "pristine snapshot" of any QMD files already present in the extension directory. This enables distinguishing between:
+
+- **Our extensions** — deployed by this app, tracked in `.xovi-deployed`
+- **User-installed extensions** — present before our first deploy or installed manually, shown as "User-installed" in the UI (display only, never auto-removed)
+
+The tracking file (`.xovi-deployed`) is stored per-device at `rm-methods-backups/{deviceId}/` and contains `pristineFiles`, `deployedExtensionIds`, and timestamps. It is only written after a fully successful deploy (files pushed + hashtable rebuilt). If a deploy fails partway, no tracking is recorded.
+
+The "Remove Our Extensions" button only removes extensions tracked as deployed by this app. Uninstalling xovi via Vellum clears the tracking file entirely.
 
 ## Troubleshooting
 

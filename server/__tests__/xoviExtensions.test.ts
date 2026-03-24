@@ -6,6 +6,7 @@ import {
   getQmdFilePath,
   validateExclusiveGroups,
   getSupportedVersions,
+  classifyQmdFiles,
   _resetManifestCache,
 } from '../lib/xoviExtensions.ts'
 
@@ -141,5 +142,43 @@ describe('getSupportedVersions', () => {
     for (let i = 1; i < versions.length; i++) {
       expect(versions[i] > versions[i - 1]).toBe(true)
     }
+  })
+})
+
+describe('classifyQmdFiles', () => {
+  const defs = getExtensionDefs()
+
+  it('classifies all known files correctly', () => {
+    const knownFiles = defs.map(d => d.filename)
+    const result = classifyQmdFiles(knownFiles, defs)
+    expect(result.known).toEqual(knownFiles.sort())
+    expect(result.unknown).toEqual([])
+  })
+
+  it('classifies all unknown files correctly', () => {
+    const result = classifyQmdFiles(['userPatch.qmd', 'custom.qmd'], defs)
+    expect(result.known).toEqual([])
+    expect(result.unknown).toEqual(['custom.qmd', 'userPatch.qmd'])
+  })
+
+  it('splits mixed known and unknown files', () => {
+    const result = classifyQmdFiles(
+      ['unlockMethodsContent.qmd', 'myCustomPatch.qmd', 'preventNotebookZoomOut.qmd'],
+      defs,
+    )
+    expect(result.known).toEqual(['preventNotebookZoomOut.qmd', 'unlockMethodsContent.qmd'])
+    expect(result.unknown).toEqual(['myCustomPatch.qmd'])
+  })
+
+  it('returns empty arrays for empty input', () => {
+    const result = classifyQmdFiles([], defs)
+    expect(result.known).toEqual([])
+    expect(result.unknown).toEqual([])
+  })
+
+  it('returns empty arrays for empty defs', () => {
+    const result = classifyQmdFiles(['a.qmd'], [])
+    expect(result.known).toEqual([])
+    expect(result.unknown).toEqual(['a.qmd'])
   })
 })
