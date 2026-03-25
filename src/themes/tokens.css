@@ -284,7 +284,7 @@
   --border-secondary: var(--color-border-light);
   --border-error: var(--color-error-border);
   --accent-primary: var(--color-accent);
-  --accent-text: var(--color-accent-text);
+  --accent-text: var(--color-btn-primary-text);
   --warning: var(--color-warning-text);
   --color-surface-2: var(--color-page-bg);
   --color-border: var(--color-border-dark);

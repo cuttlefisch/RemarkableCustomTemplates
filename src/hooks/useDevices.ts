@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { refreshDeviceMenu } from './useElectronIPC'
+import { deviceModelToDeviceId, setPreferredDeviceType } from '../lib/renderer'
 
 /** Persisted device configuration returned by the server. */
 export interface DeviceData {
@@ -92,6 +93,14 @@ export function useDevices(): UseDevices {
   }, [refresh])
 
   const activeDevice = devices.find(d => d.id === activeDeviceId) ?? devices[0] ?? null
+
+  // Sync preferred device type from the active device's model on startup/change
+  useEffect(() => {
+    if (activeDevice?.deviceModel) {
+      const mapped = deviceModelToDeviceId(activeDevice.deviceModel)
+      if (mapped) setPreferredDeviceType(mapped)
+    }
+  }, [activeDevice?.deviceModel])
 
   const addDevice = useCallback(async (cfg: {
     nickname: string
