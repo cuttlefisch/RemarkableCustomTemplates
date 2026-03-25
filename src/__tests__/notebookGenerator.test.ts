@@ -113,6 +113,34 @@ describe('expandPageGroups', () => {
     const groups = [makeGroup({ count: 0 })]
     expect(expandPageGroups(groups)).toEqual([])
   })
+
+  it('normalizes :portrait to :p in template refs', () => {
+    const groups = [makeGroup({ count: 1, templateRef: 'a1b2c3d4-0001-4000-8000-000000000001:portrait' })]
+    const pages = expandPageGroups(groups)
+    expect(pages[0].templateRef).toBe('a1b2c3d4-0001-4000-8000-000000000001:p')
+  })
+
+  it('normalizes :landscape to :l in template refs', () => {
+    const groups = [makeGroup({ count: 1, templateRef: 'a1b2c3d4-0004-4000-8000-000000000004:landscape' })]
+    const pages = expandPageGroups(groups)
+    expect(pages[0].templateRef).toBe('a1b2c3d4-0004-4000-8000-000000000004:l')
+  })
+
+  it('leaves :p and :l template refs unchanged', () => {
+    const groups = [
+      makeGroup({ count: 1, templateRef: 'abc-123:p' }),
+      makeGroup({ count: 1, templateRef: 'def-456:l' }),
+    ]
+    const pages = expandPageGroups(groups)
+    expect(pages[0].templateRef).toBe('abc-123:p')
+    expect(pages[1].templateRef).toBe('def-456:l')
+  })
+
+  it('leaves classic template names unchanged', () => {
+    const groups = [makeGroup({ count: 1, templateRef: 'Blank' })]
+    const pages = expandPageGroups(groups)
+    expect(pages[0].templateRef).toBe('Blank')
+  })
 })
 
 describe('resolveTemplateRef', () => {

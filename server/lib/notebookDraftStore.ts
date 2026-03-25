@@ -25,6 +25,28 @@ function emptyStore(): NotebookDraftStore {
 }
 
 /**
+ * Normalize template refs that use full-word orientation (`:portrait`/`:landscape`)
+ * to the abbreviated form (`:p`/`:l`) that the device expects.
+ *
+ * This fixes drafts created before the builtinNotebooks.ts orientation fix.
+ */
+function normalizeTemplateRefs(store: NotebookDraftStore): NotebookDraftStore {
+  let changed = false
+  for (const draft of store.drafts) {
+    for (const group of draft.pageGroups) {
+      const fixed = group.templateRef
+        .replace(/:portrait$/, ':p')
+        .replace(/:landscape$/, ':l')
+      if (fixed !== group.templateRef) {
+        group.templateRef = fixed
+        changed = true
+      }
+    }
+  }
+  return changed ? store : store // same ref either way, but signals intent
+}
+
+/**
  * Read the notebook draft store from disk.
  * @param storePath - Absolute path to `notebooks.json`.
  * @returns The deserialized store, or an empty store if the file is missing or corrupt.
@@ -35,7 +57,7 @@ export function readNotebookStore(storePath: string): NotebookDraftStore {
   try {
     const raw = JSON.parse(readFileSync(storePath, 'utf8'))
     if (raw.version === 1 && Array.isArray(raw.drafts)) {
-      return raw as NotebookDraftStore
+      return normalizeTemplateRefs(raw as NotebookDraftStore)
     }
     return emptyStore()
   } catch {

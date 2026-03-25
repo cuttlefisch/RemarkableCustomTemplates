@@ -76,6 +76,42 @@ describe('notebookDraftStore', () => {
       const store = readNotebookStore(storePath(base))
       expect(store).toEqual({ version: 1, drafts: [] })
     })
+
+    it('normalizes :portrait to :p in template refs on read', () => {
+      const existing: NotebookDraftStore = {
+        version: 1,
+        drafts: [makeDraft({
+          id: 'legacy-1',
+          pageGroups: [
+            { id: 'pg-1', templateRef: 'a1b2c3d4-0001-4000-8000-000000000001:portrait', templateName: 'Grid', count: 1 },
+            { id: 'pg-2', templateRef: 'a1b2c3d4-0004-4000-8000-000000000004:landscape', templateName: 'Wide', count: 1 },
+          ],
+        })],
+      }
+      writeFileSync(storePath(base), JSON.stringify(existing))
+
+      const store = readNotebookStore(storePath(base))
+      expect(store.drafts[0].pageGroups[0].templateRef).toBe('a1b2c3d4-0001-4000-8000-000000000001:p')
+      expect(store.drafts[0].pageGroups[1].templateRef).toBe('a1b2c3d4-0004-4000-8000-000000000004:l')
+    })
+
+    it('leaves :p and :l template refs unchanged on read', () => {
+      const existing: NotebookDraftStore = {
+        version: 1,
+        drafts: [makeDraft({
+          id: 'ok-1',
+          pageGroups: [
+            { id: 'pg-1', templateRef: 'abc-123:p', templateName: 'Grid', count: 1 },
+            { id: 'pg-2', templateRef: 'def-456:l', templateName: 'Wide', count: 1 },
+          ],
+        })],
+      }
+      writeFileSync(storePath(base), JSON.stringify(existing))
+
+      const store = readNotebookStore(storePath(base))
+      expect(store.drafts[0].pageGroups[0].templateRef).toBe('abc-123:p')
+      expect(store.drafts[0].pageGroups[1].templateRef).toBe('def-456:l')
+    })
   })
 
   describe('writeNotebookStore', () => {

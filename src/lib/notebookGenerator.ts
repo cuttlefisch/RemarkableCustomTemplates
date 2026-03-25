@@ -71,10 +71,14 @@ export function generateFractionalIndex(position: number): string {
 export function expandPageGroups(groups: PageGroup[]): NotebookPage[] {
   const pages: NotebookPage[] = []
   for (const group of groups) {
+    // Normalize any legacy full-word orientation suffixes to abbreviated form
+    const templateRef = group.templateRef
+      .replace(/:portrait$/, ':p')
+      .replace(/:landscape$/, ':l')
     for (let i = 0; i < group.count; i++) {
       pages.push({
         id: crypto.randomUUID(),
-        templateRef: group.templateRef,
+        templateRef,
         templateName: group.templateName,
       })
     }
