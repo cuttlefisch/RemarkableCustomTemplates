@@ -230,6 +230,124 @@ function handleExec(
       return
     }
 
+    // test -f PATH && echo ok || echo missing  (used by xovi routes)
+    const testFMatch = command.match(/test\s+-[fx]\s+([^\s&|]+)\s*&&\s*echo\s+ok\s*\|\|\s*echo\s+missing/)
+    if (testFMatch) {
+      const localPath = mapPath(fsRoot, testFMatch[1])
+      channel.write(existsSync(localPath) ? 'ok\n' : 'missing\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // rm -rf PATH/*.qmd  (used by vellum-remove-xovi to clean QMD dir)
+    if (command.includes('rm -rf') && command.includes('.qmd')) {
+      const rmMatch = command.match(/rm\s+-rf\s+([^\s*]+)/)
+      if (rmMatch) {
+        const dir = mapPath(fsRoot, rmMatch[1])
+        if (existsSync(dir)) {
+          for (const f of readdirSync(dir)) {
+            if (f.endsWith('.qmd')) unlinkSync(resolve(dir, f))
+          }
+        }
+      }
+      channel.write('ok\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // rm -f PATH  (used by xovi-remove for individual QMD removal)
+    if (command.includes('rm -f')) {
+      const rmMatch = command.match(/rm\s+-f\s+"?([^";\s]+)"?/)
+      if (rmMatch) {
+        const localPath = mapPath(fsRoot, rmMatch[1])
+        try { unlinkSync(localPath) } catch { /* ok if missing */ }
+      }
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // rebuild_hashtable (xovi deploy/remove)
+    if (command.includes('rebuild_hashtable')) {
+      channel.write('Rebuilding...\nDone\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // vellum reenable status  (must be before generic vellum checks)
+    if (command.includes('vellum') && command.includes('reenable status')) {
+      const marker = mapPath(fsRoot, '/home/root/.vellum/.reenable-needed')
+      channel.write(existsSync(marker) ? 'needed\n' : 'ok\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // vellum --version
+    if (command.includes('vellum') && command.includes('--version')) {
+      const vellumPath = mapPath(fsRoot, '/home/root/.vellum/bin/vellum')
+      if (existsSync(vellumPath)) {
+        channel.write('0.5.0\n')
+      } else {
+        channel.write('missing\n')
+      }
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // vellum add ... (install xovi packages — create marker files)
+    if (command.includes('vellum') && command.includes(' add ')) {
+      const xoviDir = mapPath(fsRoot, '/home/root/xovi')
+      mkdirSync(resolve(xoviDir, 'extensions.d'), { recursive: true })
+      mkdirSync(resolve(xoviDir, 'exthome/qt-resource-rebuilder'), { recursive: true })
+      writeFileSync(resolve(xoviDir, 'xovi.so'), '')
+      writeFileSync(resolve(xoviDir, 'extensions.d/qt-resource-rebuilder.so'), '')
+      writeFileSync(resolve(xoviDir, 'rebuild_hashtable'), '')
+      channel.write('Installing xovi, xovi-extensions, qt-resource-rebuilder...\nDone\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // vellum del ... (remove xovi packages — clean up files)
+    if (command.includes('vellum') && command.includes(' del ')) {
+      const xoviDir = mapPath(fsRoot, '/home/root/xovi')
+      try { rmSync(xoviDir, { recursive: true, force: true }) } catch { /* ok */ }
+      channel.write('Removing packages...\nDone\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // find DIR -name '*.rm' -size +Nc | wc -l  (check-notebook modified page detection)
+    if (command.includes('find') && command.includes('.rm') && command.includes('wc -l')) {
+      const findMatch = command.match(/find\s+([^\s]+)\s.*-size\s+\+(\d+)c/)
+      if (findMatch) {
+        const dir = mapPath(fsRoot, findMatch[1])
+        const sizeThreshold = parseInt(findMatch[2], 10)
+        let count = 0
+        if (existsSync(dir)) {
+          const walkDir = (d: string) => {
+            for (const entry of readdirSync(d)) {
+              const full = resolve(d, entry)
+              const st = statSync(full)
+              if (st.isDirectory()) walkDir(full)
+              else if (entry.endsWith('.rm') && st.size > sizeThreshold) count++
+            }
+          }
+          walkDir(dir)
+        }
+        channel.write(`${count}\n`)
+        channel.exit(0)
+        channel.end()
+        return
+      }
+    }
+
     // Default: succeed silently
     channel.exit(0)
     channel.end()

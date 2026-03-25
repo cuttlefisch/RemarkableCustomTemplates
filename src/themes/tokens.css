@@ -266,4 +266,34 @@
   /* ── Tag download hover ────────────────────────────────────────────────── */
   --color-tag-download-hover-text: #0550ae;
   --color-tag-download-hover-bg: #ddf4ff;
+
+  /* ── Semantic aliases ────────────────────────────────────────────────── */
+  /* Short-form aliases used in NotebookPage.css and DevicePage.css.       */
+  /* Defined once here so every theme palette inherits them automatically. */
+  --bg-primary: var(--color-card-bg);
+  --bg-secondary: var(--color-page-bg);
+  --bg-tertiary: var(--color-card-title-bg);
+  --bg-hover: var(--color-sidebar-item-hover-bg);
+  --bg-error: var(--color-error-bg);
+  --bg-warning: var(--color-sync-modified-bg);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-error: var(--color-error-text);
+  --text-warning: var(--color-warning-text);
+  --border-primary: var(--color-border-dark);
+  --border-secondary: var(--color-border-light);
+  --border-error: var(--color-error-border);
+  --accent-primary: var(--color-accent);
+  --accent-text: var(--color-accent-text);
+  --warning: var(--color-warning-text);
+  --color-surface-2: var(--color-page-bg);
+  --color-border: var(--color-border-dark);
+  --color-border-active: var(--color-accent-border);
+  --color-bg-card: var(--color-card-bg);
+  --color-accent-text-on-accent: var(--color-btn-primary-text);
+  --color-danger-bg: var(--color-btn-danger-bg);
+  --color-danger-text: var(--color-btn-danger-text);
+  --color-sidebar-text: var(--color-text-sidebar);
+  --color-warning-bg: var(--color-sync-modified-bg);
+  --color-warning-border: var(--color-warning-text);
 }

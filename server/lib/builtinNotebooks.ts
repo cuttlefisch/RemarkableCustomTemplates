@@ -46,7 +46,7 @@ export function generateBuiltinNotebook(
   if (!registry.templates || registry.templates.length === 0) return null
 
   const pageGroups: PageGroup[] = registry.templates.map(entry => {
-    const orientation = entry.landscape ? 'landscape' : 'portrait'
+    const orientation = entry.landscape ? 'l' : 'p'
     const templateRef = entry.rmMethodsId
       ? `${entry.rmMethodsId}:${orientation}`
       : entry.filename

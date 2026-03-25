@@ -67,7 +67,7 @@ describe('generateBuiltinNotebook', () => {
 
     const notebook = generateBuiltinNotebook(registryPath, '__debug-notebook__', 'Debug Notebook', 'debug')
 
-    expect(notebook!.pageGroups[0].templateRef).toBe('abc-123:portrait')
+    expect(notebook!.pageGroups[0].templateRef).toBe('abc-123:p')
   })
 
   it('uses landscape orientation for landscape templates', () => {
@@ -81,6 +81,6 @@ describe('generateBuiltinNotebook', () => {
 
     const notebook = generateBuiltinNotebook(registryPath, '__sample-notebook__', 'Sample', 'sample')
 
-    expect(notebook!.pageGroups[0].templateRef).toBe('def-456:landscape')
+    expect(notebook!.pageGroups[0].templateRef).toBe('def-456:l')
   })
 })

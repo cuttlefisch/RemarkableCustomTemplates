@@ -14,7 +14,7 @@ import { resolveConfig, type ServerConfig } from '../config.ts'
 import { writeDeviceStore } from '../lib/deviceStore.ts'
 import type { DeviceConfig } from '../lib/ssh.ts'
 import { startMockSshServer, type MockSshServer } from './helpers/mockSshServer.ts'
-import { seedMethodsTemplates, seedClassicTemplates } from './helpers/seedDeviceFs.ts'
+import { seedMethodsTemplates, seedClassicTemplates, seedNotebook } from './helpers/seedDeviceFs.ts'
 import { parseNdjson } from './helpers/ndjsonHelper.ts'
 import { startOperation, _resetForTests as resetTracker } from '../lib/operationTracker.ts'
 
@@ -967,5 +967,118 @@ describe('device SSH integration', () => {
         await app.close()
       }
     }, TEST_TIMEOUT)
+  })
+
+  // ── check-notebook ──────────────────────────────────────────────────────
+
+  describe('check-notebook', () => {
+    const UUID = '12345678-1234-1234-1234-123456789abc'
+
+    it('returns exists:true, pristine:true for notebook with no modified .rm files', async () => {
+      createDevice(config, mockServer)
+      seedNotebook(mockServer.fsRoot, UUID, { visibleName: 'My Notebook', pageCount: 3 })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/check-notebook',
+          payload: { uuid: UUID },
+        })
+        expect(res.statusCode).toBe(200)
+        const body = JSON.parse(res.body)
+        expect(body.exists).toBe(true)
+        expect(body.pristine).toBe(true)
+        expect(body.visibleName).toBe('My Notebook')
+        expect(body.pageCount).toBe(3)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns exists:true, pristine:false for notebook with modified .rm files', async () => {
+      createDevice(config, mockServer)
+      seedNotebook(mockServer.fsRoot, UUID, { pageCount: 3, modifiedRmFiles: 2 })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/check-notebook',
+          payload: { uuid: UUID },
+        })
+        const body = JSON.parse(res.body)
+        expect(body.exists).toBe(true)
+        expect(body.pristine).toBe(false)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns exists:false when metadata file missing', async () => {
+      createDevice(config, mockServer)
+      // No seedNotebook — UUID doesn't exist on device
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/check-notebook',
+          payload: { uuid: UUID },
+        })
+        const body = JSON.parse(res.body)
+        expect(body.exists).toBe(false)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns exists:false when metadata has deleted:true', async () => {
+      createDevice(config, mockServer)
+      seedNotebook(mockServer.fsRoot, UUID, { deleted: true })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/check-notebook',
+          payload: { uuid: UUID },
+        })
+        const body = JSON.parse(res.body)
+        expect(body.exists).toBe(false)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('returns 400 for invalid UUID format', async () => {
+      createDevice(config, mockServer)
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/check-notebook',
+          payload: { uuid: 'not-a-valid-uuid' },
+        })
+        expect(res.statusCode).toBe(400)
+      } finally {
+        await app.close()
+      }
+    })
+
+    it('returns 400 for unconfigured device', async () => {
+      // No createDevice call
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/nonexistent-dev/check-notebook',
+          payload: { uuid: UUID },
+        })
+        expect(res.statusCode).toBe(400)
+      } finally {
+        await app.close()
+      }
+    })
   })
 })
