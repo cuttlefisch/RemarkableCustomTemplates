@@ -944,6 +944,40 @@ describe('device SSH integration', () => {
       }
     }, TEST_TIMEOUT)
 
+    it('cleans old notebook files when deploying with reuseUuid', async () => {
+      createDevice(config, mockServer)
+      const reuseUuid = '12345678-aaaa-bbbb-cccc-123456789abc'
+
+      // Pre-seed a notebook on the mock filesystem to simulate an existing deploy
+      seedNotebook(mockServer.fsRoot, reuseUuid, { pageCount: 5, visibleName: 'Old Notebook' })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/devices/test-dev-1/deploy-notebook',
+          payload: {
+            name: 'Updated Notebook',
+            pageGroups: [{ id: 'g1', templateRef: 'Blank', templateName: 'Blank', count: 2 }],
+            reuseUuid,
+          },
+        })
+        expect(res.statusCode).toBe(200)
+        const events = parseNdjson(res.body)
+        const done = events.find(e => e.type === 'done')
+        expect(done?.ok).toBe(true)
+        expect(done?.steps).toContain('Cleaned previous notebook files')
+
+        // Verify the new content file has only 2 pages (not 5+2=7)
+        const xochitlDir = resolve(mockServer.fsRoot, 'home/root/.local/share/remarkable/xochitl')
+        const contentRaw = readFileSync(resolve(xochitlDir, `${reuseUuid}.content`), 'utf8')
+        const content = JSON.parse(contentRaw)
+        expect(content.cPages.pages).toHaveLength(2)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
     it('returns 409 when another operation is already running on the device', async () => {
       createDevice(config, mockServer)
       // Simulate a running operation on the same device

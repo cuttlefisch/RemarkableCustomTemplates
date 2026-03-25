@@ -245,6 +245,19 @@ export default function notebookRoutes(app: FastifyInstance, config: ServerConfi
       client = await connect(deviceConfig)
       const sftp = await getSftp(client)
 
+      // When reusing a UUID (update-in-place), wipe the old page directory and files
+      // so the device doesn't CRDT-merge stale replica pages with the new content.
+      if (body.reuseUuid) {
+        stream.progress('Cleaning previous notebook...')
+        const remoteDir = `${RM_METHODS_PATH}/${notebookUuid}`
+        await exec(client, `rm -rf "${remoteDir}"`)
+        // Also remove old .content/.metadata/.local so we start fresh
+        for (const ext of ['.content', '.metadata', '.local']) {
+          await exec(client, `rm -f "${RM_METHODS_PATH}/${notebookUuid}${ext}"`)
+        }
+        steps.push('Cleaned previous notebook files')
+      }
+
       const rmFileCount = emptyRm ? pages.length : 0
       const totalFiles = 3 + rmFileCount // .content, .metadata, .local + per-page .rm files (if needed)
       stream.progress('Pushing notebook files...', 0, totalFiles)
