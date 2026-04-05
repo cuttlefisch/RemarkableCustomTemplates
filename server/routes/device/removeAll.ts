@@ -181,7 +181,10 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       )
 
       if (allUuids.length === 0) {
-        stream.error('No deploy history found. Cannot determine which templates are custom.')
+        stream.error(
+          'No deploy history found. Cannot determine which templates are custom.',
+          'Deploy templates first, or pull methods templates from the device to establish tracking.',
+        )
         return
       }
 
@@ -215,7 +218,10 @@ export default function deviceRemoveAllRoutes(app: FastifyInstance, config: Serv
       steps.push(`Saved backup: ${backupFilename} (${Object.keys(fileMap).length} files)`)
 
       if (!existsSync(backupPath)) {
-        stream.error('Backup verification failed — ZIP was not saved')
+        stream.error(
+          'Backup verification failed — ZIP was not saved',
+          'Check available disk space on the server. The backup must be saved before templates can be removed.',
+        )
         return
       }
 

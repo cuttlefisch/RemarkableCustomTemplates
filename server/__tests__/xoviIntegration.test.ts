@@ -4,6 +4,7 @@
  *
  * Uses an in-process ssh2 mock server backed by a real temp directory.
  * All routes are exercised via Fastify app.inject() — no running server needed.
+ * Tests the full xovi lifecycle: status, deploy, remove, vellum install/remove.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs'
@@ -98,6 +99,7 @@ describe('xovi SSH integration', () => {
         expect(body.vellumInstalled).toBe(true)
         expect(body.extensions).toBeInstanceOf(Array)
         expect(body.extensions.length).toBeGreaterThan(0)
+        expect(body.supportedVersionRange).toEqual({ min: '3.22', max: '3.26' })
         // The unlockMethodsContent.qmd we seeded should be detected as installed
         const unlock = body.extensions.find((e: { id: string }) => e.id === 'unlockMethodsContent')
         expect(unlock?.installed).toBe(true)
@@ -148,6 +150,37 @@ describe('xovi SSH integration', () => {
         const body = JSON.parse(res.body)
         expect(body.unknownFiles).toContain('myCustomExtension.qmd')
         expect(body.unknownFiles).not.toContain('unlockMethodsContent.qmd')
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('reports unsupported firmware when version is too new', async () => {
+      createDevice(config, mockServer, { firmwareVersion: '3.99.0.0' })
+      seedXoviFs(mockServer.fsRoot)
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({ method: 'POST', url: `/api/devices/${DEVICE_ID}/xovi-status` })
+        expect(res.statusCode).toBe(200)
+        const body = JSON.parse(res.body)
+        expect(body.qmdVersion).toBeNull()
+        expect(body.supportedVersionRange).toEqual({ min: '3.22', max: '3.26' })
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('detects vellum reenable needed', async () => {
+      createDevice(config, mockServer)
+      seedXoviFs(mockServer.fsRoot, { reenableNeeded: true })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({ method: 'POST', url: `/api/devices/${DEVICE_ID}/xovi-status` })
+        expect(res.statusCode).toBe(200)
+        const body = JSON.parse(res.body)
+        expect(body.vellumReenableNeeded).toBe(true)
       } finally {
         await app.close()
       }
@@ -269,6 +302,28 @@ describe('xovi SSH integration', () => {
       }
     }, TEST_TIMEOUT)
 
+    it('blocks deploy when vellum reenable is needed', async () => {
+      createDevice(config, mockServer)
+      seedXoviFs(mockServer.fsRoot, { reenableNeeded: true })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/devices/${DEVICE_ID}/xovi-deploy`,
+          payload: { extensionIds: ['unlockMethodsContent'] },
+        })
+        expect(res.statusCode).toBe(200)
+        const events = parseNdjson(res.body)
+        const error = events.find(e => e.type === 'error')
+        expect(error).toBeTruthy()
+        expect((error as Record<string, unknown>).error).toMatch(/firmware was updated/)
+        expect((error as Record<string, unknown>).hint).toMatch(/vellum reenable/)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
     it('returns 400 for unknown extension IDs', async () => {
       createDevice(config, mockServer)
       const app = await createApp(config)
@@ -313,6 +368,28 @@ describe('xovi SSH integration', () => {
         await app.close()
       }
     })
+
+    it('returns 400 for unsupported firmware version with version range in hint', async () => {
+      createDevice(config, mockServer, { firmwareVersion: '3.99.0.0' })
+      seedXoviFs(mockServer.fsRoot)
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/devices/${DEVICE_ID}/xovi-deploy`,
+          payload: { extensionIds: ['unlockMethodsContent'] },
+        })
+        expect(res.statusCode).toBe(400)
+        const body = JSON.parse(res.body)
+        expect(body.error).toMatch(/No extensions available/)
+        expect(body.hint).toMatch(/3\.22/)
+        expect(body.hint).toMatch(/3\.26/)
+        expect(body.hint).toMatch(/firmware-specific/)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
 
     it('errors when xovi not installed on device', async () => {
       createDevice(config, mockServer)
@@ -440,7 +517,29 @@ describe('xovi SSH integration', () => {
         })
         expect(res.statusCode).toBe(200)
         const events = parseNdjson(res.body)
-        expect(events.find(e => e.type === 'done')).toBeTruthy()
+        const done = events.find(e => e.type === 'done')
+        expect(done).toBeTruthy()
+        expect((done as Record<string, string>).message).toMatch(/installed successfully/)
+      } finally {
+        await app.close()
+      }
+    }, TEST_TIMEOUT)
+
+    it('blocks install when vellum reenable is needed', async () => {
+      createDevice(config, mockServer)
+      seedXoviFs(mockServer.fsRoot, { vellum: true, reenableNeeded: true })
+
+      const app = await createApp(config)
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/api/devices/${DEVICE_ID}/vellum-install-xovi`,
+        })
+        expect(res.statusCode).toBe(200)
+        const events = parseNdjson(res.body)
+        const error = events.find(e => e.type === 'error')
+        expect(error).toBeTruthy()
+        expect((error as Record<string, unknown>).error).toMatch(/re-enabled/)
       } finally {
         await app.close()
       }
@@ -489,7 +588,9 @@ describe('xovi SSH integration', () => {
         })
         expect(res.statusCode).toBe(200)
         const events = parseNdjson(res.body)
-        expect(events.find(e => e.type === 'done')).toBeTruthy()
+        const done = events.find(e => e.type === 'done')
+        expect(done).toBeTruthy()
+        expect((done as Record<string, string>).message).toMatch(/removed successfully/)
 
         // Tracking file should be cleared
         expect(existsSync(paths.xoviDeployedState)).toBe(false)

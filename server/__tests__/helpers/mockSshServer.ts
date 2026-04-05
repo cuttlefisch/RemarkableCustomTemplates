@@ -230,7 +230,7 @@ function handleExec(
       return
     }
 
-    // test -f PATH && echo ok || echo missing  (used by xovi routes)
+    // test -f/-x PATH && echo ok || echo missing  (used by xovi routes)
     const testFMatch = command.match(/test\s+-[fx]\s+([^\s&|]+)\s*&&\s*echo\s+ok\s*\|\|\s*echo\s+missing/)
     if (testFMatch) {
       const localPath = mapPath(fsRoot, testFMatch[1])
@@ -238,6 +238,19 @@ function handleExec(
       channel.exit(0)
       channel.end()
       return
+    }
+
+    // Generic `test -f <path> && <cmd> || echo missing` — for vellum version check etc.
+    const testAndExecMatch = command.match(/test -f ([^\s&|]+)\s*&&/)
+    if (testAndExecMatch && !command.includes('echo ok')) {
+      const localPath = mapPath(fsRoot, testAndExecMatch[1])
+      if (!existsSync(localPath)) {
+        channel.write('missing\n')
+        channel.exit(1)
+        channel.end()
+        return
+      }
+      // File exists — fall through to more specific handlers below
     }
 
     // rm -rf PATH/*.qmd  (used by vellum-remove-xovi to clean QMD dir)
@@ -257,6 +270,20 @@ function handleExec(
       return
     }
 
+    // rebuild_hashtable (xovi deploy/remove) — check binary exists first
+    if (command.includes('rebuild_hashtable')) {
+      const bin = mapPath(fsRoot, '/home/root/xovi/rebuild_hashtable')
+      if (existsSync(bin)) {
+        channel.write('Hashtable rebuilt successfully\n')
+        channel.exit(0)
+      } else {
+        channel.stderr.write('rebuild_hashtable: not found\n')
+        channel.exit(1)
+      }
+      channel.end()
+      return
+    }
+
     // rm -f PATH  (used by xovi-remove for individual QMD removal)
     if (command.includes('rm -f')) {
       const rmMatch = command.match(/rm\s+-f\s+"?([^";\s]+)"?/)
@@ -264,14 +291,6 @@ function handleExec(
         const localPath = mapPath(fsRoot, rmMatch[1])
         try { unlinkSync(localPath) } catch { /* ok if missing */ }
       }
-      channel.exit(0)
-      channel.end()
-      return
-    }
-
-    // rebuild_hashtable (xovi deploy/remove)
-    if (command.includes('rebuild_hashtable')) {
-      channel.write('Rebuilding...\nDone\n')
       channel.exit(0)
       channel.end()
       return

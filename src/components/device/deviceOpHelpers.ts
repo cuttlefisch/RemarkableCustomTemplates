@@ -13,8 +13,8 @@ export { readNdjsonStream }
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type OpResult =
-  | { ok: true; message: string; steps?: string[]; log?: string }
-  | { ok: false; error: string; hint?: string; rawError?: string }
+  | { ok: true; message: string; steps?: string[]; log?: string; warnings?: string[] }
+  | { ok: false; error: string; hint?: string; rawError?: string; details?: string[] }
 
 export type ProgressState = NdjsonProgress
 
@@ -48,9 +48,10 @@ export function useDeviceOp(url: string, options?: { confirmMsg?: string; onSucc
         if (!res.ok) {
           const hint = data.hint as string | undefined
           const rawError = data.rawError as string | undefined
+          const details = data.details as string[] | undefined
           const error = (data.error as string) ?? `HTTP ${res.status}`
           console.error('[device-op]', url, rawError ?? error)
-          setResult({ ok: false, error, hint, rawError })
+          setResult({ ok: false, error, hint, rawError, details })
           return
         }
       }
@@ -59,12 +60,13 @@ export function useDeviceOp(url: string, options?: { confirmMsg?: string; onSucc
       const count = data.count as number | undefined
       const message = data.message as string | undefined
       const restoredFrom = data.restoredFrom as string | undefined
+      const warnings = data.warnings as string[] | undefined
       const msg =
         message ??
         ((steps ? steps.join(' \u2192 ') : '') ||
         (count !== undefined ? `Pulled ${count} templates` : '') ||
         (restoredFrom ? `Restored from ${restoredFrom}` : 'Done'))
-      setResult({ ok: true, message: msg, steps })
+      setResult({ ok: true, message: msg, steps, warnings })
       options?.onSuccess?.()
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {

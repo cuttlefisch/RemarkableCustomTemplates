@@ -1,5 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest'
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 import {
   mapFirmwareToQmdVersion,
   getExtensionDefs,
@@ -7,6 +10,9 @@ import {
   validateExclusiveGroups,
   getSupportedVersions,
   classifyQmdFiles,
+  normalizeLF,
+  sha512Normalized,
+  verifyQmdChecksum,
   _resetManifestCache,
 } from '../lib/xoviExtensions.ts'
 
@@ -180,5 +186,96 @@ describe('classifyQmdFiles', () => {
     const result = classifyQmdFiles(['a.qmd'], [])
     expect(result.known).toEqual([])
     expect(result.unknown).toEqual(['a.qmd'])
+  })
+})
+
+// ── checksum utilities ──────────────────────────────────────────────────────
+
+describe('normalizeLF', () => {
+  it('returns the same buffer when no CR bytes present', () => {
+    const buf = Buffer.from('hello\nworld\n')
+    const result = normalizeLF(buf)
+    expect(result).toEqual(buf)
+  })
+
+  it('strips CR from CRLF sequences', () => {
+    const buf = Buffer.from('hello\r\nworld\r\n')
+    const result = normalizeLF(buf)
+    expect(result).toEqual(Buffer.from('hello\nworld\n'))
+  })
+
+  it('preserves bare CR that is not followed by LF', () => {
+    const buf = Buffer.from('hello\rworld\n')
+    const result = normalizeLF(buf)
+    expect(result).toEqual(Buffer.from('hello\rworld\n'))
+  })
+
+  it('handles mixed line endings', () => {
+    const buf = Buffer.from('a\r\nb\nc\r\nd\r')
+    const result = normalizeLF(buf)
+    expect(result).toEqual(Buffer.from('a\nb\nc\nd\r'))
+  })
+
+  it('handles empty buffer', () => {
+    const result = normalizeLF(Buffer.alloc(0))
+    expect(result.length).toBe(0)
+  })
+})
+
+describe('sha512Normalized', () => {
+  it('produces same hash for LF and CRLF versions of the same content', () => {
+    const lf = Buffer.from('line1\nline2\nline3\n')
+    const crlf = Buffer.from('line1\r\nline2\r\nline3\r\n')
+    expect(sha512Normalized(lf)).toBe(sha512Normalized(crlf))
+  })
+
+  it('produces a 128-character hex string', () => {
+    const hash = sha512Normalized(Buffer.from('test'))
+    expect(hash).toMatch(/^[0-9a-f]{128}$/)
+  })
+})
+
+describe('verifyQmdChecksum', () => {
+  it('verifies a known good QMD file', () => {
+    const result = verifyQmdChecksum('unlockMethodsContent', '3.26',
+      getQmdFilePath('unlockMethodsContent', '3.26'))
+    expect(result.ok).toBe(true)
+    expect(result.expected).toBeTruthy()
+    expect(result.actual).toBe(result.expected)
+  })
+
+  it('verifies all bundled QMD files pass checksum', () => {
+    for (const version of getSupportedVersions()) {
+      for (const def of getExtensionDefs()) {
+        let filePath: string
+        try {
+          filePath = getQmdFilePath(def.id, version)
+        } catch {
+          continue // extension not available in this version
+        }
+        const result = verifyQmdChecksum(def.id, version, filePath)
+        expect(result.ok, `${def.id}@${version}`).toBe(true)
+      }
+    }
+  })
+
+  it('detects a tampered file', () => {
+    const filePath = getQmdFilePath('unlockMethodsContent', '3.26')
+    const content = readFileSync(filePath)
+    const tampered = Buffer.concat([content, Buffer.from('X')])
+    const tmpPath = resolve(tmpdir(), `tampered-${Date.now()}.qmd`)
+    writeFileSync(tmpPath, tampered)
+    try {
+      const result = verifyQmdChecksum('unlockMethodsContent', '3.26', tmpPath)
+      expect(result.ok).toBe(false)
+      expect(result.actual).not.toBe(result.expected)
+    } finally {
+      unlinkSync(tmpPath)
+    }
+  })
+
+  it('throws for unknown extension', () => {
+    expect(() => verifyQmdChecksum('nonexistent', '3.26', '/tmp/fake.qmd'))
+      .toThrow('Unknown extension')
   })
 })

@@ -21,8 +21,10 @@ import {
   listInstalledQmdFiles,
   getExtensionDefs,
   getQmdFilePath,
+  getSupportedVersions,
   mapFirmwareToQmdVersion,
   validateExclusiveGroups,
+  verifyQmdChecksum,
   DEVICE_PATHS,
 } from '../../lib/xoviExtensions.ts'
 import {
@@ -33,6 +35,43 @@ import {
   writeXoviDeployedState,
   clearXoviDeployedState,
 } from '../../lib/xoviDeployState.ts'
+
+/**
+ * Parse Vellum command output for known error patterns and return a targeted hint.
+ */
+export function parseVellumErrorHint(output: string): string {
+  const lower = output.toLowerCase()
+
+  if (lower.includes('checksum') || lower.includes('hash mismatch') || lower.includes('integrity')) {
+    return 'Package checksum verification failed. This usually means the package repository is out of sync. '
+         + 'Try: SSH into the device and run "vellum update" to refresh package metadata, then retry.'
+  }
+
+  if (lower.includes('reenable') || lower.includes('re-enable')) {
+    return 'Vellum needs to be re-enabled after a firmware update. '
+         + 'SSH into your device and run: vellum reenable'
+  }
+
+  if (lower.includes('no route') || lower.includes('could not resolve') || lower.includes('network')
+      || lower.includes('connection refused') || lower.includes('timeout')) {
+    return 'The device cannot reach the package server. '
+         + 'Check that the device has a working internet connection (Settings → Wi-Fi), then retry.'
+  }
+
+  if (lower.includes('not found') || lower.includes('no such package')) {
+    return 'One or more packages were not found in the Vellum repository. '
+         + 'The package names may have changed. Check https://github.com/vellum-dev/vellum for updates.'
+  }
+
+  if (lower.includes('disk') || lower.includes('no space') || lower.includes('enospc')) {
+    return 'The device is running low on disk space. '
+         + 'Free up space by removing unused notebooks or files, then retry.'
+  }
+
+  return 'Check that the device has internet access and try again. '
+       + 'If the problem persists, SSH into the device and run the command manually: '
+       + 'vellum add xovi xovi-extensions qt-resource-rebuilder'
+}
 
 export default function deviceXoviRoutes(app: FastifyInstance, config: ServerConfig) {
   // ── POST /api/devices/:id/xovi-status ──────────────────────────────────────
@@ -50,11 +89,15 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
       const status = await checkXoviStatus(client, sftp, deviceConfig.firmwareVersion ?? null)
       const devicePaths = resolveDevicePaths(config, id)
       const tracking = readXoviDeployedState(devicePaths.xoviDeployedState)
+      const supported = getSupportedVersions()
       return reply.send({
         ok: true,
         ...status,
         tracking: tracking
           ? { pristineFiles: tracking.pristineFiles, deployedExtensionIds: tracking.deployedExtensionIds }
+          : null,
+        supportedVersionRange: supported.length > 0
+          ? { min: supported[0], max: supported[supported.length - 1] }
           : null,
       })
     } catch (err) {
@@ -102,9 +145,13 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
     }
     const qmdVersion = mapFirmwareToQmdVersion(fw)
     if (!qmdVersion) {
+      const supported = getSupportedVersions()
+      const range = supported.length > 0 ? `${supported[0]}–${supported[supported.length - 1]}` : 'none'
       return reply.status(400).send({
         error: `No extensions available for firmware ${fw}`,
-        hint: 'Extensions may not yet support this firmware version.',
+        hint: `This app bundles extensions for firmware ${range}. `
+            + 'QMD extensions are firmware-specific and cannot be safely used across versions. '
+            + 'Check for an app update, or visit https://github.com/rmitchellscott/xovi for the latest extensions.',
       })
     }
 
@@ -121,6 +168,29 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
           hint: (err as Error).message,
         })
       }
+    }
+
+    // Verify QMD file integrity before connecting to device
+    const checksumFailures: string[] = []
+    for (const { extensionId, localPath } of filePaths) {
+      try {
+        const result = verifyQmdChecksum(extensionId, qmdVersion, localPath)
+        if (!result.ok) {
+          checksumFailures.push(
+            `${extensionId}: expected ${result.expected?.slice(0, 16)}..., got ${result.actual.slice(0, 16)}...`,
+          )
+        }
+      } catch {
+        checksumFailures.push(`${extensionId}: unable to verify checksum`)
+      }
+    }
+    if (checksumFailures.length > 0) {
+      return reply.status(400).send({
+        error: 'QMD file integrity check failed',
+        hint: 'Extension files may be corrupted (CRLF line ending conversion is a common cause). '
+            + 'Re-clone the repository or run: git rm --cached server/data/xovi-extensions/**/*.qmd && git checkout -- server/data/xovi-extensions/',
+        details: checksumFailures,
+      })
     }
 
     let stream
@@ -155,6 +225,21 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
           'Install via Vellum: the qt-resource-rebuilder package is a subpackage of xovi-extensions.',
         )
         return
+      }
+      // Check vellum reenable status — after a firmware update, QMD patches
+      // target stale symbol IDs and must not be deployed until the user re-enables
+      // vellum and installs QMDs matching the new firmware.
+      const vellumExists = await exec(client, `test -f ${DEVICE_PATHS.vellumBin} && echo ok || echo missing`)
+      if (vellumExists.stdout.trim() === 'ok') {
+        const reenableResult = await exec(client, `${DEVICE_PATHS.vellumBin} reenable status 2>/dev/null`)
+        if (reenableResult.stdout.trim() === 'needed') {
+          stream.error(
+            'Deploy blocked: firmware was updated since xovi was installed',
+            'QMD extensions target firmware-specific symbols and cannot be safely deployed until Vellum is re-enabled. '
+            + 'SSH into your device and run: vellum reenable — then check xovi status again.',
+          )
+          return
+        }
       }
       steps.push('xovi prerequisites verified')
 
@@ -260,7 +345,7 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
         if (rebuildResult.code !== 0) {
           stream.error(
             'rebuild_hashtable failed after removal',
-            `Exit code ${rebuildResult.code}`,
+            `Exit code ${rebuildResult.code}. Try running it manually: ${DEVICE_PATHS.rebuildCmd}`,
             rebuildResult.stderr,
           )
           return
@@ -337,10 +422,11 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
       stream.progress('Installing xovi via Vellum (downloading packages)...')
       const installResult = await exec(client, `${DEVICE_PATHS.vellumBin} add xovi xovi-extensions qt-resource-rebuilder 2>&1`)
       if (installResult.code !== 0) {
+        const output = installResult.stdout + installResult.stderr
         stream.error(
           'Failed to install xovi via Vellum',
-          'Check that the device has internet access and try again.',
-          installResult.stdout + installResult.stderr,
+          parseVellumErrorHint(output),
+          output,
         )
         return
       }
@@ -385,22 +471,33 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
         return
       }
 
-      // Remove any deployed QMD files first — after vellum del, rebuild_hashtable
-      // won't be available, so we must clean up while xovi is still installed.
+      // Clean up deployed QMD files BEFORE vellum del — after removal,
+      // rebuild_hashtable won't be available so we must rebuild now.
+      const warnings: string[] = []
       stream.progress('Removing deployed QMD extensions...')
       const qmdClean = await exec(client, `rm -rf ${DEVICE_PATHS.qmdDir}/*.qmd 2>/dev/null; echo ok`)
       if (qmdClean.stdout.trim() === 'ok') {
-        steps.push('Cleaned up QMD extensions')
+        const hasRebuilder = await exec(client, `test -x /home/root/xovi/rebuild_hashtable && echo ok || echo missing`)
+        if (hasRebuilder.stdout.trim() === 'ok') {
+          stream.progress('Rebuilding hashtable before uninstall...')
+          const rebuildResult = await exec(client, DEVICE_PATHS.rebuildCmd)
+          if (rebuildResult.code !== 0) {
+            warnings.push(`rebuild_hashtable returned exit code ${rebuildResult.code} during cleanup (continuing with uninstall)`)
+          } else {
+            steps.push('Cleaned QMD extensions and rebuilt hashtable')
+          }
+        }
       }
 
       // Remove all three packages explicitly — vellum del doesn't cascade to dependencies
       stream.progress('Removing xovi via Vellum...')
       const removeResult = await exec(client, `${DEVICE_PATHS.vellumBin} del qt-resource-rebuilder xovi-extensions xovi 2>&1`)
       if (removeResult.code !== 0) {
+        const output = removeResult.stdout + removeResult.stderr
         stream.error(
           'Failed to remove xovi via Vellum',
-          undefined,
-          removeResult.stdout + removeResult.stderr,
+          parseVellumErrorHint(output),
+          output,
         )
         return
       }
@@ -416,7 +513,9 @@ export default function deviceXoviRoutes(app: FastifyInstance, config: ServerCon
       await exec(client, DEVICE_PATHS.restartCmd)
       steps.push('Restarted xochitl')
 
-      stream.done({ steps, message: 'xovi removed successfully.' })
+      const doneData: Record<string, unknown> = { steps, message: 'xovi removed successfully.' }
+      if (warnings.length > 0) doneData.warnings = warnings
+      stream.done(doneData)
     } catch (err) {
       const friendly = formatSshError(err as Error)
       stream.error(friendly.message, friendly.hint, friendly.rawError)

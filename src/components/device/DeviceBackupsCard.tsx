@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { ErrorDetails } from './ErrorDetails'
 
 interface Props {
   /** Active device ID, or null when no device is selected. */
@@ -376,10 +377,14 @@ export function DeviceBackupsCard({ deviceId, deviceName, configured, onStatus: 
             </div>
           )}
           {restoreResult && restoreResult.type === 'error' && (
-            <div className="backup-inline-error">
-              {restoreResult.message}
+            <ErrorDetails
+              error={restoreResult.message}
+              details={restoreResult.details}
+              operationName="restore-backup"
+              className="device-op-result error"
+            >
               <button className="backup-inline-dismiss" onClick={() => setRestoreResult(null)}>&times;</button>
-            </div>
+            </ErrorDetails>
           )}
 
           {/* Restore preview panel */}
