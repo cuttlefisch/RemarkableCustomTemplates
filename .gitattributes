@@ -1,0 +1,6 @@
+# QMD extension files are text-like but checksummed — force LF to prevent
+# CRLF conversion on Windows from breaking SHA-512 validation.
+*.qmd text eol=lf
+
+# Keep shell scripts consistent
+*.sh text eol=lf

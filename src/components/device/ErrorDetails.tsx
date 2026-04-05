@@ -8,6 +8,8 @@ export function ErrorDetails({
   error,
   hint,
   rawError,
+  details,
+  operationName,
   deviceModel,
   firmwareVersion,
   className = 'device-op-result error',
@@ -16,6 +18,8 @@ export function ErrorDetails({
   error: string
   hint?: string
   rawError?: string
+  details?: string[]
+  operationName?: string
   deviceModel?: string
   firmwareVersion?: string
   className?: string
@@ -25,17 +29,23 @@ export function ErrorDetails({
   const [copied, setCopied] = useState(false)
 
   function handleCopy() {
-    const text = [
+    const lines = [
       `**Error:** ${error}`,
-      `**Raw:** ${rawError ?? 'N/A'}`,
+    ]
+    if (operationName) lines.push(`**Operation:** ${operationName}`)
+    lines.push(
       `**Hint:** ${hint ?? 'N/A'}`,
+      `**Raw:** ${rawError ?? 'N/A'}`,
+    )
+    if (details?.length) lines.push(`**Details:**\n${details.map(d => `  - ${d}`).join('\n')}`)
+    lines.push(
       `**Device:** ${deviceModel ?? 'N/A'}`,
       `**Firmware:** ${firmwareVersion ?? 'N/A'}`,
       `**URL:** ${window.location.href}`,
       `**Time:** ${new Date().toISOString()}`,
       `**UA:** ${navigator.userAgent}`,
-    ].join('\n')
-    navigator.clipboard.writeText(text).then(() => {
+    )
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -45,6 +55,11 @@ export function ErrorDetails({
     <div className={className}>
       <p style={{ margin: 0 }}>{error}</p>
       {hint && <p className="device-error-hint">{hint}</p>}
+      {details && details.length > 0 && (
+        <ul className="device-error-details">
+          {details.map((d, i) => <li key={i}>{d}</li>)}
+        </ul>
+      )}
       {rawError && rawError !== error && (
         <button className="device-error-toggle" onClick={() => setShowRaw(!showRaw)}>
           {showRaw ? 'Hide details' : 'Show error details'}

@@ -8,8 +8,8 @@ import { useState } from 'react'
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type OpResult =
-  | { ok: true; message: string; steps?: string[]; log?: string }
-  | { ok: false; error: string; hint?: string; rawError?: string }
+  | { ok: true; message: string; steps?: string[]; log?: string; warnings?: string[] }
+  | { ok: false; error: string; hint?: string; rawError?: string; details?: string[] }
 
 export interface ProgressState {
   phase: string
@@ -86,9 +86,10 @@ export function useDeviceOp(url: string, options?: { confirmMsg?: string; onSucc
         if (!res.ok) {
           const hint = data.hint as string | undefined
           const rawError = data.rawError as string | undefined
+          const details = data.details as string[] | undefined
           const error = (data.error as string) ?? `HTTP ${res.status}`
           console.error('[device-op]', url, rawError ?? error)
-          setResult({ ok: false, error, hint, rawError })
+          setResult({ ok: false, error, hint, rawError, details })
           return
         }
       }

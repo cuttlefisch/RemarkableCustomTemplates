@@ -52,6 +52,7 @@ interface XoviDeviceStatus {
   vellumInstalled: boolean
   vellumVersion: string | null
   vellumReenableNeeded: boolean
+  supportedVersionRange: { min: string; max: string } | null
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
@@ -374,6 +375,7 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                 error={xoviStatus.error.message}
                 hint={xoviStatus.error.hint}
                 rawError={xoviStatus.error.rawError}
+                operationName="xovi-status"
                 deviceModel={deviceModel}
                 firmwareVersion={firmwareVersion}
               />
@@ -404,10 +406,16 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                 </div>
                 {status.firmwareVersion && (
                   <div className="xovi-status-row">
-                    <span className="xovi-status-badge installed">&bull;</span>
+                    <span className={`xovi-status-badge ${status.qmdVersion ? 'installed' : 'missing'}`}>
+                      {status.qmdVersion ? '\u2713' : '\u2717'}
+                    </span>
                     <span>
                       Firmware {status.firmwareVersion}
-                      {status.qmdVersion ? ` \u2192 extensions v${status.qmdVersion}` : ' (unsupported)'}
+                      {status.qmdVersion
+                        ? ` \u2192 extensions v${status.qmdVersion}`
+                        : status.supportedVersionRange
+                          ? ` (unsupported \u2014 bundled extensions cover ${status.supportedVersionRange.min}\u2013${status.supportedVersionRange.max})`
+                          : ' (unsupported)'}
                     </span>
                   </div>
                 )}
@@ -450,6 +458,7 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                           error={vellumOp.result.error}
                           hint={vellumOp.result.hint}
                           rawError={vellumOp.result.rawError}
+                          operationName="vellum-install-xovi"
                           deviceModel={deviceModel}
                           firmwareVersion={firmwareVersion}
                         />
@@ -481,9 +490,23 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
 
               {/* Extensions list */}
               {xoviReady && !hasAvailable && status.qmdVersion === null && (
-                <p className="device-card-warning">
-                  No extensions available for firmware {status.firmwareVersion}. Extensions may not yet support this version.
-                </p>
+                <div className="device-card-warning">
+                  <p>
+                    <strong>No extensions available for firmware {status.firmwareVersion}.</strong>
+                  </p>
+                  <p>
+                    This app bundles extensions for firmware{' '}
+                    {status.supportedVersionRange
+                      ? `${status.supportedVersionRange.min}–${status.supportedVersionRange.max}`
+                      : 'versions not detected'}.{' '}
+                    QMD extensions target firmware-specific internals and cannot be safely used across versions.
+                    Check for an app update or visit{' '}
+                    <a href="https://github.com/rmitchellscott/xovi" target="_blank" rel="noopener noreferrer">
+                      xovi on GitHub
+                    </a>{' '}
+                    for the latest extensions.
+                  </p>
+                </div>
               )}
 
               {xoviReady && hasAvailable && (
@@ -618,6 +641,7 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                       error={vellumOp.result.error}
                       hint={vellumOp.result.hint}
                       rawError={vellumOp.result.rawError}
+                      operationName="vellum-remove-xovi"
                       deviceModel={deviceModel}
                       firmwareVersion={firmwareVersion}
                     />
@@ -639,6 +663,8 @@ export function DeviceXoviCard({ deviceId, deviceName, configured, deviceModel, 
                       error={xoviOp.result.error}
                       hint={xoviOp.result.hint}
                       rawError={xoviOp.result.rawError}
+                      details={xoviOp.result.details}
+                      operationName="xovi-deploy"
                       deviceModel={deviceModel}
                       firmwareVersion={firmwareVersion}
                     />

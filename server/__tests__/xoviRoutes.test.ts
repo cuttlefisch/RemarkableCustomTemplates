@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { createApp } from '../app.ts'
 import { resolveConfig, type ServerConfig } from '../config.ts'
 import { writeDeviceStore } from '../lib/deviceStore.ts'
+import { parseVellumErrorHint } from '../routes/device/xovi.ts'
 
 function makeConfig(): ServerConfig {
   const base = resolve(tmpdir(), `xoviroutes-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
@@ -235,5 +236,54 @@ describe('xovi routes', () => {
       expect(JSON.parse(res.body).error).toMatch(/not configured/)
       await app.close()
     })
+  })
+})
+
+// ── parseVellumErrorHint ──────────────────────────────────────────────────
+
+describe('parseVellumErrorHint', () => {
+  it('detects checksum errors', () => {
+    const hint = parseVellumErrorHint('Error: checksum mismatch for package xovi')
+    expect(hint).toMatch(/checksum/)
+    expect(hint).toMatch(/vellum update/)
+  })
+
+  it('detects hash mismatch errors', () => {
+    const hint = parseVellumErrorHint('hash mismatch: expected abc123, got def456')
+    expect(hint).toMatch(/checksum/)
+  })
+
+  it('detects integrity errors', () => {
+    const hint = parseVellumErrorHint('integrity verification failed')
+    expect(hint).toMatch(/checksum/)
+  })
+
+  it('detects reenable-needed errors', () => {
+    const hint = parseVellumErrorHint('Please reenable vellum after firmware update')
+    expect(hint).toMatch(/re-enabled/)
+    expect(hint).toMatch(/vellum reenable/)
+  })
+
+  it('detects network errors', () => {
+    expect(parseVellumErrorHint('could not resolve host packages.vellum.dev')).toMatch(/internet/)
+    expect(parseVellumErrorHint('connection refused')).toMatch(/internet/)
+    expect(parseVellumErrorHint('network unreachable')).toMatch(/internet/)
+    expect(parseVellumErrorHint('request timeout')).toMatch(/internet/)
+  })
+
+  it('detects missing package errors', () => {
+    const hint = parseVellumErrorHint('Error: no such package xovi-extensions')
+    expect(hint).toMatch(/not found/)
+  })
+
+  it('detects disk space errors', () => {
+    expect(parseVellumErrorHint('ENOSPC: no space left on device')).toMatch(/disk space/)
+    expect(parseVellumErrorHint('No space left on device')).toMatch(/disk space/)
+  })
+
+  it('returns generic hint for unknown errors', () => {
+    const hint = parseVellumErrorHint('some unexpected error output')
+    expect(hint).toMatch(/internet access/)
+    expect(hint).toMatch(/manually/)
   })
 })

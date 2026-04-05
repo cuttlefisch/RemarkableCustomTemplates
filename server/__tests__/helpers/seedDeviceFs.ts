@@ -47,6 +47,32 @@ export function seedMethodsTemplates(
   )
 }
 
+/** Seed xovi/vellum filesystem structure for xovi integration tests. */
+export function seedXoviFs(
+  fsRoot: string,
+  opts?: { xovi?: boolean; qtRebuilder?: boolean; vellum?: boolean; reenableNeeded?: boolean },
+) {
+  const { xovi = true, qtRebuilder = true, vellum = true, reenableNeeded = false } = opts ?? {}
+  if (xovi) {
+    mkdirSync(resolve(fsRoot, 'home/root/xovi'), { recursive: true })
+    writeFileSync(resolve(fsRoot, 'home/root/xovi/xovi.so'), 'fake-xovi')
+    writeFileSync(resolve(fsRoot, 'home/root/xovi/rebuild_hashtable'), '#!/bin/sh\necho ok')
+  }
+  if (qtRebuilder) {
+    mkdirSync(resolve(fsRoot, 'home/root/xovi/extensions.d'), { recursive: true })
+    writeFileSync(resolve(fsRoot, 'home/root/xovi/extensions.d/qt-resource-rebuilder.so'), 'fake-qt')
+    mkdirSync(resolve(fsRoot, 'home/root/xovi/exthome/qt-resource-rebuilder'), { recursive: true })
+  }
+  if (vellum) {
+    mkdirSync(resolve(fsRoot, 'home/root/.vellum/bin'), { recursive: true })
+    writeFileSync(resolve(fsRoot, 'home/root/.vellum/bin/vellum'), '#!/bin/sh\necho 1.0.0')
+  }
+  // Marker file read by mock exec handler
+  if (reenableNeeded) {
+    writeFileSync(resolve(fsRoot, 'home/root/.vellum/.reenable-needed'), '')
+  }
+}
+
 /** Write classic templates (templates.json + .template files) to /usr/share/remarkable/templates/. */
 export function seedClassicTemplates(
   fsRoot: string,
