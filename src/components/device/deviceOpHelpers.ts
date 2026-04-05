@@ -98,12 +98,13 @@ export function useDeviceOp(url: string, options?: { confirmMsg?: string; onSucc
       const count = data.count as number | undefined
       const message = data.message as string | undefined
       const restoredFrom = data.restoredFrom as string | undefined
+      const warnings = data.warnings as string[] | undefined
       const msg =
         message ??
         ((steps ? steps.join(' \u2192 ') : '') ||
         (count !== undefined ? `Pulled ${count} templates` : '') ||
         (restoredFrom ? `Restored from ${restoredFrom}` : 'Done'))
-      setResult({ ok: true, message: msg, steps })
+      setResult({ ok: true, message: msg, steps, warnings })
       options?.onSuccess?.()
     } catch (e) {
       if (e && typeof e === 'object' && 'error' in e) {

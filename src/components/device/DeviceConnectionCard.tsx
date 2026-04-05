@@ -235,6 +235,7 @@ export function DeviceConnectionCard({ devicesState }: Props) {
                 error={testResult.error!}
                 hint={testResult.hint}
                 rawError={testResult.rawError}
+                operationName="test-connection"
                 deviceModel={activeDevice?.deviceModel}
                 firmwareVersion={activeDevice?.firmwareVersion}
                 className="device-error"
@@ -327,6 +328,7 @@ export function DeviceConnectionCard({ devicesState }: Props) {
                 error={keyResult.error!}
                 hint={keyResult.hint}
                 rawError={keyResult.rawError}
+                operationName="setup-ssh-keys"
                 deviceModel={activeDevice?.deviceModel}
                 firmwareVersion={activeDevice?.firmwareVersion}
                 className="device-error"
@@ -465,6 +467,7 @@ export function DeviceConnectionCard({ devicesState }: Props) {
                 error={testResult.error!}
                 hint={testResult.hint}
                 rawError={testResult.rawError}
+                operationName="test-connection"
                 deviceModel={activeDevice?.deviceModel}
                 firmwareVersion={activeDevice?.firmwareVersion}
                 className="device-error"

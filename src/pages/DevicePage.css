@@ -332,6 +332,18 @@
   margin: 6px 0 0;
 }
 
+.device-op-warnings {
+  font-size: 12px;
+  color: var(--color-warning-text, var(--color-text-secondary));
+  padding-left: 20px;
+  margin: 6px 0 0;
+  list-style: disc;
+}
+
+.device-op-warnings li {
+  margin-bottom: 2px;
+}
+
 /* ── Backup list ───────────────────────────────────────────────────── */
 
 .device-backup-list {

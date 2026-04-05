@@ -40,6 +40,7 @@ export function OpButton({
   variant = 'primary',
   disabled = false,
   title,
+  operationName,
   deviceModel,
   firmwareVersion,
 }: {
@@ -49,6 +50,7 @@ export function OpButton({
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
   title?: string
+  operationName?: string
   deviceModel?: string
   firmwareVersion?: string
 }) {
@@ -67,11 +69,16 @@ export function OpButton({
         <ProgressBar progress={op.progress} label={loadingLabel} />
       )}
       {op.result && !op.result.ok && (
-        <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
+        <ErrorDetails error={op.result.error} hint={op.result.hint} rawError={op.result.rawError} details={op.result.details} operationName={operationName} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
       )}
       {op.result?.ok && (
         <div className="device-op-result">
           <p style={{ margin: 0 }}>{op.result.message}</p>
+          {op.result.warnings && op.result.warnings.length > 0 && (
+            <ul className="device-op-warnings">
+              {op.result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          )}
         </div>
       )}
     </div>
