@@ -176,9 +176,13 @@ function handleExec(
       return
     }
 
-    if (command.includes('mkdir -p') && command.includes('.ssh')) {
-      const sshDir = mapPath(fsRoot, '/home/root/.ssh')
-      mkdirSync(sshDir, { recursive: true })
+    if (command.includes('mkdir -p')) {
+      // Extract the path argument
+      const mkdirMatch = command.match(/mkdir -p ([^\s;]+)/)
+      if (mkdirMatch) {
+        const dir = mapPath(fsRoot, mkdirMatch[1])
+        mkdirSync(dir, { recursive: true })
+      }
       channel.exit(0)
       channel.end()
       return
@@ -225,6 +229,108 @@ function handleExec(
       channel.exit(0)
       channel.end()
       return
+    }
+
+    // Generic `test -f <path> && echo ok || echo missing` pattern
+    const testFileMatch = command.match(/test -f ([^\s&|]+)\s*&&\s*echo ok\s*\|\|\s*echo missing/)
+    if (testFileMatch) {
+      const localPath = mapPath(fsRoot, testFileMatch[1])
+      channel.write(existsSync(localPath) ? 'ok' : 'missing')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // Generic `test -x <path> && echo ok || echo missing` pattern
+    const testExecMatch = command.match(/test -x ([^\s&|]+)\s*&&\s*echo ok\s*\|\|\s*echo missing/)
+    if (testExecMatch) {
+      const localPath = mapPath(fsRoot, testExecMatch[1])
+      channel.write(existsSync(localPath) ? 'ok' : 'missing')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // Generic `test -f <path> && <cmd> || echo missing` — for vellum version check etc.
+    const testAndExecMatch = command.match(/test -f ([^\s&|]+)\s*&&/)
+    if (testAndExecMatch && !command.includes('echo ok')) {
+      const localPath = mapPath(fsRoot, testAndExecMatch[1])
+      if (!existsSync(localPath)) {
+        channel.write('missing')
+        channel.exit(1)
+        channel.end()
+        return
+      }
+      // File exists — fall through to more specific handlers below
+    }
+
+    // Vellum reenable status
+    if (command.includes('vellum') && command.includes('reenable status')) {
+      const marker = mapPath(fsRoot, '/home/root/.vellum/.reenable-needed')
+      channel.write(existsSync(marker) ? 'needed' : 'ok')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // Vellum --version
+    if (command.includes('vellum') && command.includes('--version')) {
+      const vellumBin = mapPath(fsRoot, '/home/root/.vellum/bin/vellum')
+      channel.write(existsSync(vellumBin) ? '1.0.0' : 'missing')
+      channel.exit(existsSync(vellumBin) ? 0 : 1)
+      channel.end()
+      return
+    }
+
+    // Vellum add/del — always succeed (mock)
+    if (command.includes('vellum') && (command.includes(' add ') || command.includes(' del '))) {
+      channel.write('ok\n')
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // rebuild_hashtable
+    if (command.includes('rebuild_hashtable')) {
+      const bin = mapPath(fsRoot, '/home/root/xovi/rebuild_hashtable')
+      if (existsSync(bin)) {
+        channel.write('Hashtable rebuilt successfully\n')
+        channel.exit(0)
+      } else {
+        channel.stderr.write('rebuild_hashtable: not found\n')
+        channel.exit(1)
+      }
+      channel.end()
+      return
+    }
+
+    // rm -f <path> — delete a file (best effort)
+    const rmMatch = command.match(/rm -f ([^\s;]+)/)
+    if (rmMatch) {
+      const localPath = mapPath(fsRoot, rmMatch[1])
+      if (existsSync(localPath)) {
+        try { unlinkSync(localPath) } catch { /* best effort */ }
+      }
+      channel.exit(0)
+      channel.end()
+      return
+    }
+
+    // rm -f <glob> pattern via shell (e.g. rm -f /path/*.qmd)
+    if (command.includes('rm -f') && command.includes('*.qmd')) {
+      // Extract dir from the glob pattern
+      const globMatch = command.match(/rm -f ([^\s*]+)\*\.qmd/)
+      if (globMatch) {
+        const dir = mapPath(fsRoot, globMatch[1])
+        if (existsSync(dir)) {
+          for (const f of readdirSync(dir)) {
+            if (f.endsWith('.qmd')) {
+              try { unlinkSync(resolve(dir, f)) } catch { /* best effort */ }
+            }
+          }
+        }
+      }
+      // Fall through to default (will echo ok if piped)
     }
 
     // Default: succeed silently

@@ -14,7 +14,7 @@ A browser-based template editor for native reMarkable tablets. Browse, preview, 
 
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
-cd remarkable_templates
+cd RemarkableCustomTemplates
 docker compose up --build -d
 ```
 
@@ -22,6 +22,8 @@ Open **http://localhost:3000** in your browser. That's it.
 
 > **Port conflict?** `PORT=3001 docker compose up --build -d`
 > **Stop:** `docker compose down` · **Reset all data:** `docker compose down -v`
+
+**Updating:** `git pull origin main && docker compose up --build -d` — your data is preserved across upgrades. See the [quickstart](docs/quickstart.md#updating-to-a-new-version) for details.
 
 ## What You Can Do
 

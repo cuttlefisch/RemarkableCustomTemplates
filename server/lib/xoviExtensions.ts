@@ -5,6 +5,7 @@
  * Pure logic (except checkXoviStatus which uses SSH/SFTP).
  */
 
+import { createHash } from 'node:crypto'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -75,6 +76,44 @@ function loadManifest(): Manifest {
 /** For testing: clear the cached manifest so it reloads from disk. */
 export function _resetManifestCache(): void {
   _manifest = null
+}
+
+// ── checksum utilities ──────────────────────────────────────────────────────
+
+/** Normalize CRLF → LF so checksums are stable across platforms. */
+export function normalizeLF(buf: Buffer): Buffer {
+  if (!buf.includes(0x0d)) return buf
+  const out: number[] = []
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] === 0x0d && i + 1 < buf.length && buf[i + 1] === 0x0a) continue
+    out.push(buf[i]!)
+  }
+  return Buffer.from(out)
+}
+
+/** Compute SHA-512 of a buffer after LF normalization. */
+export function sha512Normalized(buf: Buffer): string {
+  return createHash('sha512').update(normalizeLF(buf)).digest('hex')
+}
+
+/**
+ * Verify a QMD file's integrity against the manifest checksum.
+ * Returns `{ ok, expected, actual }`. If the manifest has no entry
+ * for the given key, `expected` is null (no checksum to verify against).
+ */
+export function verifyQmdChecksum(
+  extensionId: string,
+  qmdVersion: string,
+  filePath: string,
+): { ok: boolean; expected: string | null; actual: string } {
+  const manifest = loadManifest()
+  const def = manifest.extensions[extensionId]
+  if (!def) throw new Error(`Unknown extension: ${extensionId}`)
+  const key = `${qmdVersion}/${def.filename}`
+  const expected = manifest.checksums[key] ?? null
+  const content = readFileSync(filePath)
+  const actual = sha512Normalized(content)
+  return { ok: expected === null || actual === expected, expected, actual }
 }
 
 // ── public API ───────────────────────────────────────────────────────────────

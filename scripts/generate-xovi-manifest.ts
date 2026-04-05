@@ -54,8 +54,19 @@ const EXTENSION_DEFS = {
   },
 }
 
+/** Normalize CRLF → LF so checksums are stable across platforms. */
+function normalizeLF(buf: Buffer): Buffer {
+  if (!buf.includes(0x0d)) return buf
+  const out: number[] = []
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] === 0x0d && i + 1 < buf.length && buf[i + 1] === 0x0a) continue
+    out.push(buf[i]!)
+  }
+  return Buffer.from(out)
+}
+
 function sha512(filePath: string): string {
-  const content = readFileSync(filePath)
+  const content = normalizeLF(readFileSync(filePath))
   return createHash('sha512').update(content).digest('hex')
 }
 
