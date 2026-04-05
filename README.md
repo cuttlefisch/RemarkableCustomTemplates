@@ -85,6 +85,9 @@ Native templates are ideal for grids, lined paper, planners, and any repeating g
 
 This app focuses on native `.template` files — the format that gives you the best performance and cloud sync on reMarkable devices.
 
+> [!NOTE]
+> **macOS:** The app is not signed with an Apple Developer certificate. On first launch, right-click the app and choose **Open** (instead of double-clicking) to bypass the Gatekeeper warning. You only need to do this once.
+
 <details>
 <summary>Alternative: Run with Docker</summary>
 
@@ -97,6 +100,19 @@ Open **http://localhost:3000**. Stop: `docker compose down`. Reset all data: `do
 > **Port conflict?** `PORT=3001 docker compose up --build -d`
 
 </details>
+
+### Upgrading
+
+**Desktop app:** Download the new release and install over the existing version. Your data (templates, device config, SSH keys, notebooks) is stored in your OS app data directory and is preserved automatically. System templates (samples, debug) are updated to match the new version on each launch.
+
+**Docker:** Pull the latest code and rebuild:
+
+```bash
+git pull origin main
+docker compose up --build -d
+```
+
+> **Migrating between Desktop and Docker?** Use the Backup & Restore workflow on the Device & Sync page to move your data between the two.
 
 ## Device Setup
 

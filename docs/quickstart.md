@@ -2,12 +2,28 @@
 
 Get remarkable-templates running and deploy custom templates to your reMarkable device.
 
-## Prerequisites
+## 1. Install the app
 
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- A reMarkable device on the same network (for device sync)
+### Option A: Desktop App (recommended)
 
-## 1. Start the app
+Download the latest release for your platform:
+
+**[Download from GitHub Releases](https://github.com/cuttlefisch/RemarkableCustomTemplates/releases/latest)**
+
+| Platform | Format |
+|----------|--------|
+| Linux | AppImage, .deb, .rpm |
+| macOS | .dmg |
+| Windows | .exe |
+
+Open the app and you're ready to go — no terminal, no dependencies. On first launch, the app creates its data directory automatically and bundles all templates and samples.
+
+> [!NOTE]
+> **macOS:** The app is not signed with an Apple Developer certificate. On first launch, right-click the app and choose **Open** (instead of double-clicking) to bypass the Gatekeeper warning. You only need to do this once.
+
+### Option B: Docker
+
+Requires [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
 
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
@@ -18,6 +34,8 @@ docker compose up --build -d
 Open `http://localhost:3000` in your browser.
 
 > **Port conflict?** Use a different port: `PORT=3001 docker compose up --build -d`
+
+Both options provide the same UI and feature set. The desktop app runs a local server behind the scenes — you just don't need to manage it yourself.
 
 ## 2. Browse templates
 
@@ -112,6 +130,12 @@ If something goes wrong, use the **Device & Sync** page to roll back:
 
 ## Managing the app
 
+### Desktop app
+
+Your data (templates, device config, SSH keys, notebooks) is stored in your OS app data directory and persists across updates. To start fresh, remove the app data directory (see your OS documentation for the location — typically `~/Library/Application Support/RMCustomTemplates` on macOS, `%APPDATA%/RMCustomTemplates` on Windows, or `~/.config/RMCustomTemplates` on Linux).
+
+### Docker
+
 **Stop:** `docker compose down`
 
 **Data persistence:** Templates, device config, and SSH keys are stored in a Docker volume and persist across restarts and upgrades.
@@ -119,6 +143,12 @@ If something goes wrong, use the **Device & Sync** page to roll back:
 **Start fresh:** `docker compose down -v` removes the volume and all data.
 
 ## Updating to a new version
+
+### Desktop app
+
+Download the new release and install over the existing version. Your data is preserved automatically. System templates (samples, debug) are updated to match the new version on each launch.
+
+### Docker
 
 Pull the latest code and rebuild. Your data (templates, device config, SSH keys, backups) is stored in a Docker volume and is preserved automatically.
 
@@ -131,6 +161,10 @@ docker compose up --build -d
 The `--build` flag rebuilds the Docker image with the latest code. The container restarts with the new version while keeping all your data intact. You can verify the build succeeded by checking for any errors in the build output — for example, xovi checksum validation runs during the build and will report any issues.
 
 > **Troubleshooting an upgrade:** If you see unexpected behavior after updating, check the [release notes](https://github.com/cuttlefisch/RemarkableCustomTemplates/releases) for breaking changes. If your data appears corrupted, you can start fresh with `docker compose down -v && docker compose up --build -d` — but this removes all local data, so back up first (see [Back up your templates](#8-back-up-your-templates)).
+
+### Migrating between Desktop and Docker
+
+Use the **Backup & Restore** workflow on the Device & Sync page to move your data between install methods. Export a backup ZIP from one, then restore it in the other.
 
 ---
 
