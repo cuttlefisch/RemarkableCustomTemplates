@@ -315,7 +315,7 @@ function SyncStatusSection({ syncStatus, autoRefreshed, deviceModel, firmwareVer
 
       {error && (
         <div style={{ marginTop: 8 }}>
-          <ErrorDetails error={error.message} hint={error.hint} rawError={error.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
+          <ErrorDetails error={error.message} hint={error.hint} rawError={error.rawError} operationName="sync-status" deviceModel={deviceModel} firmwareVersion={firmwareVersion} />
         </div>
       )}
 
@@ -607,6 +607,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   op={pullMethods}
                   disabled={anyOpRunning}
                   title={`Download methods templates (official + custom) from ${deviceName}`}
+                  operationName="pull-methods"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -617,6 +618,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   variant="secondary"
                   disabled={anyOpRunning}
                   title={`Download classic templates from ${deviceName}`}
+                  operationName="pull-classic"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -640,6 +642,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   title={selective.showSelector && selective.selectedIds.size === 0
                     ? 'Select at least one template to deploy'
                     : `Build and push templates to ${deviceName} in methods format — syncs across paired devices`}
+                  operationName="deploy-methods"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -650,6 +653,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   variant="secondary"
                   disabled={anyOpRunning}
                   title={`Push classic templates to ${deviceName} — single device only, wiped on firmware updates`}
+                  operationName="deploy-classic"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -673,6 +677,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   variant="danger"
                   disabled={anyOpRunning}
                   title={`Revert ${deviceName} to the state before your last deploy`}
+                  operationName="rollback-methods"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -683,6 +688,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   variant="danger"
                   disabled={anyOpRunning}
                   title={`Restore ${deviceName} to its pre-app state`}
+                  operationName="rollback-original"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -693,6 +699,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
                   variant="danger"
                   disabled={anyOpRunning}
                   title={`Restore ${deviceName} from the most recent classic template backup`}
+                  operationName="rollback-classic"
                   deviceModel={deviceModel}
                   firmwareVersion={firmwareVersion}
                 />
@@ -785,7 +792,7 @@ export function DeviceSyncCard({ deviceId, deviceName, configured, deviceModel, 
 
               {removeAll.phase === 'error' && removeAll.errorInfo && (
                 <div>
-                  <ErrorDetails error={removeAll.errorInfo.message} hint={removeAll.errorInfo.hint} rawError={removeAll.errorInfo.rawError} deviceModel={deviceModel} firmwareVersion={firmwareVersion}>
+                  <ErrorDetails error={removeAll.errorInfo.message} hint={removeAll.errorInfo.hint} rawError={removeAll.errorInfo.rawError} operationName="remove-all" deviceModel={deviceModel} firmwareVersion={firmwareVersion}>
                     <button
                       className="device-card-btn device-card-btn-secondary"
                       onClick={removeAll.reset}
