@@ -11,7 +11,7 @@ Get remarkable-templates running and deploy custom templates to your reMarkable 
 
 ```bash
 git clone https://github.com/cuttlefisch/RemarkableCustomTemplates
-cd remarkable_templates
+cd RemarkableCustomTemplates
 docker compose up --build -d
 ```
 
@@ -114,9 +114,23 @@ If something goes wrong, use the **Device & Sync** page to roll back:
 
 **Stop:** `docker compose down`
 
-**Data persistence:** Templates, device config, and SSH keys are stored in a Docker volume and persist across restarts.
+**Data persistence:** Templates, device config, and SSH keys are stored in a Docker volume and persist across restarts and upgrades.
 
 **Start fresh:** `docker compose down -v` removes the volume and all data.
+
+## Updating to a new version
+
+Pull the latest code and rebuild. Your data (templates, device config, SSH keys, backups) is stored in a Docker volume and is preserved automatically.
+
+```bash
+cd RemarkableCustomTemplates
+git pull origin main
+docker compose up --build -d
+```
+
+The `--build` flag rebuilds the Docker image with the latest code. The container restarts with the new version while keeping all your data intact. You can verify the build succeeded by checking for any errors in the build output — for example, xovi checksum validation runs during the build and will report any issues.
+
+> **Troubleshooting an upgrade:** If you see unexpected behavior after updating, check the [release notes](https://github.com/cuttlefisch/RemarkableCustomTemplates/releases) for breaking changes. If your data appears corrupted, you can start fresh with `docker compose down -v && docker compose up --build -d` — but this removes all local data, so back up first (see [Back up your templates](#8-back-up-your-templates)).
 
 ---
 

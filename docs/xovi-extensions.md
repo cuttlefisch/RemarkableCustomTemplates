@@ -99,6 +99,17 @@ When your reMarkable receives a firmware update:
 
 ## Troubleshooting
 
+### Checksum validation errors during deploy
+
+If you see checksum errors when deploying extensions, update to the latest version:
+
+```bash
+git pull origin main
+docker compose up --build -d
+```
+
+This was fixed in [PR #8](https://github.com/cuttlefisch/RemarkableCustomTemplates/pull/8) — the root cause was line-ending conversion on Windows breaking file checksums. The fix normalizes line endings at all layers so checksums are consistent regardless of platform.
+
 ### "xovi not installed"
 
 xovi and qt-resource-rebuilder must be installed on your device before this app can deploy extensions. If Vellum is on your device, click **Install xovi** in the app. Otherwise, install via SSH:
